@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { toggleProfileVerification, adminUpdateProfile } from '@/lib/actions/profile'
 import { BadgeCheck, Loader2, Shield, Settings, User, Image, RefreshCw, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -21,6 +22,7 @@ interface AdminControlsDropdownProps {
 }
 
 export function AdminControlsDropdown({ targetProfile }: AdminControlsDropdownProps) {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -44,6 +46,10 @@ export function AdminControlsDropdown({ targetProfile }: AdminControlsDropdownPr
   useEffect(() => {
     setIsVerified(targetProfile.is_verified ?? false)
     setIsGold(targetProfile.is_gold ?? false)
+    setUsernameInput(targetProfile.username)
+    setFirstNameInput(targetProfile.first_name ?? '')
+    setLastNameInput(targetProfile.last_name ?? '')
+    setBioInput(targetProfile.bio ?? '')
   }, [targetProfile])
 
   // Click outside handler to close dropdown
@@ -69,6 +75,7 @@ export function AdminControlsDropdown({ targetProfile }: AdminControlsDropdownPr
         } else if (type === 'gold') {
           setIsGold(res.is_gold ?? false)
         }
+        router.refresh()
       }
     })
   }
@@ -94,6 +101,13 @@ export function AdminControlsDropdown({ targetProfile }: AdminControlsDropdownPr
         // Reset flags
         setResetAvatar(false)
         setResetBanner(false)
+        
+        // If username has changed, redirect to the new profile page
+        if (usernameInput !== targetProfile.username) {
+          router.push(`/profile/${usernameInput}`)
+        } else {
+          router.refresh()
+        }
       }
     })
   }
