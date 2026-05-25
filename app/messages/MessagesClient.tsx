@@ -148,6 +148,8 @@ function renderMessageContent(content: string, isOwn: boolean) {
   return <p>{content}</p>
 }
 
+const STREAK_MILESTONES = [1, 5, 10, 20, 50, 100, 150, 200, 300, 500]
+
 interface MessagesClientProps {
   currentUser: any
   initialConversations: Conversation[]
@@ -329,7 +331,7 @@ export function MessagesClient({
           } catch (e) {}
           
           const lastCelebrated = celebrated[activeUserId] || 0
-          if (newStreak > lastCelebrated) {
+          if (newStreak > lastCelebrated && STREAK_MILESTONES.includes(newStreak)) {
             setAnimateStreakNum(newStreak)
             setAnimateOldNum(lastCelebrated)
             setShowStreakAnimation(true)
@@ -363,7 +365,7 @@ export function MessagesClient({
     }
 
     loadMessages()
-  }, [activeChatUser, currentUser.id])
+  }, [activeChatUser?.id, currentUser.id])
 
   // Subscribing to direct messages typing status
   useEffect(() => {
@@ -448,7 +450,7 @@ export function MessagesClient({
                 const newStreak = calculateStreakClientSide(updatedMsgs)
                 
                 // Trigger pop animation if streak increased
-                if (prevStreak !== null && newStreak > prevStreak) {
+                if (prevStreak !== null && newStreak > prevStreak && STREAK_MILESTONES.includes(newStreak)) {
                   setAnimateStreakNum(newStreak)
                   setAnimateOldNum(prevStreak)
                   setShowStreakAnimation(true)
@@ -711,7 +713,7 @@ export function MessagesClient({
         const newStreak = calculateStreakClientSide(updatedMsgs)
         
         // Trigger pop animation if streak increased
-        if (prevStreak !== null && newStreak > prevStreak) {
+        if (prevStreak !== null && newStreak > prevStreak && STREAK_MILESTONES.includes(newStreak)) {
           setAnimateStreakNum(newStreak)
           setAnimateOldNum(prevStreak)
           setShowStreakAnimation(true)
@@ -999,7 +1001,11 @@ export function MessagesClient({
                       streak={conversations.find(c => c.otherUser.id === activeChatUser.id)?.streak}
                     />
                     {/* Status Subtext */}
-                    {(() => {
+                    {isPartnerTyping ? (
+                      <p className="text-[10px] text-emerald-500 font-bold animate-pulse mt-0.5">
+                        ✍️ Yazıyor...
+                      </p>
+                    ) : (() => {
                       const statusObj = getOnlineStatus(activeChatUser)
                       return (
                         <p className="text-[10px] text-muted-foreground mt-0.5">

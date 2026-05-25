@@ -85,3 +85,71 @@ export async function sendCommunityMessage(communityId: string, content: string,
 
   return { success: true, message: data }
 }
+
+export async function editCommunityMessage(messageId: string, content: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (!content || !content.trim()) return { error: 'Mesaj boş olamaz.' }
+
+  const { data: message, error: getError } = await supabase
+    .from('community_messages')
+    .select('user_id')
+    .eq('id', messageId)
+    .single()
+
+  if (getError || !message) return { error: 'Mesaj bulunamadı.' }
+
+  if (message.user_id !== user.id) {
+    return { error: 'Bu mesajı düzenleme yetkiniz yok.' }
+  }
+
+  const { error } = await supabase
+    .from('community_messages')
+    .update({ content: content.trim() })
+    .eq('id', messageId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function deleteCommunityMessage(messageId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  const { data: message, error: getError } = await supabase
+    .from('community_messages')
+    .select('user_id, community_id')
+    .eq('id', messageId)
+    .single()
+
+  if (getError || !message) return { error: 'Mesaj bulunamadı.' }
+
+  const isOwn = message.user_id === user.id
+
+  let isAdmin = false
+  if (!isOwn) {
+    const { data: membership } = await supabase
+      .from('community_members')
+      .select('role, status')
+      .eq('community_id', message.community_id)
+      .eq('user_id', user.id)
+      .single()
+    
+    isAdmin = membership?.status === 'approved' && (membership.role === 'owner' || membership.role === 'moderator')
+  }
+
+  if (!isOwn && !isAdmin) {
+    return { error: 'Bu mesajı silme yetkiniz yok.' }
+  }
+
+  const { error } = await supabase
+    .from('community_messages')
+    .delete()
+    .eq('id', messageId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}

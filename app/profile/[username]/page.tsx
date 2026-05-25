@@ -10,6 +10,7 @@ import { enrichProfile } from '@/lib/profile-enrich'
 import { MuteProfileButton } from '@/components/havn/MuteProfileButton'
 import { getDisplayName, getFullName, getInitials, getOnlineStatus } from '@/lib/profile-display'
 import { cn } from '@/lib/utils'
+import { getRankInfo } from '@/lib/gamification'
 
 const Twitter = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -284,6 +285,51 @@ export default async function ProfilePage({
               <span className="flex items-center gap-1.5"><Users size={14} className="opacity-70" />{communityCount} topluluk</span>
               <span className="flex items-center gap-1.5"><Eye size={14} className="opacity-70" />{profileViews ?? 0} görüntülenme</span>
             </div>
+
+            {/* Gamification Level & XP Progress Card */}
+            {profile.xp !== undefined && (
+              (() => {
+                const rank = getRankInfo(profile.xp)
+                return (
+                  <div className="mt-5 p-4 rounded-2xl bg-card border border-border/80 shadow-sm backdrop-blur-md relative overflow-hidden group">
+                    {/* Background subtle glowing effect */}
+                    <div 
+                      className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full opacity-[0.03] group-hover:opacity-[0.06] blur-2xl transition-opacity duration-500 pointer-events-none"
+                      style={{
+                        background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)'
+                      }}
+                    />
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-lg text-[9px] font-black tracking-wider border uppercase shadow-sm select-none",
+                          rank.badgeClass
+                        )} style={rank.badgeStyle}>
+                          SEVİYE {rank.level}
+                        </span>
+                        <span className="text-xs font-black text-foreground">
+                          {rank.rankName}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
+                        {profile.xp} XP
+                      </span>
+                    </div>
+                    {/* Progress Bar Container */}
+                    <div className="w-full h-2 rounded-full bg-muted/70 overflow-hidden relative border border-border/30">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#8b5cf6] via-[#ec4899] to-[#f97316] transition-all duration-1000 ease-out"
+                        style={{ width: `${rank.progressPercent}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center mt-2 text-[9px] text-muted-foreground font-semibold">
+                      <span>Mevcut Seviye</span>
+                      <span>Sonraki seviyeye {rank.xpNeededForNext} XP kaldı</span>
+                    </div>
+                  </div>
+                )
+              })()
+            )}
 
 
 

@@ -111,6 +111,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
     currentUserId ? (displayPost.likes || []).some(l => l.user_id === currentUserId) : false
   )
   const [likeCount, setLikeCount] = useState(displayPost.likes?.length ?? 0)
+  const [commentCount, setCommentCount] = useState(displayPost.comments?.length ?? 0)
   const [reposted, setReposted] = useState(
     isRepost && post.user_id === currentUserId
   )
@@ -200,6 +201,10 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   }
 
   const handleSelectReaction = (emoji: string) => {
+    if (!currentUserId) {
+      showToast('Beğenmek için giriş yapmalısınız.', 'error')
+      return
+    }
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
     setShowReactions(false)
     setActiveReaction(emoji)
@@ -325,6 +330,50 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   }, [displayPost.bookmarks, currentUserId])
 
   useEffect(() => {
+    setCommentCount(displayPost.comments?.length ?? 0)
+  }, [displayPost.comments])
+
+  // Real-time Likes & Comments Sync
+  useEffect(() => {
+    const channel = supabase.channel(`post_interactions_${displayPost.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'likes', filter: `post_id=eq.${displayPost.id}` },
+        async () => {
+          const { count } = await supabase
+            .from('likes')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', displayPost.id)
+          if (count !== null) setLikeCount(count)
+
+          const { data } = await supabase
+            .from('likes')
+            .select('user_id')
+            .eq('post_id', displayPost.id)
+            .eq('user_id', currentUserId || '')
+            .maybeSingle()
+          setLiked(!!data)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${displayPost.id}` },
+        async () => {
+          const { count } = await supabase
+            .from('comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', displayPost.id)
+          if (count !== null) setCommentCount(count)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [displayPost.id, currentUserId])
+
+  useEffect(() => {
     setPostContent((displayPost.content || '').replace('\u200B[anlar]', '').replace('\u200B[kadraj]', ''))
   }, [displayPost.content])
 
@@ -429,6 +478,10 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   }
 
   function handleLike() {
+    if (!currentUserId) {
+      showToast('Beğenmek için giriş yapmalısınız.', 'error')
+      return
+    }
     if (liked) {
       setLiked(false)
       setLikeCount((c) => c - 1)
@@ -450,6 +503,10 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   }
 
   function handleBookmark() {
+    if (!currentUserId) {
+      showToast('Yer işaretlerine eklemek için giriş yapmalısınız.', 'error')
+      return
+    }
     setBookmarked(b => !b)
     startTransition(async () => {
       await toggleBookmark(displayPost.id)
@@ -457,6 +514,10 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   }
 
   function handleRepost() {
+    if (!currentUserId) {
+      showToast('Yeniden paylaşmak için giriş yapmalısınız.', 'error')
+      return
+    }
     setShowShareMenu(false)
     setReposted(r => !r)
     startTransition(async () => {
@@ -806,7 +867,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
           >
             <MessageCircle size={15} />
-            <span>{(displayPost.comments || []).length}</span>
+            <span>{commentCount}</span>
           </Link>
 
           {typeof viewCount === 'number' && (

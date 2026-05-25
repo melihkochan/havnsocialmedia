@@ -18,6 +18,7 @@ export interface EnrichedProfile {
   show_status?: boolean
   last_seen_at?: string
   hidden_conversations?: Record<string, string>
+  xp?: number
 }
 
 export function cleanBio(bio: string | null): string {

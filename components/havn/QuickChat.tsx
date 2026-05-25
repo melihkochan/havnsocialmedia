@@ -35,6 +35,8 @@ interface Message {
   receiver?: Profile
 }
 
+const STREAK_MILESTONES = [1, 5, 10, 20, 50, 100, 150, 200, 300, 500]
+
 interface Conversation {
   otherUser: Profile
   lastMessage: Message
@@ -163,6 +165,15 @@ export function QuickChat({ currentUser }: QuickChatProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [following, setFollowing] = useState<Profile[]>([])
   const [totalUnread, setTotalUnread] = useState(0)
+  const [statusTick, setStatusTick] = useState(0)
+
+  useEffect(() => {
+    if (!activeChatUser) return
+    const interval = setInterval(() => {
+      setStatusTick(t => t + 1)
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [activeChatUser])
 
   const [isPartnerTyping, setIsPartnerTyping] = useState(false)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -318,7 +329,7 @@ export function QuickChat({ currentUser }: QuickChatProps) {
         } catch (e) {}
         
         const lastCelebrated = celebrated[activeUserId] || 0
-        if (newStreak > lastCelebrated) {
+        if (newStreak > lastCelebrated && STREAK_MILESTONES.includes(newStreak)) {
           setAnimateStreakNum(newStreak)
           setAnimateOldNum(lastCelebrated)
           setShowStreakAnimation(true)
@@ -335,7 +346,7 @@ export function QuickChat({ currentUser }: QuickChatProps) {
     }
 
     loadMessages()
-  }, [activeChatUser, isOpen])
+  }, [activeChatUser?.id, isOpen])
 
   // Subscribe to typing indicators
   useEffect(() => {
@@ -407,7 +418,7 @@ export function QuickChat({ currentUser }: QuickChatProps) {
                 const newStreak = calculateStreakClientSide(updatedMsgs)
                 
                 // Trigger pop animation if streak increased and widget is open
-                if (isOpen && prevStreak !== null && newStreak > prevStreak) {
+                if (isOpen && prevStreak !== null && newStreak > prevStreak && STREAK_MILESTONES.includes(newStreak)) {
                   setAnimateStreakNum(newStreak)
                   setAnimateOldNum(prevStreak)
                   setShowStreakAnimation(true)
@@ -568,7 +579,7 @@ export function QuickChat({ currentUser }: QuickChatProps) {
         const newStreak = calculateStreakClientSide(updatedMsgs)
 
         // Trigger pop animation if streak increased
-        if (prevStreak !== null && newStreak > prevStreak) {
+        if (prevStreak !== null && newStreak > prevStreak && STREAK_MILESTONES.includes(newStreak)) {
           setAnimateStreakNum(newStreak)
           setAnimateOldNum(prevStreak)
           setShowStreakAnimation(true)
@@ -698,7 +709,11 @@ export function QuickChat({ currentUser }: QuickChatProps) {
                         showHandle={false}
                         streak={conversations.find(c => c.otherUser.id === activeChatUser.id)?.streak}
                       />
-                      {(() => {
+                      {isPartnerTyping ? (
+                        <p className="text-[9px] text-emerald-300 font-black animate-pulse mt-0.5 leading-none">
+                          ✍️ Yazıyor...
+                        </p>
+                      ) : (() => {
                         const statusObj = getOnlineStatus(activeChatUser)
                         return (
                           <p className="text-[9px] text-white/70 mt-0.5 leading-none">

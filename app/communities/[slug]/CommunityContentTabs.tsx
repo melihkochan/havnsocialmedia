@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import { motion } from 'framer-motion'
 import { NewPostForm } from '@/components/havn/NewPostForm'
 import { PostFeed } from '@/components/havn/PostFeed'
@@ -8,9 +8,9 @@ import { CommunityChat } from '@/components/havn/CommunityChat'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Megaphone, X } from 'lucide-react'
+import { Megaphone, X, Lock, Clock, Loader2, Plus } from 'lucide-react'
 import { parseCommunityDescription } from '@/lib/community-rules'
-import { CommunityLounge } from '@/components/havn/CommunityLounge'
+import { joinCommunity, leaveCommunity } from '@/lib/actions/communities'
 
 interface Profile {
   id: string
@@ -33,6 +33,8 @@ interface CommunityContentTabsProps {
   communityDescription?: string | null
   rules?: any[]
   announcement?: string | null
+  communityType?: 'public' | 'request_to_join'
+  membershipStatus?: 'pending' | 'approved' | undefined
 }
 
 export function CommunityContentTabs({
@@ -46,11 +48,12 @@ export function CommunityContentTabs({
   activeSort,
   communityDescription,
   rules,
-  announcement: propAnnouncement
+  announcement: propAnnouncement,
+  communityType = 'public',
+  membershipStatus
 }: CommunityContentTabsProps) {
-  const [activeTab, setActiveTab] = useState<'posts' | 'chat' | 'announcements' | 'lounge'>('posts')
+  const [activeTab, setActiveTab] = useState<'posts' | 'chat'>('posts')
   const [unreadChatCount, setUnreadChatCount] = useState(0)
-  const [unreadAnnCount, setUnreadAnnCount] = useState(0)
   const activeTabRef = useRef(activeTab)
   const [showAnnouncement, setShowAnnouncement] = useState(true)
   const fallbackData = parseCommunityDescription(communityDescription || null)
@@ -58,6 +61,33 @@ export function CommunityContentTabs({
     ? propAnnouncement
     : fallbackData.announcement
   const supabase = createClient()
+
+  const [isPending, startTransition] = useTransition()
+  const [localStatus, setLocalStatus] = useState<string | undefined>(membershipStatus)
+
+  useEffect(() => {
+    setLocalStatus(membershipStatus)
+  }, [membershipStatus])
+
+  function handleJoin() {
+    startTransition(async () => {
+      const res = await joinCommunity(communityId, 'request_to_join')
+      if (!res.error) {
+        setLocalStatus(res.status ?? 'pending')
+      }
+    })
+  }
+
+  function handleLeave() {
+    startTransition(async () => {
+      const res = await leaveCommunity(communityId)
+      if (!res.error) {
+        setLocalStatus(undefined)
+      }
+    })
+  }
+
+  const showLockedState = communityType === 'request_to_join' && !isMember && (localStatus !== 'approved')
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -68,35 +98,21 @@ export function CommunityContentTabs({
     if (!currentUser || !isMember) return
 
     const lastChatRead = localStorage.getItem(`havn_last_read_${communityId}_general`)
-    const lastAnnRead = localStorage.getItem(`havn_last_read_${communityId}_announcement`)
-
     const chatReadTime = lastChatRead || new Date().toISOString()
-    const annReadTime = lastAnnRead || new Date().toISOString()
 
     if (!lastChatRead) localStorage.setItem(`havn_last_read_${communityId}_general`, chatReadTime)
-    if (!lastAnnRead) localStorage.setItem(`havn_last_read_${communityId}_announcement`, annReadTime)
 
     async function fetchUnreadCounts() {
       try {
-        const [chatRes, annRes] = await Promise.all([
-          supabase
-            .from('community_messages')
-            .select('id', { count: 'exact', head: true })
-            .eq('community_id', communityId)
-            .eq('type', 'general')
-            .gt('created_at', chatReadTime)
-            .neq('user_id', currentUser?.id),
-          supabase
-            .from('community_messages')
-            .select('id', { count: 'exact', head: true })
-            .eq('community_id', communityId)
-            .eq('type', 'announcement')
-            .gt('created_at', annReadTime)
-            .neq('user_id', currentUser?.id)
-        ])
+        const { count } = await supabase
+          .from('community_messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('community_id', communityId)
+          .eq('type', 'general')
+          .gt('created_at', chatReadTime)
+          .neq('user_id', currentUser?.id)
 
-        if (chatRes.count) setUnreadChatCount(chatRes.count)
-        if (annRes.count) setUnreadAnnCount(annRes.count)
+        if (count) setUnreadChatCount(count)
       } catch (err) {
         console.error('Error fetching unread counts:', err)
       }
@@ -119,8 +135,6 @@ export function CommunityContentTabs({
 
           if (newMsg.type === 'general' && activeTabRef.current !== 'chat') {
             setUnreadChatCount(prev => prev + 1)
-          } else if (newMsg.type === 'announcement' && activeTabRef.current !== 'announcements') {
-            setUnreadAnnCount(prev => prev + 1)
           }
         }
       )
@@ -131,16 +145,13 @@ export function CommunityContentTabs({
     }
   }, [communityId, currentUser?.id, isMember])
 
-  // Clear unread indicator when active tab changes to the chat/announcement tab
+  // Clear unread indicator when active tab changes to the chat tab
   useEffect(() => {
     if (!currentUser || !isMember) return
 
     if (activeTab === 'chat') {
       setUnreadChatCount(0)
       localStorage.setItem(`havn_last_read_${communityId}_general`, new Date().toISOString())
-    } else if (activeTab === 'announcements') {
-      setUnreadAnnCount(0)
-      localStorage.setItem(`havn_last_read_${communityId}_announcement`, new Date().toISOString())
     }
   }, [activeTab, communityId, currentUser?.id, isMember])
 
@@ -174,29 +185,6 @@ export function CommunityContentTabs({
                 <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", activeTab === 'chat' ? "bg-white" : "bg-rose-500")} />
               )}
             </button>
-            <button
-              onClick={() => setActiveTab('announcements')}
-              className={cn(
-                "px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5",
-                activeTab === 'announcements' ? "text-white shadow-md font-black" : "text-muted-foreground hover:text-foreground"
-              )}
-              style={activeTab === 'announcements' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
-            >
-              <span>Duyurular</span>
-              {unreadAnnCount > 0 && (
-                <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", activeTab === 'announcements' ? "bg-white" : "bg-rose-500")} />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('lounge')}
-              className={cn(
-                "px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5",
-                activeTab === 'lounge' ? "text-white shadow-md font-black" : "text-muted-foreground hover:text-foreground"
-              )}
-              style={activeTab === 'lounge' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
-            >
-              <span>Lobi 🛋️</span>
-            </button>
           </>
         )}
       </div>
@@ -206,7 +194,7 @@ export function CommunityContentTabs({
         {activeTab === 'posts' && (
           <div className="space-y-4">
             {/* Pinned Announcement */}
-            {announcement && showAnnouncement && (
+            {announcement && showAnnouncement && !showLockedState && (
               <div
                 className="relative overflow-hidden rounded-2xl p-4 border border-primary/20 bg-card/60 backdrop-blur-md shadow-md flex items-start gap-3 animate-fade-in"
                 style={{
@@ -233,55 +221,118 @@ export function CommunityContentTabs({
             )}
 
             {/* Post form — only if member */}
-            {currentUser && isMember && (
+            {currentUser && isMember && !showLockedState && (
               <NewPostForm
                 communityId={communityId}
                 currentUser={{ username: currentUser.username, avatar_url: currentUser.avatar_url }}
               />
             )}
 
-            {/* Posts Header & Sorting */}
-            <div className="flex items-center justify-between gap-3 flex-wrap mt-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-muted-foreground tracking-wider uppercase">
-                  {activeSort === 'popular' ? 'Popüler Gönderiler' : 'Son Gönderiler'}
-                </span>
-              </div>
-
-              {/* Sort Tabs */}
-              <div className="flex items-center gap-1 p-1 bg-card/60 backdrop-blur-md border border-border/80 rounded-2xl shadow-sm">
-                <Link
-                  href={`/communities/${communitySlug}?sortBy=new`}
-                  className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all duration-200 ${
-                    activeSort === 'new'
-                      ? 'text-white shadow-md font-black'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  style={activeSort === 'new' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
+            {showLockedState ? (
+              <div className="bg-card/60 backdrop-blur-md border border-border/80 rounded-2xl p-8 text-center flex flex-col items-center justify-center gap-4 shadow-sm animate-fade-in select-none">
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center border border-primary/20 bg-primary/5 text-primary shadow-inner relative"
+                  style={{
+                    boxShadow: '0 4px 20px rgba(var(--primary-rgb), 0.05)',
+                  }}
                 >
-                  Yeni
-                </Link>
-                <Link
-                  href={`/communities/${communitySlug}?sortBy=popular`}
-                  className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all duration-200 ${
-                    activeSort === 'popular'
-                      ? 'text-white shadow-md font-black'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  style={activeSort === 'popular' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
-                >
-                  Popüler
-                </Link>
-              </div>
-            </div>
+                  <Lock size={28} className="animate-pulse" />
+                </div>
+                <div className="max-w-sm space-y-1.5">
+                  <h3 className="text-sm font-bold text-foreground">Başvurulu Topluluk 🔒</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {!currentUser
+                      ? "Bu topluluk yalnızca onaylı üyelere özeldir. Gönderileri ve diğer içerikleri görmek için giriş yapmalısınız."
+                      : localStatus === 'pending'
+                      ? "Katılma başvurunuz başarıyla alındı. Topluluk yöneticisinin onayı bekleniyor."
+                      : "Bu topluluk yalnızca onaylı üyelere özeldir. Gönderileri ve diğer içerikleri görmek için katılma başvurusu yapmalısınız."}
+                  </p>
+                </div>
 
-            {/* Post Feed */}
-            <PostFeed
-              posts={initialPosts}
-              currentUserId={currentUser?.id}
-              currentUserRole={isMember ? membershipRole : undefined}
-              pinContext="community"
-            />
+                <div className="mt-2 w-full max-w-[200px]">
+                  {!currentUser ? (
+                    <Link
+                      href="/login"
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md"
+                      style={{
+                        background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
+                        color: 'var(--primary-foreground)',
+                      }}
+                    >
+                      Giriş Yap
+                    </Link>
+                  ) : localStatus === 'pending' ? (
+                    <button
+                      onClick={handleLeave}
+                      disabled={isPending}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border border-border text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all cursor-pointer bg-muted/40"
+                    >
+                      {isPending ? <Loader2 size={12} className="animate-spin" /> : <Clock size={12} />}
+                      Başvuruyu Geri Çek
+                    </button>
+                  ) : (
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      onClick={handleJoin}
+                      disabled={isPending}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+                      style={{
+                        background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
+                        color: 'var(--primary-foreground)',
+                      }}
+                    >
+                      {isPending ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                      Katılma Başvurusu Yap
+                    </motion.button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Posts Header & Sorting */}
+                <div className="flex items-center justify-between gap-3 flex-wrap mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-muted-foreground tracking-wider uppercase">
+                      {activeSort === 'popular' ? 'Popüler Gönderiler' : 'Son Gönderiler'}
+                    </span>
+                  </div>
+
+                  {/* Sort Tabs */}
+                  <div className="flex items-center gap-1 p-1 bg-card/60 backdrop-blur-md border border-border/80 rounded-2xl shadow-sm">
+                    <Link
+                      href={`/communities/${communitySlug}?sortBy=new`}
+                      className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all duration-200 ${
+                        activeSort === 'new'
+                          ? 'text-white shadow-md font-black'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      style={activeSort === 'new' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
+                    >
+                      Yeni
+                    </Link>
+                    <Link
+                      href={`/communities/${communitySlug}?sortBy=popular`}
+                      className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all duration-200 ${
+                        activeSort === 'popular'
+                          ? 'text-white shadow-md font-black'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      style={activeSort === 'popular' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
+                    >
+                      Popüler
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Post Feed */}
+                <PostFeed
+                  posts={initialPosts}
+                  currentUserId={currentUser?.id}
+                  currentUserRole={isMember ? membershipRole : undefined}
+                  pinContext="community"
+                />
+              </>
+            )}
           </div>
         )}
 
@@ -292,24 +343,6 @@ export function CommunityContentTabs({
             currentUser={currentUser}
             isAdmin={isAdmin}
             membershipRole={membershipRole}
-          />
-        )}
-
-        {activeTab === 'announcements' && currentUser && isMember && (
-          <CommunityChat
-            communityId={communityId}
-            type="announcement"
-            currentUser={currentUser}
-            isAdmin={isAdmin}
-            membershipRole={membershipRole}
-          />
-        )}
-        {activeTab === 'lounge' && (
-          <CommunityLounge
-            communityId={communityId}
-            currentUser={currentUser}
-            isMember={isMember}
-            isAdmin={isAdmin}
           />
         )}
       </div>

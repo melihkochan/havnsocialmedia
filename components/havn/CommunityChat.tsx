@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Loader2, MessageSquare, ShieldCheck, Crown, Clock } from 'lucide-react'
+import { Send, Loader2, MessageSquare, ShieldCheck, Crown, Clock, Pencil, Trash2, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileName } from '@/components/havn/ProfileName'
 import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
-import { getCommunityMessages, sendCommunityMessage } from '@/lib/actions/community-messages'
+import { getCommunityMessages, sendCommunityMessage, editCommunityMessage, deleteCommunityMessage } from '@/lib/actions/community-messages'
 import { cn } from '@/lib/utils'
 
 interface Profile {
@@ -51,6 +51,39 @@ export function CommunityChat({
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [sendPending, startSendTransition] = useTransition()
+
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editInputText, setEditInputText] = useState('')
+
+  async function handleSaveEdit(msgId: string) {
+    if (!editInputText.trim()) return
+    const content = editInputText.trim()
+    const originalMessages = [...messages]
+
+    setMessages(prev =>
+      prev.map(m => m.id === msgId ? { ...m, content } : m)
+    )
+    setEditingMessageId(null)
+
+    const res = await editCommunityMessage(msgId, content)
+    if (res.error) {
+      setMessages(originalMessages)
+      alert(res.error)
+    }
+  }
+
+  async function handleDeleteMessage(msgId: string) {
+    if (!confirm('Bu mesajı silmek istediğinizden emin misiniz?')) return
+    const originalMessages = [...messages]
+
+    setMessages(prev => prev.filter(m => m.id !== msgId))
+
+    const res = await deleteCommunityMessage(msgId)
+    if (res.error) {
+      setMessages(originalMessages)
+      alert(res.error)
+    }
+  }
 
   const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior })
@@ -98,34 +131,45 @@ export function CommunityChat({
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'community_messages',
           filter: `community_id=eq.${communityId}`
         },
         async (payload) => {
-          const newMsg = payload.new as CommunityMessage
-          if (newMsg.type !== type) return
+          if (payload.eventType === 'INSERT') {
+            const newMsg = payload.new as CommunityMessage
+            if (newMsg.type !== type) return
 
-          // Fetch sender profile details
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', newMsg.user_id)
-            .single()
+            // Fetch sender profile details
+            const { data: userProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', newMsg.user_id)
+              .single()
 
-          const enrichedMsg: CommunityMessage = {
-            ...newMsg,
-            user: userProfile ?? undefined
+            const enrichedMsg: CommunityMessage = {
+              ...newMsg,
+              user: userProfile ?? undefined
+            }
+
+            setMessages(prev => {
+              if (prev.some(m => m.id === enrichedMsg.id)) return prev
+              return [...prev, enrichedMsg]
+            })
+
+            // Auto-scroll
+            setTimeout(() => scrollToBottom('smooth'), 50)
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedMsg = payload.new as CommunityMessage
+            if (updatedMsg.type !== type) return
+            setMessages(prev =>
+              prev.map(m => m.id === updatedMsg.id ? { ...m, content: updatedMsg.content } : m)
+            )
+          } else if (payload.eventType === 'DELETE') {
+            const oldMsg = payload.old as { id: string }
+            setMessages(prev => prev.filter(m => m.id !== oldMsg.id))
           }
-
-          setMessages(prev => {
-            if (prev.some(m => m.id === enrichedMsg.id)) return prev
-            return [...prev, enrichedMsg]
-          })
-
-          // Auto-scroll
-          setTimeout(() => scrollToBottom('smooth'), 50)
         }
       )
       .subscribe()
@@ -210,7 +254,7 @@ export function CommunityChat({
               const sender = msg.user
               
               return (
-                <div key={msg.id} className={cn("flex gap-3 items-start", isOwn ? "flex-row-reverse" : "")}>
+                <div key={msg.id} className={cn("flex gap-3 items-start group relative", isOwn ? "flex-row-reverse" : "")}>
                   {/* Avatar */}
                   <div className="flex-shrink-0 mt-0.5">
                     {sender?.avatar_url ? (
@@ -238,18 +282,73 @@ export function CommunityChat({
                       </span>
                     </div>
 
-                    {/* Content Bubble */}
-                    <div
-                      className={cn(
-                        "px-3.5 py-2 rounded-xl text-xs leading-relaxed break-all",
-                        isOwn
-                          ? "text-primary-foreground font-medium rounded-tr-none"
-                          : "bg-background border border-border rounded-tl-none text-foreground"
-                      )}
-                      style={isOwn ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
-                    >
-                      {msg.content}
-                    </div>
+                    {editingMessageId === msg.id ? (
+                      <div className={cn("flex gap-2 items-center w-full mt-1", isOwn ? "flex-row-reverse" : "flex-row")}>
+                        <input
+                          type="text"
+                          value={editInputText}
+                          onChange={e => setEditInputText(e.target.value)}
+                          className="px-3 py-1.5 rounded-lg border border-border bg-card text-foreground text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 w-44 sm:w-60"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit(msg.id)
+                            if (e.key === 'Escape') setEditingMessageId(null)
+                          }}
+                        />
+                        <button
+                          onClick={() => handleSaveEdit(msg.id)}
+                          className="p-1.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-bold"
+                        >
+                          Kaydet
+                        </button>
+                        <button
+                          onClick={() => setEditingMessageId(null)}
+                          className="p-1.5 rounded bg-muted hover:bg-accent text-muted-foreground text-[10px] font-bold"
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={cn("flex items-center gap-2 group/bubble", isOwn ? "flex-row-reverse" : "flex-row")}>
+                        {/* Content Bubble */}
+                        <div
+                          className={cn(
+                            "px-3.5 py-2 rounded-xl text-xs leading-relaxed break-all",
+                            isOwn
+                              ? "text-primary-foreground font-medium rounded-tr-none"
+                              : "bg-background border border-border rounded-tl-none text-foreground"
+                          )}
+                          style={isOwn ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
+                        >
+                          {msg.content}
+                        </div>
+
+                        {/* Edit/Delete controls */}
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all select-none">
+                          {isOwn && (
+                            <button
+                              onClick={() => {
+                                setEditingMessageId(msg.id)
+                                setEditInputText(msg.content)
+                              }}
+                              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                              title="Mesajı Düzenle"
+                            >
+                              <Pencil size={11} />
+                            </button>
+                          )}
+                          {(isOwn || isAdmin) && (
+                            <button
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-destructive cursor-pointer transition-colors"
+                              title="Mesajı Sil"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )

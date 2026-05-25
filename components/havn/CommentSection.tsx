@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Loader2, Trash2, Heart, Reply, X } from 'lucide-react'
 import Link from 'next/link'
@@ -10,6 +10,7 @@ import { ProfileName } from '@/components/havn/ProfileName'
 import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
 import { insertIntoField } from '@/lib/insert-text'
 import { FormattedMessage } from '@/components/havn/FormattedMessage'
+import { createClient } from '@/lib/supabase/client'
 
 function Avatar({ username, avatarUrl, size = 'sm' }: { username: string; avatarUrl: string | null; size?: 'xs' | 'sm' }) {
   const sizeCls = size === 'xs' ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'
@@ -59,11 +60,92 @@ interface CommentSectionProps {
 
 export function CommentSection({ postId, initialComments, currentUser }: CommentSectionProps) {
   const [comments, setComments] = useState<CommentItem[]>(initialComments)
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase.channel(`post_comments_stream_${postId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newComment = payload.new as { id: string; user_id: string }
+            const { data, error } = await supabase
+              .from('comments')
+              .select('*, profiles(*), comment_likes(user_id)')
+              .eq('id', newComment.id)
+              .single()
+
+            if (!error && data) {
+              setComments(prev => {
+                const filtered = prev.filter(c => !c.id.startsWith('temp-') || c.user_id !== data.user_id)
+                if (filtered.some(c => c.id === data.id)) return prev
+                return [...filtered, data as any as CommentItem]
+              })
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedComment = payload.new as { id: string }
+            const { data, error } = await supabase
+              .from('comments')
+              .select('*, profiles(*), comment_likes(user_id)')
+              .eq('id', updatedComment.id)
+              .single()
+            if (!error && data) {
+              setComments(prev => prev.map(c => c.id === data.id ? (data as any as CommentItem) : c))
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const oldComment = payload.old as { id: string }
+            setComments(prev => prev.filter(c => c.id !== oldComment.id))
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comment_likes' },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newLike = payload.new as { comment_id: string; user_id: string }
+            setComments(prev =>
+              prev.map(c => {
+                if (c.id === newLike.comment_id) {
+                  const likes = c.comment_likes || []
+                  if (likes.some(l => l.user_id === newLike.user_id)) return c
+                  return { ...c, comment_likes: [...likes, { user_id: newLike.user_id }] }
+                }
+                return c
+              })
+            )
+          } else if (payload.eventType === 'DELETE') {
+            const oldLike = payload.old as { comment_id: string }
+            if (oldLike.comment_id) {
+              const { data } = await supabase
+                .from('comment_likes')
+                .select('user_id')
+                .eq('comment_id', oldLike.comment_id)
+              setComments(prev =>
+                prev.map(c => c.id === oldLike.comment_id ? { ...c, comment_likes: data || [] } : c)
+              )
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [postId])
   const [content, setContent] = useState('')
   const [replyingTo, setReplyingTo] = useState<CommentItem | null>(null)
   const [isPending, startTransition] = useTransition()
   const mainInputRef = useRef<HTMLInputElement>(null)
   const replyInputRef = useRef<HTMLInputElement>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  function showToast(message: string, type: 'success' | 'error' = 'success') {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   function insertEmoji(emoji: string, target: 'main' | 'reply' = 'main') {
     const ref = target === 'reply' ? replyInputRef : mainInputRef
@@ -108,7 +190,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
         if (parentId) {
           setReplyingTo(savedReplyingTo)
         }
-        alert(res.error)
+        showToast(res.error, 'error')
       }
     })
   }
@@ -121,7 +203,10 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
   }
 
   async function handleLike(commentId: string) {
-    if (!currentUser) return
+    if (!currentUser) {
+      showToast('Yorumları beğenmek için giriş yapmalısınız.', 'error')
+      return
+    }
 
     // Optimistic toggle
     setComments(prev =>
@@ -141,7 +226,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
     const res = await toggleCommentLike(commentId, postId)
     if (res.error) {
       // Revert if error
-      alert(res.error)
+      showToast(res.error, 'error')
     }
   }
 
@@ -341,6 +426,25 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
           </p>
         )}
       </div>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className={cn(
+              "fixed top-6 right-6 z-[999] px-4.5 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-2 backdrop-blur-md",
+              toast.type === 'success'
+                ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-500"
+                : "bg-destructive/10 border-destructive/25 text-destructive"
+            )}
+          >
+            <span>{toast.type === 'success' ? '✅' : '❌'}</span>
+            <span>{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

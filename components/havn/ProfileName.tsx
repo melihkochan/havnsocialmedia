@@ -99,7 +99,6 @@ export function ProfileName({
         <span className={cn('font-semibold text-xs truncate min-w-0 flex-shrink', nameClassName)}>{primary}</span>
         {isFounder(profile) && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
-        {profile.xp !== undefined && <span className="flex-shrink-0"><LevelBadge xp={profile.xp} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}
         {hasFullName && showHandle && (
           <span className="text-[10px] text-muted-foreground truncate min-w-0 flex-shrink-0">@{profile.username}</span>
@@ -114,7 +113,6 @@ export function ProfileName({
         <span className={cn('font-semibold text-sm truncate min-w-0 flex-shrink', nameClassName)}>{primary}</span>
         {isFounder(profile) && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
-        {profile.xp !== undefined && <span className="flex-shrink-0"><LevelBadge xp={profile.xp} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}
       </div>
       {hasFullName && showHandle && (

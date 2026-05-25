@@ -9,7 +9,6 @@ import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
 import { insertIntoField } from '@/lib/insert-text'
 import { createPost } from '@/lib/actions/posts'
 import { cn } from '@/lib/utils'
-import { AiPostAssistant } from '@/components/havn/AiPostAssistant'
 
 interface NewPostFormProps {
   communityId: string
@@ -151,7 +150,6 @@ export function NewPostForm({ communityId, currentUser }: NewPostFormProps) {
                       <span className="hidden sm:inline">{showImageUpload ? 'Kapat' : 'Görsel'}</span>
                     </button>
                     <EmojiPickerButton onInsert={insertEmoji} />
-                    <AiPostAssistant text={content} onSelect={setContent} />
                   </div>
 
                   <div className="flex items-center gap-2">

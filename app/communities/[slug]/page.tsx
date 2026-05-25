@@ -127,6 +127,8 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
           communityDescription={community.description}
           rules={community.rules ?? []}
           announcement={community.announcement ?? null}
+          communityType={community.type}
+          membershipStatus={membership?.status}
         />
       </div>
     </MainLayout>
