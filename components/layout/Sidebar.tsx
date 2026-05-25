@@ -228,6 +228,19 @@ export function Sidebar({
 
   // Load account list on mount and self-heal any polluted/duplicate tokens
   useEffect(() => {
+    function getUserIdFromToken(token: string): string | null {
+      try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const raw = window.atob(base64);
+        const payload = JSON.parse(raw);
+        return payload.sub || null;
+      } catch {
+        return null;
+      }
+    }
+
     const stored = localStorage.getItem("havn_accounts");
     if (stored) {
       try {
@@ -243,26 +256,20 @@ export function Sidebar({
           
           let cleaned = Array.from(uniqueMap.values())
           
-          // Detect token pollution (duplicate tokens across different profiles)
-          const tokenToProfileMap = new Map<string, string>()
-          let hasPollution = false
-          cleaned.forEach((acc: any) => {
-            const token = acc.session.access_token
-            if (tokenToProfileMap.has(token)) {
-              hasPollution = true
-            } else {
-              tokenToProfileMap.set(token, acc.profile.id)
+          // Detect token pollution (token user ID does not match the profile ID)
+          let hasPollution = false;
+          const verified = cleaned.filter((acc: any) => {
+            const tokenUserId = getUserIdFromToken(acc.session.access_token);
+            if (tokenUserId && tokenUserId !== acc.profile.id) {
+              hasPollution = true;
+              return false; // Discard polluted token account
             }
-          })
+            return true;
+          });
           
           if (hasPollution) {
-            console.warn("Session token pollution detected in localStorage havn_accounts. Cleaning up...");
-            // Keep only the currently active logged-in user if available to prevent logging back into Eray
-            if (currentUser) {
-              cleaned = cleaned.filter(acc => acc.profile.id === currentUser.id)
-            } else {
-              cleaned = []
-            }
+            console.warn("Session token pollution detected in localStorage havn_accounts. Purged polluted accounts.");
+            cleaned = verified;
           }
 
           setAccounts(cleaned);
