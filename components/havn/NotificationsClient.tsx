@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, Heart, MessageCircle, UserPlus, CheckCircle2, Loader2, Repeat, Trash2, Pin, UserCheck, HelpCircle } from 'lucide-react'
+import { Bell, Heart, MessageCircle, UserPlus, CheckCircle2, Loader2, Repeat, Trash2, Pin, UserCheck, HelpCircle, Shield } from 'lucide-react'
 import { markNotificationsAsRead, clearAllNotifications, deleteNotification } from '@/lib/actions/notifications'
 import { followUser, approveFollowRequest, declineFollowRequest } from '@/lib/actions/follows'
 import type { EnrichedProfile } from '@/lib/profile-enrich'
@@ -603,16 +603,36 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     )
                   }
                 } else {
-                  const isNewConvo = notif.message && (notif.message.includes('yeni bir konuşma başlattı') || notif.message.includes('yeni bir destek talebi'))
-                  const badgeText = isNewConvo ? 'Yönetici Mesajı' : 'Destek Yanıtı'
-                  const badgeBg = isNewConvo 
-                    ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25'
-                    : 'bg-purple-500/15 text-purple-500 border border-purple-500/25'
+                  const isAdminAction = notif.message && (
+                    notif.message.includes('yönetici') || 
+                    notif.message.includes('doğrula') || 
+                    notif.message.includes('sıfırla') || 
+                    notif.message.includes('tik') ||
+                    notif.message.includes('kurucu') ||
+                    notif.message.includes('mavi') ||
+                    notif.message.includes('sarı')
+                  )
                   
-                  icon = <HelpCircle size={14} />
-                  iconBg = isNewConvo 
-                    ? 'bg-blue-500/10 text-blue-500 border border-blue-500/25'
-                    : 'bg-purple-500/10 text-purple-500 border border-purple-500/25'
+                  const isNewConvo = !isAdminAction && notif.message && (notif.message.includes('yeni bir konuşma başlattı') || notif.message.includes('yeni bir destek talebi'))
+                  
+                  let badgeText = 'Destek Yanıtı'
+                  let badgeBg = 'bg-purple-500/15 text-purple-500 border border-purple-500/25'
+                  
+                  if (isAdminAction) {
+                    badgeText = 'Sistem Bildirimi'
+                    badgeBg = 'bg-amber-500/15 text-amber-500 border border-amber-500/25'
+                    icon = <Shield size={14} className="text-amber-500 fill-amber-500/10" />
+                    iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
+                  } else {
+                    badgeText = isNewConvo ? 'Yönetici Mesajı' : 'Destek Yanıtı'
+                    badgeBg = isNewConvo 
+                      ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25'
+                      : 'bg-purple-500/15 text-purple-500 border border-purple-500/25'
+                    icon = <HelpCircle size={14} />
+                    iconBg = isNewConvo 
+                      ? 'bg-blue-500/10 text-blue-500 border border-blue-500/25'
+                      : 'bg-purple-500/10 text-purple-500 border border-purple-500/25'
+                  }
                     
                   contentText = (
                     <span className="flex items-center gap-1.5 flex-wrap">

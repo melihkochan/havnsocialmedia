@@ -6,6 +6,7 @@ import { enrichProfile } from '@/lib/profile-enrich'
 import type { EnrichedProfile } from '@/lib/profile-enrich'
 import { saveProfileMetadata, checkDbHasVerificationColumns } from '@/lib/actions/profile-db'
 import { isFounder } from '@/lib/founder'
+import { createNotification } from '@/lib/actions/notifications'
 
 
 export async function getProfile(username: string) {
@@ -297,6 +298,24 @@ export async function toggleProfileVerification(targetUserId: string, type: 'ver
     if (res.error) return { error: res.error }
   }
 
+  // Trigger notification for the user
+  let notifMessage = ''
+  if (type === 'verified') {
+    notifMessage = newVerified 
+      ? 'Tebrikler! Hesabınız yönetici tarafından doğrulandı ve Mavi Tik aldınız.' 
+      : 'Hesabınızın doğrulanmış üye statüsü (Mavi Tik) yönetici tarafından kaldırıldı.'
+  } else if (type === 'gold') {
+    notifMessage = newGold 
+      ? 'Tebrikler! Hesabınıza yönetici tarafından Sistem Ortağı statüsü (Sarı Tik) tanımlandı.' 
+      : 'Hesabınızın Sistem Ortağı statüsü (Sarı Tik) yönetici tarafından kaldırıldı.'
+  }
+  
+  if (notifMessage) {
+    await createNotification(targetUserId, user.id, 'support_reply', null, null, {
+      message: notifMessage
+    })
+  }
+
   revalidatePath(`/profile/${targetProfile.username}`)
   return { success: true, is_verified: newVerified, is_gold: newGold }
 }
@@ -386,6 +405,25 @@ export async function adminUpdateProfile(
 
   if (updateErr) {
     return { error: updateErr.message }
+  }
+
+  // Trigger notification for the user
+  if (fields.resetAvatar) {
+    await createNotification(targetUserId, user.id, 'support_reply', null, null, {
+      message: 'Profil resminiz topluluk kuralları gereği yönetici tarafından varsayılana sıfırlandı.'
+    })
+  }
+  if (fields.resetBanner) {
+    await createNotification(targetUserId, user.id, 'support_reply', null, null, {
+      message: 'Profil kapak resminiz topluluk kuralları gereği yönetici tarafından varsayılana sıfırlandı.'
+    })
+  }
+  // Check if non-media details changed
+  const infoChanged = fields.first_name !== undefined || fields.last_name !== undefined || fields.username !== undefined || fields.bio !== undefined
+  if (infoChanged && !fields.resetAvatar && !fields.resetBanner) {
+    await createNotification(targetUserId, user.id, 'support_reply', null, null, {
+      message: 'Profil bilgileriniz yönetici tarafından güncellendi.'
+    })
   }
 
   revalidatePath(`/profile/${targetProfile.username}`)
