@@ -1,0 +1,107 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+
+export async function getComments(postId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('comments')
+    .select(`*, profiles(*), comment_likes(user_id)`)
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true })
+
+  if (error) return []
+  return data
+}
+
+export async function createComment(postId: string, content: string, parentCommentId?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  const { data: comment, error } = await supabase
+    .from('comments')
+    .insert({
+      post_id: postId,
+      user_id: user.id,
+      content,
+      parent_comment_id: parentCommentId || null
+    })
+    .select('id')
+    .single()
+
+  if (error) return { error: error.message }
+
+  // Trigger notification
+  const { createNotification } = await import('@/lib/actions/notifications')
+  if (parentCommentId) {
+    // If reply, get parent comment user_id
+    const { data: parentComm } = await supabase
+      .from('comments')
+      .select('user_id')
+      .eq('id', parentCommentId)
+      .single()
+    if (parentComm && parentComm.user_id !== user.id) {
+      await createNotification(parentComm.user_id, user.id, 'reply', postId, comment.id)
+    }
+  } else {
+    // Normal post comment
+    const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single()
+    if (post && post.user_id !== user.id) {
+      await createNotification(post.user_id, user.id, 'comment', postId, comment.id)
+    }
+  }
+
+  revalidatePath(`/post/${postId}`)
+  return { success: true }
+}
+
+export async function deleteComment(commentId: string, postId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', commentId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/post/${postId}`)
+  return { success: true }
+}
+
+export async function toggleCommentLike(commentId: string, postId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  // Check if already liked
+  const { data: existing } = await supabase
+    .from('comment_likes')
+    .select('id')
+    .eq('comment_id', commentId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (existing) {
+    await supabase.from('comment_likes').delete().eq('id', existing.id)
+    revalidatePath(`/post/${postId}`)
+    return { liked: false }
+  } else {
+    await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: user.id })
+
+    // Trigger notification
+    const { data: comment } = await supabase.from('comments').select('user_id').eq('id', commentId).single()
+    if (comment && comment.user_id !== user.id) {
+      const { createNotification } = await import('@/lib/actions/notifications')
+      await createNotification(comment.user_id, user.id, 'comment_like', postId, commentId)
+    }
+
+    revalidatePath(`/post/${postId}`)
+    return { liked: true }
+  }
+}
