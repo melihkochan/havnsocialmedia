@@ -16,6 +16,8 @@ interface CommunityBannerProps {
     description: string
     type: string
     member_count: number
+    rules?: any[]
+    announcement?: string | null
   }
   isAdmin?: boolean
   initialPendingRequests?: any[]
@@ -198,7 +200,14 @@ export function CommunityBanner({ community, isAdmin, initialPendingRequests = [
 }
 
 interface EditModalProps {
-  community: { id: string; name: string; description: string; type: string }
+  community: {
+    id: string
+    name: string
+    description: string
+    type: string
+    rules?: any[]
+    announcement?: string | null
+  }
   currentAvatar: string | null
   currentBanner: string | null
   onClose: () => void
@@ -214,11 +223,19 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  // Parse Rules & Announcement from raw description
+  // Parse Rules & Announcement from raw description as fallback
   const parsedData = useRef(parseCommunityDescription(community.description)).current
   const [descText, setDescText] = useState(parsedData.description)
-  const [rules, setRules] = useState<string[]>(parsedData.rules)
-  const [announcement, setAnnouncement] = useState(parsedData.announcement || '')
+  const [rules, setRules] = useState<string[]>(
+    community.rules && Array.isArray(community.rules)
+      ? community.rules
+      : parsedData.rules
+  )
+  const [announcement, setAnnouncement] = useState(
+    community.announcement !== undefined && community.announcement !== null
+      ? community.announcement
+      : (parsedData.announcement || '')
+  )
   const [newRule, setNewRule] = useState('')
 
   // Preview States
@@ -244,9 +261,10 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
     const fd = new FormData(e.currentTarget)
     fd.set("type", type)
 
-    // Serialize description text, rules list, and announcement into the single description field
-    const serializedDesc = serializeCommunityDescription(descText, rules, announcement)
-    fd.set("description", serializedDesc)
+    // Save description, rules list, and announcement as separate fields
+    fd.set("description", descText)
+    fd.set("rules", JSON.stringify(rules))
+    fd.set("announcement", announcement.trim())
 
     startTransition(async () => {
       const res = await updateCommunitySettings(community.id, fd)

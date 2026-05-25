@@ -22,6 +22,8 @@ interface CommunityData {
   description: string | null
   type: 'public' | 'request_to_join'
   slug: string
+  rules?: any[]
+  announcement?: string | null
 }
 
 interface Member {
@@ -551,8 +553,11 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
             <ol className="flex flex-col gap-2">
               {(() => {
                 const parsed = parseCommunityDescription(community.description)
-                const displayRules = parsed.rules.length > 0 
-                  ? parsed.rules 
+                const dbRules = community.rules && Array.isArray(community.rules)
+                  ? community.rules
+                  : parsed.rules
+                const displayRules = dbRules.length > 0 
+                  ? dbRules 
                   : ['Saygılı ve yapıcı ol', 'Yalnızca ilgili içerik paylaş', 'Spam ve reklam yasaktır', 'Kaynakları atıfla belirt']
                 return displayRules.map((rule, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-xs text-muted-foreground">

@@ -1,75 +1,76 @@
-# HAVN — Modern Topluluk ve Sosyal Medya Platformu
+# HAVN — Premium Social Networking & Community Architecture
 
-HAVN, topluluk odaklı, yüksek etkileşimli ve modern bir sosyal ağ deneyimi sunan bir web uygulamasıdır. Next.js ve Supabase altyapısıyla geliştirilmiş olup, kullanıcıların ilgi alanlarına göre topluluklar oluşturmasına, gönderiler paylaşmasına ve gerçek zamanlı sohbet etmesine olanak tanır.
-
----
-
-## 🚀 Öne Çıkan Özellikler
-
-- **Gelişmiş Gönderi Akışı:** "Sizin İçin", "Takip Edilenler", "Yeni" ve "Popüler" filtreleriyle kişiselleştirilmiş ana akış.
-- **Topluluk Yönetimi (Komüniteler):**
-  - Herkese açık veya katılım başvurulu (onay mekanizmalı) topluluklar.
-  - Özelleştirilebilir topluluk kuralları ve kuruculara özel "Sabitlenmiş Duyuru" paneli.
-  - Rol tabanlı yetkilendirme (Kurucu, Moderatör, Üye).
-- **Yüksek Etkileşim:**
-  - Canlı emoji tepkileri (❤️, 🔥, 😂, 😮, 😢) ve hareketli animasyon patlamaları.
-  - Beğenenlerin listelendiği cam efektli modal ekranı.
-  - Resimler için yüksek çözünürlüklü Lightbox (Görsel Detay) aracı.
-- **Gerçek Zamanlı Sohbet (Real-time Chat):**
-  - Topluluk içi genel ve duyuru kanalları.
-  - Kullanıcılar arası doğrudan mesajlaşma (DM) ve mini hızlı sohbet arayüzü (QuickChat).
-  - Yazıyor... (Typing...) göstergesi ve çevrimiçi durum takipleri.
-- **Destek Sistemi (Support Center):** Kullanıcıların kurucularla doğrudan iletişim kurabileceği biletli (ticket) destek arayüzü.
-- **Tema ve Özelleştirme:**
-  - Karanlık (Dark) ve Aydınlık (Light) mod seçeneği.
-  - 5 farklı premium vurgu rengi teması (Havn Purple, Indigo, Rose, Orange, Teal).
+HAVN is an ultra-modern, high-fidelity community hub and real-time social networking platform. Built on Next.js, Supabase, and TailwindCSS, HAVN merges state-of-the-art glassmorphism design language, fluid micro-animations, and enterprise-grade real-time systems to deliver a premium, interactive user experience.
 
 ---
 
-## 🛠️ Kullanılan Teknolojiler
+## ✨ Key Architectural Features
 
-- **Framework:** Next.js (App Router, Server Actions, Dynamic Routes)
-- **Veritabanı & Backend:** Supabase (Auth, PostgreSQL, Storage, Real-time Broadcast/Postgres Changes)
-- **Stil Yönetimi:** TailwindCSS & PostCSS
-- **Animasyonlar:** Framer Motion
-- **İkon Seti:** Lucide React
+### 🎨 Visual & UX Excellence
+- **Custom Accent Tokens:** Support for system-wide custom accent themes (Havn Purple, Indigo, Rose, Orange, Teal) saved persistently via client-side data attributes.
+- **Glassmorphic Components:** Seamless backdrop-blur wrappers, neon glow elements, and HSL-tailored dark/light mode configurations.
+- **Fluid Micro-Animations:** Bounce reaction triggers, canvas emoji explosion particles, and smooth layout changes powered by Framer Motion.
+- **Image Lightbox & Media Gallery:** Fully responsive modal overlays to view high-resolution post attachments.
+
+### ⚡ Real-Time Sync & Engine
+- **Instant Messaging (QuickChat):** Double-pane direct messaging layout alongside a collapsible quick-access chat bubble.
+- **Presence Indicators:** System-wide live user online status tracking and typing indicators (`Yazıyor...`).
+- **Real-Time Notification Center:** Grouped interactive feeds for comments, reactions (likes with emojis: 🔥, 😂, 😮, 😢, ❤️), and system updates.
+
+### 🛡️ Community Administration Pipelines
+- **Dynamic Governance Rules:** Creator-defined guidelines (maddeler) and pinned announcements rendered directly inside sidebars and community feeds.
+- **Role-Based Access Control:** Configurable permissions for Owners, Moderators, and Members.
+- **Access Pipelines:** Support for both Open (Public) and Request-to-Join (Private with application review pipelines) communities.
 
 ---
 
-## 📦 Kurulum ve Çalıştırma
+## 🛠️ Technology Stack
 
-### 1. Depoyu Klonlayın
+- **Core Framework:** Next.js (App Router, Server Actions, Dynamic View Routes)
+- **Database & Services:** Supabase (PostgreSQL, Realtime Broadcast, Object Storage, Secure Authentication)
+- **Styling:** TailwindCSS & PostCSS
+- **Animation Engine:** Framer Motion
+- **Icons:** Lucide React
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v18 or higher)
+- Supabase account and database instance
+
+### 1. Installation
 ```bash
 git clone https://github.com/melihkochan/havnsocialmedia.git
 cd havnsocialmedia
-```
-
-### 2. Bağımlılıkları Yükleyin
-```bash
 npm install
 ```
 
-### 3. Çevre Değişkenlerini Ayarlayın
-Proje kök dizininde bir `.env.local` dosyası oluşturun ve aşağıdaki Supabase ile API değişkenlerini girin:
+### 2. Configuration
+Create a `.env.local` file in the root directory and configure the environment variables:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://<PROJE-KODU>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<ANON-KEY-DEGERI>
-SUPABASE_SERVICE_ROLE_KEY=<SERVICE-ROLE-KEY-DEGERI>
-RESEND_API_KEY=<POSTA-GONDERIM-ANAHTARI>
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+RESEND_API_KEY=your-resend-api-key
 ```
 
-### 4. Geliştirme Sunucusunu Başlatın
+### 3. Execution
 ```bash
+# Start development server
 npm run dev
-```
-Sunucu hazır olduğunda tarayıcınızdan `http://localhost:3000` adresine giderek platformu kullanmaya başlayabilirsiniz.
 
-### 5. Projeyi Derleyin (Production Build)
-```bash
+# Build production optimized package
 npm run build
 ```
 
 ---
 
-## 🌐 Canlıya Alma (Vercel)
-Bu proje Next.js yapısında olduğu için en kolay Vercel üzerinde barındırılır. GitHub deponuzu Vercel'e bağlayıp yukarıdaki çevre değişkenlerini (Environment Variables) tanımlayarak tek tıkla canlıya alabilirsiniz.
+## 🔒 License & Copyright
+
+Copyright © 2026 HAVN. All rights reserved.
+
+**Proprietary and Confidential.**
+
+All rights reserved. Unauthorized copying, distribution, modification, reverse engineering, or commercial exploitation of this software and codebase via any medium is strictly prohibited. This repository serves as the official source of HAVN's proprietary social networking architecture.

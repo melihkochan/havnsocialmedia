@@ -148,6 +148,8 @@ export async function updateCommunitySettings(communityId: string, formData: For
   const name = formData.get('name') as string
   const description = formData.get('description') as string | null
   const type = formData.get('type') as 'public' | 'request_to_join' | null
+  const rulesStr = formData.get('rules') as string | null
+  const announcement = formData.get('announcement') as string | null
   const avatarFile = formData.get('avatar') as File | null
   const bannerFile = formData.get('banner') as File | null
 
@@ -188,6 +190,18 @@ export async function updateCommunitySettings(communityId: string, formData: For
 
   if (description !== null) updates.description = description
   if (type) updates.type = type
+
+  if (rulesStr !== null) {
+    try {
+      updates.rules = JSON.parse(rulesStr)
+    } catch (e) {
+      updates.rules = []
+    }
+  }
+
+  if (announcement !== null) {
+    updates.announcement = announcement.trim() || null
+  }
 
   // Perform metadata updates
   if (Object.keys(updates).length > 0) {

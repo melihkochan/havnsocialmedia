@@ -318,16 +318,16 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                   icon = <span className="text-sm select-none">{reaction}</span>
                   iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
                   let verb = 'beğendi'
-                  if (reaction === '🔥') verb = 'gönderine alev attı'
-                  else if (reaction === '😂') verb = 'gönderine güldü'
-                  else if (reaction === '😮') verb = 'gönderine şaşırdı'
-                  else if (reaction === '😢') verb = 'gönderine üzüldü'
+                  if (reaction === '🔥') verb = 'gönderine alev attı 🔥'
+                  else if (reaction === '😂') verb = 'gönderine güldü 😂'
+                  else if (reaction === '😮') verb = 'gönderine şaşırdı 😮'
+                  else if (reaction === '😢') verb = 'gönderine üzüldü 😢'
                   else verb = `gönderine ${reaction} tepkisi verdi`
                   contentText = verb
                 } else {
                   icon = <Heart size={14} className="fill-current" />
                   iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
-                  contentText = 'gönderini beğendi'
+                  contentText = 'gönderini beğendi ❤️'
                 }
                 break
               }

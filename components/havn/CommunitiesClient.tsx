@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Globe, Lock, Plus, Search, Check, Clock, X, Loader2 } from 'lucide-react'
+import { Users, Globe, Lock, Plus, Search, Check, Clock, X, Loader2, Crown } from 'lucide-react'
 import { joinCommunity, leaveCommunity, createCommunity } from '@/lib/actions/communities'
 import { cn } from '@/lib/utils'
 import { parseCommunityDescription } from '@/lib/community-rules'
@@ -206,12 +206,24 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 hover:border-primary/30 hover:shadow-md transition-all duration-200"
+                className="relative bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 hover:border-primary/30 hover:shadow-md transition-all duration-200"
               >
+                {community.creator && (
+                  <a
+                    href={`/profile/${community.creator.username}`}
+                    className="absolute top-5 right-5 flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[9px] font-black border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 active:scale-95 text-amber-600 dark:text-amber-400 backdrop-blur-md shadow-sm select-none z-10 transition-all"
+                  >
+                    <Crown size={9} className="fill-amber-500/25 text-amber-500" />
+                    <span>KURUCU</span>
+                    <span className="opacity-40 font-normal">|</span>
+                    <span className="font-semibold text-foreground/80">@{community.creator.username}</span>
+                  </a>
+                )}
+
                 {/* Clickable area — navigates to community detail */}
-                <a href={`/communities/${community.slug}`} className="flex flex-col gap-4 cursor-pointer">
+                <a href={`/communities/${community.slug}`} className="flex flex-col gap-4 cursor-pointer flex-1">
                   {/* Header */}
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 pr-28">
                     <CommunityAvatar id={community.id} name={community.name} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -232,14 +244,6 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                           <Users size={11} />
                           <span>{memberCount.toLocaleString('tr-TR')} üye</span>
                         </span>
-                        {community.creator && (
-                          <>
-                            <span className="opacity-40">•</span>
-                            <span>
-                              Kurucu: <span className="text-foreground font-semibold">@{community.creator.username}</span>
-                            </span>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>

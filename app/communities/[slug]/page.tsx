@@ -71,6 +71,8 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
     description: community.description ?? '',
     type: community.type,
     member_count: memberCount ?? 0,
+    rules: community.rules ?? [],
+    announcement: community.announcement ?? null,
   }
 
   return (
@@ -121,6 +123,8 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
           initialPosts={posts}
           activeSort={activeSort}
           communityDescription={community.description}
+          rules={community.rules ?? []}
+          announcement={community.announcement ?? null}
         />
       </div>
     </MainLayout>

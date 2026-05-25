@@ -30,6 +30,8 @@ interface CommunityContentTabsProps {
   initialPosts: any[]
   activeSort: 'new' | 'popular'
   communityDescription?: string | null
+  rules?: any[]
+  announcement?: string | null
 }
 
 export function CommunityContentTabs({
@@ -41,14 +43,19 @@ export function CommunityContentTabs({
   membershipRole,
   initialPosts,
   activeSort,
-  communityDescription
+  communityDescription,
+  rules,
+  announcement: propAnnouncement
 }: CommunityContentTabsProps) {
   const [activeTab, setActiveTab] = useState<'posts' | 'chat' | 'announcements'>('posts')
   const [unreadChatCount, setUnreadChatCount] = useState(0)
   const [unreadAnnCount, setUnreadAnnCount] = useState(0)
   const activeTabRef = useRef(activeTab)
   const [showAnnouncement, setShowAnnouncement] = useState(true)
-  const { announcement } = parseCommunityDescription(communityDescription || null)
+  const fallbackData = parseCommunityDescription(communityDescription || null)
+  const announcement = propAnnouncement !== undefined && propAnnouncement !== null
+    ? propAnnouncement
+    : fallbackData.announcement
   const supabase = createClient()
 
   useEffect(() => {
