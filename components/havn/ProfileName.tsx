@@ -3,12 +3,13 @@ import type { ProfileNameFields } from '@/lib/profile-display'
 import { RoleBadge } from '@/components/havn/RoleBadge'
 import type { Role } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
-import { Crown } from 'lucide-react'
+import { Crown, BadgeCheck } from 'lucide-react'
 import { isFounder } from '@/lib/founder'
 import { getRankInfo } from '@/lib/gamification'
+import { enrichProfile } from '@/lib/profile-enrich'
 
 interface ProfileNameProps {
-  profile: ProfileNameFields & { xp?: number }
+  profile: ProfileNameFields & { xp?: number; is_verified?: boolean; is_gold?: boolean }
   role?: Role
   className?: string
   nameClassName?: string
@@ -93,10 +94,24 @@ export function ProfileName({
   const primary = fullName ?? profile.username
   const hasFullName = !!fullName
 
+  const enriched = profile ? enrichProfile(profile) : null
+  const isVerified = enriched?.is_verified ?? profile?.is_verified
+  const isGold = (enriched?.is_gold ?? profile?.is_gold) || isFounder(profile)
+
   if (layout === 'inline') {
     return (
       <div className={cn('flex items-center gap-1 flex-nowrap min-w-0 flex-1', className)}>
         <span className={cn('font-semibold text-xs truncate min-w-0 flex-shrink', nameClassName)}>{primary}</span>
+        {isGold && (
+          <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Özel Hesap / Sistem Ortağı: HAVN ekibine veya resmi iş ortaklarına aittir.">
+            <BadgeCheck size={14} className="fill-[#eab308] text-background drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
+          </span>
+        )}
+        {!isGold && isVerified && (
+          <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Doğrulanmış Üye: HAVN topluluğunun aktif ve onaylanmış bir üyesidir.">
+            <BadgeCheck size={14} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
+          </span>
+        )}
         {isFounder(profile) && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}
@@ -111,6 +126,16 @@ export function ProfileName({
     <div className={cn('min-w-0 w-full', align === 'center' ? 'text-center flex flex-col items-center' : '', className)}>
       <div className={cn('flex items-center gap-1.5 flex-nowrap min-w-0 w-full', align === 'center' ? 'justify-center' : '')}>
         <span className={cn('font-semibold text-sm truncate min-w-0 flex-shrink', nameClassName)}>{primary}</span>
+        {isGold && (
+          <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Özel Hesap / Sistem Ortağı: HAVN ekibine veya resmi iş ortaklarına aittir.">
+            <BadgeCheck size={14} className="fill-[#eab308] text-background drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
+          </span>
+        )}
+        {!isGold && isVerified && (
+          <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Doğrulanmış Üye: HAVN topluluğunun aktif ve onaylanmış bir üyesidir.">
+            <BadgeCheck size={14} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
+          </span>
+        )}
         {isFounder(profile) && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}

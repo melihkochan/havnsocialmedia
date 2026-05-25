@@ -24,6 +24,8 @@ export interface Database {
           banner_url: string | null
           bio: string | null
           updated_at: string
+          is_verified?: boolean
+          is_gold?: boolean
         }
         Insert: {
           id: string
@@ -34,6 +36,8 @@ export interface Database {
           banner_url?: string | null
           bio?: string | null
           updated_at?: string
+          is_verified?: boolean
+          is_gold?: boolean
         }
         Update: {
           username?: string
@@ -43,6 +47,8 @@ export interface Database {
           banner_url?: string | null
           bio?: string | null
           updated_at?: string
+          is_verified?: boolean
+          is_gold?: boolean
         }
       }
       communities: {

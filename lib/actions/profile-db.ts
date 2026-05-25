@@ -17,6 +17,21 @@ export async function checkDbHasMetadataColumns() {
   }
 }
 
+// Check if profiles table has verification columns in database
+export async function checkDbHasVerificationColumns() {
+  try {
+    const supabaseAdmin = await createServiceClient()
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id, is_verified')
+      .limit(1)
+      .maybeSingle()
+    return !!(data && 'is_verified' in data)
+  } catch {
+    return false
+  }
+}
+
 interface ProfileUpdateMeta {
   is_private?: boolean
   social_links?: any
@@ -25,12 +40,15 @@ interface ProfileUpdateMeta {
   hidden_conversations?: Record<string, string>
   show_status?: boolean
   default_feed_type?: 'for_you' | 'following'
+  is_verified?: boolean
+  is_gold?: boolean
 }
 
 // Update profile metadata columns in database if they exist, or fallback to bio
 export async function saveProfileMetadata(userId: string, newMeta: ProfileUpdateMeta, newBioText?: string | null) {
   const supabaseAdmin = await createServiceClient()
   const dbHasColumns = await checkDbHasMetadataColumns()
+  const dbHasVerification = await checkDbHasVerificationColumns()
 
   // 1. Fetch current profile bio
   const { data: profile } = await supabaseAdmin
@@ -64,17 +82,24 @@ export async function saveProfileMetadata(userId: string, newMeta: ProfileUpdate
 
   const updates: Record<string, any> = { updated_at: new Date().toISOString() }
 
-  if (dbHasColumns) {
+  if (dbHasColumns || dbHasVerification) {
     // Write directly to columns AND clean the bio field (remove JSON suffix)
     updates.bio = cleanBioText || null
     
-    if (newMeta.is_private !== undefined) updates.is_private = newMeta.is_private
-    if (newMeta.social_links !== undefined) updates.social_links = newMeta.social_links
-    if (newMeta.follow_requests !== undefined) updates.follow_requests = newMeta.follow_requests
-    if (newMeta.last_seen_at !== undefined) updates.last_seen_at = newMeta.last_seen_at
-    if (newMeta.hidden_conversations !== undefined) updates.hidden_conversations = newMeta.hidden_conversations
-    if (newMeta.show_status !== undefined) updates.show_status = newMeta.show_status
-    if (newMeta.default_feed_type !== undefined) updates.default_feed_type = newMeta.default_feed_type
+    if (dbHasColumns) {
+      if (newMeta.is_private !== undefined) updates.is_private = newMeta.is_private
+      if (newMeta.social_links !== undefined) updates.social_links = newMeta.social_links
+      if (newMeta.follow_requests !== undefined) updates.follow_requests = newMeta.follow_requests
+      if (newMeta.last_seen_at !== undefined) updates.last_seen_at = newMeta.last_seen_at
+      if (newMeta.hidden_conversations !== undefined) updates.hidden_conversations = newMeta.hidden_conversations
+      if (newMeta.show_status !== undefined) updates.show_status = newMeta.show_status
+      if (newMeta.default_feed_type !== undefined) updates.default_feed_type = newMeta.default_feed_type
+    }
+
+    if (dbHasVerification) {
+      if (newMeta.is_verified !== undefined) updates.is_verified = newMeta.is_verified
+      if (newMeta.is_gold !== undefined) updates.is_gold = newMeta.is_gold
+    }
   } else {
     // Fallback to storing in bio column
     const serializedMeta = JSON.stringify(mergedMeta)

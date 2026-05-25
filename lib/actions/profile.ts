@@ -1,10 +1,11 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { enrichProfile } from '@/lib/profile-enrich'
 import type { EnrichedProfile } from '@/lib/profile-enrich'
-import { saveProfileMetadata } from '@/lib/actions/profile-db'
+import { saveProfileMetadata, checkDbHasVerificationColumns } from '@/lib/actions/profile-db'
+import { isFounder } from '@/lib/founder'
 
 
 export async function getProfile(username: string) {
@@ -231,4 +232,71 @@ export async function updateLastSeen() {
   }
 
   await saveProfileMetadata(user.id, { last_seen_at: new Date().toISOString() })
+}
+
+export async function toggleProfileVerification(targetUserId: string, type: 'verified' | 'gold') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  // Check if current user is founder
+  const { data: currentUserProfile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (!currentUserProfile || !isFounder(currentUserProfile)) {
+    return { error: 'Bu işlem için yetkiniz yok.' }
+  }
+
+  // Get current state of target profile
+  const { data: targetProfile, error: fetchErr } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', targetUserId)
+    .single()
+
+  if (fetchErr || !targetProfile) {
+    return { error: 'Hedef profil bulunamadı.' }
+  }
+
+  const enriched = enrichProfile(targetProfile)
+  if (!enriched) return { error: 'Hedef profil çözümlenemedi.' }
+
+  const hasVerificationColumns = await checkDbHasVerificationColumns()
+
+  let newVerified = enriched.is_verified ?? false
+  let newGold = enriched.is_gold ?? false
+
+  if (type === 'verified') {
+    newVerified = !newVerified
+  } else if (type === 'gold') {
+    newGold = !newGold
+  }
+
+  if (hasVerificationColumns) {
+    // Write directly to columns using service client to bypass RLS
+    const supabaseAdmin = await createServiceClient()
+    const { error: updateErr } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        is_verified: newVerified,
+        is_gold: newGold,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', targetUserId)
+
+    if (updateErr) return { error: updateErr.message }
+  } else {
+    // Save to metadata bio
+    const res = await saveProfileMetadata(targetUserId, {
+      is_verified: newVerified,
+      is_gold: newGold
+    })
+    if (res.error) return { error: res.error }
+  }
+
+  revalidatePath(`/profile/${targetProfile.username}`)
+  return { success: true, is_verified: newVerified, is_gold: newGold }
 }

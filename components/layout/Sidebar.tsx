@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2 } from "lucide-react";
+import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HavnLogo } from "@/components/havn/HavnLogo";
 import { ThemeToggle } from "@/components/havn/ThemeToggle";
@@ -23,6 +23,7 @@ const navItems = [
   { href: "/notifications", label: "Bildirimler", icon: Bell },
   { href: "/bookmarks", label: "Kaydedilenler", icon: Bookmark },
   { href: "/profile", label: "Profil", icon: User },
+  { href: "/help", label: "Havn Rehberi", icon: Info },
 ];
 
 function Avatar({ username, avatarUrl, updatedAt }: { username: string; avatarUrl: string | null; updatedAt?: string | null }) {
@@ -96,7 +97,7 @@ export function Sidebar({
       setSearchLoading(true);
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, first_name, last_name, avatar_url, bio")
+        .select("id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold")
         .or(`username.ilike.%${searchQuery}%,first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`)
         .limit(6);
       if (!error && data) {

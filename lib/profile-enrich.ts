@@ -19,6 +19,8 @@ export interface EnrichedProfile {
   last_seen_at?: string
   hidden_conversations?: Record<string, string>
   xp?: number
+  is_verified?: boolean
+  is_gold?: boolean
 }
 
 export function cleanBio(bio: string | null): string {
@@ -38,22 +40,26 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
   let show_status = profile.show_status !== undefined ? profile.show_status !== false : true
   let last_seen_at = profile.last_seen_at !== undefined ? profile.last_seen_at : undefined
   let hidden_conversations = profile.hidden_conversations !== undefined ? profile.hidden_conversations || {} : {}
+  let is_verified = profile.is_verified !== undefined ? !!profile.is_verified : false
+  let is_gold = profile.is_gold !== undefined ? !!profile.is_gold : false
   
   let cleanBioText = cleanBio(bio)
 
   // Fallback to bio metadata if the columns are not present in the DB payload (or if columns are undefined)
-  if (parts.length > 1 && profile.is_private === undefined) {
+  if (parts.length > 1) {
     try {
       const meta = JSON.parse(parts[1])
-      is_private = !!meta.is_private
-      social_links = meta.social_links || {}
-      follow_requests = meta.follow_requests || []
-      if (meta.default_feed_type === 'following' || meta.default_feed_type === 'for_you') {
+      if (profile.is_private === undefined) is_private = !!meta.is_private
+      if (profile.social_links === undefined) social_links = meta.social_links || {}
+      if (profile.follow_requests === undefined) follow_requests = meta.follow_requests || []
+      if (profile.default_feed_type === undefined && (meta.default_feed_type === 'following' || meta.default_feed_type === 'for_you')) {
         default_feed_type = meta.default_feed_type
       }
-      show_status = meta.show_status !== false
-      last_seen_at = meta.last_seen_at
-      hidden_conversations = meta.hidden_conversations || {}
+      if (profile.show_status === undefined) show_status = meta.show_status !== false
+      if (profile.last_seen_at === undefined) last_seen_at = meta.last_seen_at
+      if (profile.hidden_conversations === undefined) hidden_conversations = meta.hidden_conversations || {}
+      if (profile.is_verified === undefined) is_verified = !!meta.is_verified
+      if (profile.is_gold === undefined) is_gold = !!meta.is_gold
     } catch (e) {
       // ignore
     }
@@ -69,5 +75,7 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
     show_status,
     last_seen_at,
     hidden_conversations,
+    is_verified,
+    is_gold,
   }
 }

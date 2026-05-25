@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { PostFeed } from '@/components/havn/PostFeed'
 import { RoleBadge } from '@/components/havn/RoleBadge'
 import { ProfileViewTracker } from '@/components/havn/ViewTracker'
-import { CalendarDays, Users, Eye, Heart, MessageSquare, Lock } from 'lucide-react'
+import { CalendarDays, Users, Eye, Heart, MessageSquare, Lock, BadgeCheck } from 'lucide-react'
 import { enrichProfile } from '@/lib/profile-enrich'
 import { MuteProfileButton } from '@/components/havn/MuteProfileButton'
 import { getDisplayName, getFullName, getInitials, getOnlineStatus } from '@/lib/profile-display'
@@ -71,6 +71,7 @@ import { FollowButton } from '@/components/havn/FollowButton'
 import { FollowStatsModal } from '@/components/havn/FollowStatsModal'
 import { InteractiveAvatar } from '@/components/havn/InteractiveAvatar'
 import { getUserSupportTickets } from '@/lib/actions/support'
+import { VerificationToggleButtons } from '@/components/havn/VerificationToggleButtons'
 
 export const dynamic = 'force-dynamic'
 
@@ -211,7 +212,7 @@ export default async function ProfilePage({
           </div>
           <div className="px-6 pb-6">
             <div className="flex items-end justify-between -mt-12 mb-4">
-              <div className="relative z-10">
+              <div className="relative z-10 flex items-end gap-2.5">
                 <InteractiveAvatar
                   initials={getInitials(profile)}
                   username={profile.username}
@@ -220,6 +221,18 @@ export default async function ProfilePage({
                   size="lg"
                   showStatus={onlineStatus.status === 'online'}
                 />
+                
+                {/* Real-time Online/Offline status badge next to avatar */}
+                {!isOwnProfile && onlineStatus && (
+                  <span className={cn(
+                    "mb-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[8px] font-black select-none uppercase tracking-wider border shadow-sm",
+                    onlineStatus.status === 'online'
+                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 animate-pulse'
+                      : 'bg-muted/40 text-muted-foreground border-border/40'
+                  )}>
+                    {onlineStatus.status === 'online' ? '● Çevrimiçi' : onlineStatus.text}
+                  </span>
+                )}
               </div>
               <div className="flex flex-col items-end relative">
                 {isOwnProfile ? (
@@ -227,6 +240,13 @@ export default async function ProfilePage({
                 ) : (
                   user && (
                     <div className="flex gap-2 items-center">
+                      {isCurrentFounder && (
+                        <VerificationToggleButtons
+                          targetUserId={profile.id}
+                          initialIsVerified={profile.is_verified ?? false}
+                          initialIsGold={profile.is_gold ?? false}
+                        />
+                      )}
                       <FollowButton targetUserId={profile.id} initialIsFollowing={followStatus} />
                       <MuteProfileButton username={profile.username} />
                     </div>
@@ -252,25 +272,25 @@ export default async function ProfilePage({
 
             <div className="space-y-1 mb-4">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-black text-foreground">{getDisplayName(profile)}</h1>
+                <h1 className="text-xl font-black text-foreground flex items-center gap-1.5">
+                  {getDisplayName(profile)}
+                  {(profile.is_gold || isFounder(profile)) && (
+                    <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Özel Hesap / Sistem Ortağı: HAVN ekibine veya resmi iş ortaklarına aittir.">
+                      <BadgeCheck size={18} className="fill-[#eab308] text-background drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
+                    </span>
+                  )}
+                  {!(profile.is_gold || isFounder(profile)) && profile.is_verified && (
+                    <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Doğrulanmış Üye: HAVN topluluğunun aktif ve onaylanmış bir üyesidir.">
+                      <BadgeCheck size={18} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
+                    </span>
+                  )}
+                </h1>
                 {isFounder(profile) && (
                   <span
                     className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black tracking-wider shadow-sm bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-white border border-amber-600/30 select-none"
                     title="Sistem Kurucusu"
                   >
                     👑 KURUCU
-                  </span>
-                )}
-                
-                {/* Real-time Online/Offline status badge */}
-                {!isOwnProfile && onlineStatus && (
-                  <span className={cn(
-                    "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black select-none uppercase tracking-wider",
-                    onlineStatus.status === 'online'
-                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/25 animate-pulse'
-                      : 'bg-muted/40 text-muted-foreground border border-border/40'
-                  )}>
-                    {onlineStatus.status === 'online' ? '● Çevrimiçi' : onlineStatus.text}
                   </span>
                 )}
               </div>
