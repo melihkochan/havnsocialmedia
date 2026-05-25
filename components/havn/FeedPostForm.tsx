@@ -9,6 +9,7 @@ import { insertIntoField } from '@/lib/insert-text'
 import { ImageUpload } from '@/components/havn/ImageUpload'
 import { createPost } from '@/lib/actions/posts'
 import { cn } from '@/lib/utils'
+import { AiPostAssistant } from '@/components/havn/AiPostAssistant'
 
 interface Community {
   id: string
@@ -220,6 +221,7 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
                       {showImageUpload ? <X size={14} /> : <ImagePlus size={14} />}
                       <span className="hidden sm:inline">{showImageUpload ? 'Kapat' : 'Görsel'}</span>
                     </button>
+                    <AiPostAssistant text={content} onSelect={setContent} />
                   </div>
 
                   <div className="flex items-center gap-2">

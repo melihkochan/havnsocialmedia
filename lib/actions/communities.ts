@@ -150,6 +150,7 @@ export async function updateCommunitySettings(communityId: string, formData: For
   const type = formData.get('type') as 'public' | 'request_to_join' | null
   const rulesStr = formData.get('rules') as string | null
   const announcement = formData.get('announcement') as string | null
+  const accentColor = formData.get('accent_color') as string | null
   const avatarFile = formData.get('avatar') as File | null
   const bannerFile = formData.get('banner') as File | null
 
@@ -201,6 +202,10 @@ export async function updateCommunitySettings(communityId: string, formData: For
 
   if (announcement !== null) {
     updates.announcement = announcement.trim() || null
+  }
+
+  if (accentColor !== null) {
+    updates.accent_color = accentColor === 'default' ? null : accentColor
   }
 
   // Perform metadata updates

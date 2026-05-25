@@ -288,13 +288,34 @@ export function Sidebar({
     const syncAccount = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session || !session.user) return;
-
-        // PREVENT TOKEN POLLUTION: Only sync if the active session matches the currentUser prop!
-        if (session.user.id !== currentUser.id) {
+        
+        // AUTO-HEAL CLIENT SESSION: If client session doesn't match server currentUser, align them using saved tokens!
+        const sessionUser = session?.user;
+        if (sessionUser && sessionUser.id !== currentUser.id) {
+          console.warn("Active session ID mismatch on mount. Checking saved accounts...");
+          const stored = localStorage.getItem("havn_accounts");
+          if (stored) {
+            try {
+              const list = JSON.parse(stored);
+              const savedAcc = list.find((acc: any) => acc.profile.id === currentUser.id);
+              if (savedAcc && savedAcc.session?.access_token) {
+                console.log("Found correct tokens for current user. Setting client session...");
+                await supabase.auth.setSession({
+                  access_token: savedAcc.session.access_token,
+                  refresh_token: savedAcc.session.refresh_token,
+                });
+                window.location.reload();
+                return;
+              }
+            } catch (e) {
+              console.error("Failed to auto-heal client session:", e);
+            }
+          }
           console.warn("Active session ID does not match currentUser ID. Skipping sync to prevent token pollution.");
           return;
         }
+
+        if (!session || !session.user) return;
 
         const stored = localStorage.getItem("havn_accounts");
         let list: any[] = [];
@@ -657,32 +678,47 @@ export function Sidebar({
                   
                   {/* Account List */}
                   <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto pr-0.5">
-                    {accounts.map((acc, index) => {
-                      const isActive = acc.profile.id === currentUser.id || acc.profile.username === currentUser.username;
-                      return (
-                        <div key={acc.profile.id || acc.profile.username} className="flex flex-col">
-                          {index > 0 && <div className="border-t border-border/30 my-1 mx-2" />}
-                          <button
-                            onClick={() => !isActive && handleSwitchAccount(acc)}
-                            disabled={isActive}
-                            className={cn(
-                              "flex items-center gap-2.5 px-2 py-2 rounded-xl text-left transition-all w-full",
-                              isActive
-                                ? "bg-accent/40 cursor-default"
-                                : "hover:bg-accent/70 cursor-pointer"
-                            )}
-                          >
-                            <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
-                            <div className="flex-1 min-w-0">
-                              <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} />
-                            </div>
-                            {isActive && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0 mr-1" />
-                            )}
-                          </button>
-                        </div>
-                      );
-                    })}
+                    {(() => {
+                      const sorted = [...accounts].sort((a, b) => {
+                        const aActive = a.profile.id === currentUser.id;
+                        const bActive = b.profile.id === currentUser.id;
+                        return aActive === bActive ? 0 : aActive ? -1 : 1;
+                      });
+                      return sorted.map((acc, index) => {
+                        const isActive = acc.profile.id === currentUser.id;
+                        return (
+                          <div key={acc.profile.id || acc.profile.username} className="flex flex-col">
+                            {index > 0 && <div className="border-t border-border/30 my-1 mx-2" />}
+                            <button
+                              onClick={() => !isActive && handleSwitchAccount(acc)}
+                              disabled={isActive}
+                              className={cn(
+                                "flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all w-full border text-xs font-bold",
+                                isActive
+                                  ? "bg-primary/10 border-primary/20 text-primary cursor-default"
+                                  : "hover:bg-accent/70 border-transparent cursor-pointer"
+                              )}
+                            >
+                              <div className={cn(
+                                "flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-black flex-shrink-0 transition-all shadow-sm",
+                                isActive
+                                  ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground"
+                                  : "bg-muted text-muted-foreground"
+                              )}>
+                                {index + 1}
+                              </div>
+                              <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
+                              <div className="flex-1 min-w-0">
+                                <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-black" showHandle={true} />
+                              </div>
+                              {isActive && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0 mr-1" />
+                              )}
+                            </button>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
 
                   <div className="border-t border-border my-1.5" />

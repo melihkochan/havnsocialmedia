@@ -5,9 +5,10 @@ import type { Role } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { Crown } from 'lucide-react'
 import { isFounder } from '@/lib/founder'
+import { getRankInfo } from '@/lib/gamification'
 
 interface ProfileNameProps {
-  profile: ProfileNameFields
+  profile: ProfileNameFields & { xp?: number }
   role?: Role
   className?: string
   nameClassName?: string
@@ -15,6 +16,23 @@ interface ProfileNameProps {
   layout?: 'stacked' | 'inline'
   streak?: number
   align?: 'left' | 'center'
+}
+
+function LevelBadge({ xp }: { xp?: number }) {
+  if (xp === undefined) return null
+  const rank = getRankInfo(xp)
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-black tracking-wider shadow-sm select-none border backdrop-blur-md transition-all",
+        rank.badgeClass
+      )}
+      style={rank.badgeStyle}
+      title={`Seviye ${rank.level} — ${rank.rankName} (${xp} XP)`}
+    >
+      SEVİYE {rank.level}
+    </span>
+  )
 }
 
 function FounderBadge() {
@@ -81,6 +99,7 @@ export function ProfileName({
         <span className={cn('font-semibold text-xs truncate min-w-0 flex-shrink', nameClassName)}>{primary}</span>
         {isFounder(profile) && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
+        {profile.xp !== undefined && <span className="flex-shrink-0"><LevelBadge xp={profile.xp} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}
         {hasFullName && showHandle && (
           <span className="text-[10px] text-muted-foreground truncate min-w-0 flex-shrink-0">@{profile.username}</span>
@@ -95,6 +114,7 @@ export function ProfileName({
         <span className={cn('font-semibold text-sm truncate min-w-0 flex-shrink', nameClassName)}>{primary}</span>
         {isFounder(profile) && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
+        {profile.xp !== undefined && <span className="flex-shrink-0"><LevelBadge xp={profile.xp} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}
       </div>
       {hasFullName && showHandle && (

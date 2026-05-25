@@ -21,9 +21,10 @@ interface MainLayoutProps {
   showRightBar?: boolean;
   rightBar?: React.ReactNode;
   fullWidth?: boolean;
+  accentColor?: string | null;
 }
 
-export async function MainLayout({ children, currentUser, showRightBar = true, rightBar, fullWidth }: MainLayoutProps) {
+export async function MainLayout({ children, currentUser, showRightBar = true, rightBar, fullWidth, accentColor }: MainLayoutProps) {
   const isUserFounder = currentUser ? isFounder(currentUser) : false;
 
   let unreadCount = 0;
@@ -78,6 +79,7 @@ export async function MainLayout({ children, currentUser, showRightBar = true, r
       username={currentUser?.username}
       currentUser={currentUser}
       fullWidth={fullWidth}
+      accentColor={accentColor}
     >
       {children}
     </LayoutShell>

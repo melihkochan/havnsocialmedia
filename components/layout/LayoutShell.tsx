@@ -14,9 +14,10 @@ interface LayoutShellProps {
   username?: string;
   currentUser?: any;
   fullWidth?: boolean;
+  accentColor?: string | null;
 }
 
-export function LayoutShell({ children, sidebar, rightBar, username, currentUser, fullWidth }: LayoutShellProps) {
+export function LayoutShell({ children, sidebar, rightBar, username, currentUser, fullWidth, accentColor }: LayoutShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
@@ -105,6 +106,24 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
 
   return (
     <div className="min-h-screen bg-background flex relative">
+      {accentColor && accentColor !== 'default' && (
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            :root {
+              --primary: ${accentColor} !important;
+              --ring: ${accentColor} !important;
+              --havn-gradient-start: ${accentColor} !important;
+              --havn-gradient-end: color-mix(in srgb, ${accentColor} 65%, #000) !important;
+            }
+            .dark {
+              --primary: color-mix(in srgb, ${accentColor} 85%, #fff) !important;
+              --ring: color-mix(in srgb, ${accentColor} 85%, #fff) !important;
+              --havn-gradient-start: color-mix(in srgb, ${accentColor} 85%, #fff) !important;
+              --havn-gradient-end: ${accentColor} !important;
+            }
+          `
+        }} />
+      )}
       {/* ── Desktop Left Sidebar ── */}
       <div
         className={cn(

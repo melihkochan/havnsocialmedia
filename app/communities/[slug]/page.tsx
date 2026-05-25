@@ -73,12 +73,14 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
     member_count: memberCount ?? 0,
     rules: community.rules ?? [],
     announcement: community.announcement ?? null,
+    accent_color: community.accent_color ?? null,
   }
 
   return (
     <MainLayout
       currentUser={profile}
       rightBar={<RightBar communityId={community.id} currentUserRole={membership?.role} />}
+      accentColor={community.accent_color}
     >
       <div className="flex flex-col gap-4">
         {/* Back Link Breadcrumb */}

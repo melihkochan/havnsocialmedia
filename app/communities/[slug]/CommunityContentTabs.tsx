@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Megaphone, X } from 'lucide-react'
 import { parseCommunityDescription } from '@/lib/community-rules'
+import { CommunityLounge } from '@/components/havn/CommunityLounge'
 
 interface Profile {
   id: string
@@ -47,7 +48,7 @@ export function CommunityContentTabs({
   rules,
   announcement: propAnnouncement
 }: CommunityContentTabsProps) {
-  const [activeTab, setActiveTab] = useState<'posts' | 'chat' | 'announcements'>('posts')
+  const [activeTab, setActiveTab] = useState<'posts' | 'chat' | 'announcements' | 'lounge'>('posts')
   const [unreadChatCount, setUnreadChatCount] = useState(0)
   const [unreadAnnCount, setUnreadAnnCount] = useState(0)
   const activeTabRef = useRef(activeTab)
@@ -186,6 +187,16 @@ export function CommunityContentTabs({
                 <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", activeTab === 'announcements' ? "bg-white" : "bg-rose-500")} />
               )}
             </button>
+            <button
+              onClick={() => setActiveTab('lounge')}
+              className={cn(
+                "px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5",
+                activeTab === 'lounge' ? "text-white shadow-md font-black" : "text-muted-foreground hover:text-foreground"
+              )}
+              style={activeTab === 'lounge' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
+            >
+              <span>Lobi 🛋️</span>
+            </button>
           </>
         )}
       </div>
@@ -291,6 +302,14 @@ export function CommunityContentTabs({
             currentUser={currentUser}
             isAdmin={isAdmin}
             membershipRole={membershipRole}
+          />
+        )}
+        {activeTab === 'lounge' && (
+          <CommunityLounge
+            communityId={communityId}
+            currentUser={currentUser}
+            isMember={isMember}
+            isAdmin={isAdmin}
           />
         )}
       </div>

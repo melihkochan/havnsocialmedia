@@ -34,6 +34,10 @@ export async function createComment(postId: string, content: string, parentComme
 
   if (error) return { error: error.message }
 
+  // Reward user with +5 XP
+  const { rewardXP } = await import('@/lib/actions/communities-premium')
+  await rewardXP(user.id, 5)
+
   // Trigger notification
   const { createNotification } = await import('@/lib/actions/notifications')
   if (parentCommentId) {

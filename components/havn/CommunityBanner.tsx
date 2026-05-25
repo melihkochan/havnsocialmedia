@@ -18,6 +18,7 @@ interface CommunityBannerProps {
     member_count: number
     rules?: any[]
     announcement?: string | null
+    accent_color?: string | null
   }
   isAdmin?: boolean
   initialPendingRequests?: any[]
@@ -207,6 +208,7 @@ interface EditModalProps {
     type: string
     rules?: any[]
     announcement?: string | null
+    accent_color?: string | null
   }
   currentAvatar: string | null
   currentBanner: string | null
@@ -222,6 +224,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
   const [type, setType] = useState(community.type)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [selectedColor, setSelectedColor] = useState<string>(community.accent_color || 'default')
 
   // Parse Rules & Announcement from raw description as fallback
   const parsedData = useRef(parseCommunityDescription(community.description)).current
@@ -437,6 +440,42 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                         {t === "public" ? "Herkese Açık" : "Başvurulu"}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Topluluk Tema Rengi (Accent Color)</label>
+                  <input type="hidden" name="accent_color" value={selectedColor} />
+                  <div className="flex flex-wrap gap-2.5 pt-1">
+                    {[
+                      { name: 'default', color: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))', label: 'Varsayılan' },
+                      { name: '#0284c7', color: '#0284c7', label: 'Mavi' },
+                      { name: '#059669', color: '#059669', label: 'Yeşil' },
+                      { name: '#d97706', color: '#d97706', label: 'Altın' },
+                      { name: '#e11d48', color: '#e11d48', label: 'Gül' },
+                      { name: '#4f46e5', color: '#4f46e5', label: 'İndigo' },
+                      { name: '#ea580c', color: '#ea580c', label: 'Turuncu' },
+                      { name: '#0891b2', color: '#0891b2', label: 'Cyan' },
+                    ].map((c) => {
+                      const isSel = selectedColor === c.name;
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          onClick={() => setSelectedColor(c.name)}
+                          className={cn(
+                            "w-7 h-7 rounded-full cursor-pointer transition-all flex items-center justify-center relative shadow-sm ring-offset-background",
+                            isSel ? "ring-2 ring-primary scale-110" : "hover:scale-105 border border-border"
+                          )}
+                          style={{ background: c.color }}
+                          title={c.label}
+                        >
+                          {isSel && (
+                            <span className="text-[10px] text-white font-black drop-shadow-md">✓</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
