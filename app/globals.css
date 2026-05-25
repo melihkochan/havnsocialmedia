@@ -221,3 +221,59 @@ body {
   --havn-gradient-start: oklch(0.68 0.15 170);
   --havn-gradient-end: oklch(0.74 0.12 195);
 }
+
+/* ─── Gamification & Level Premium Visual Effects ─── */
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+@keyframes pulse-glow-gold {
+  0%, 100% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.2), 0 0 15px rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.35); }
+  50% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.45), 0 0 30px rgba(245, 158, 11, 0.25); border-color: rgba(245, 158, 11, 0.7); }
+}
+
+@keyframes pulse-glow-purple {
+  0%, 100% { box-shadow: 0 0 5px rgba(139, 92, 246, 0.2), 0 0 15px rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.3); }
+  50% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.4), 0 0 25px rgba(139, 92, 246, 0.2); border-color: rgba(139, 92, 246, 0.65); }
+}
+
+@keyframes pulse-glow-emerald {
+  0%, 100% { box-shadow: 0 0 3px rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.15); }
+  50% { box-shadow: 0 0 8px rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.35); }
+}
+
+.level-card-gold {
+  animation: pulse-glow-gold 3s ease-in-out infinite;
+  background: color-mix(in oklch, var(--card) 95%, #f59e0b) !important;
+}
+
+.level-card-purple {
+  animation: pulse-glow-purple 3s ease-in-out infinite;
+  background: color-mix(in oklch, var(--card) 97%, #8b5cf6) !important;
+}
+
+.level-card-emerald {
+  animation: pulse-glow-emerald 4s ease-in-out infinite;
+}
+
+.gold-shimmer-text {
+  background: linear-gradient(to right, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 900;
+}
+
+.purple-shimmer-text {
+  background: linear-gradient(to right, #8b5cf6 0%, #d946ef 35%, #6366f1 70%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 900;
+}
+

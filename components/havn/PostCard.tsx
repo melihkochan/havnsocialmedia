@@ -17,19 +17,29 @@ import { toggleLike, deletePost, repostPost, toggleBookmark, editPost, togglePin
 import type { UserRole } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
 
-function Avatar({ username, avatarUrl }: { username: string; avatarUrl: string | null }) {
+function Avatar({ username, avatarUrl, xp }: { username: string; avatarUrl: string | null; xp?: number }) {
+  const level = xp !== undefined ? Math.floor(Math.sqrt(xp / 100)) + 1 : 1
+
+  const ringClass = level >= 31 
+    ? 'ring-2 ring-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.45)]' 
+    : level >= 16 
+      ? 'ring-2 ring-purple-500/80 shadow-[0_0_6px_rgba(139,92,246,0.35)]' 
+      : level >= 6 
+        ? 'ring-2 ring-emerald-500/70 shadow-[0_0_4px_rgba(16,185,129,0.25)]' 
+        : 'ring-1 ring-border'
+
   if (avatarUrl) {
     return (
       <img
         src={avatarUrl}
         alt={username}
-        className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-1 ring-border"
+        className={cn("w-10 h-10 rounded-full object-cover flex-shrink-0", ringClass)}
       />
     )
   }
   return (
     <div
-      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
+      className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0", ringClass)}
       style={{
         background: `linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))`,
         filter: `hue-rotate(${(username.charCodeAt(0) * 17) % 360}deg)`,
@@ -72,7 +82,7 @@ interface PostCardProps {
     user_id: string
     community_id?: string | null
     is_pinned?: boolean
-    profiles: { username: string; first_name?: string | null; last_name?: string | null; avatar_url: string | null } | null
+    profiles: { username: string; first_name?: string | null; last_name?: string | null; avatar_url: string | null; xp?: number } | null
     likes: { user_id: string }[]
     bookmarks?: { user_id: string }[]
     comments: { id: string }[]
@@ -83,7 +93,7 @@ interface PostCardProps {
       image_url: string | null
       created_at: string
       user_id: string
-      profiles: { username: string; first_name?: string | null; last_name?: string | null; avatar_url: string | null } | null
+      profiles: { username: string; first_name?: string | null; last_name?: string | null; avatar_url: string | null; xp?: number } | null
       likes?: { user_id: string }[]
       bookmarks?: { user_id: string }[]
       comments?: { id: string }[]
@@ -589,7 +599,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <Link href={`/profile/${displayUsername}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
-            <Avatar username={displayUsername} avatarUrl={displayAvatarUrl} />
+            <Avatar username={displayUsername} avatarUrl={displayAvatarUrl} xp={displayPost.profiles?.xp} />
           </Link>
           <div className="min-w-0">
             <div className="flex items-center gap-2">

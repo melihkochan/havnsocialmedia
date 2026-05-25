@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { MainLayout } from '@/components/layout/MainLayout'
-import { BadgeCheck, Flame, Award, BookOpen } from 'lucide-react'
+import { BadgeCheck, Flame, Award, BookOpen, ShieldCheck, Palette, LifeBuoy, Search, ShieldAlert } from 'lucide-react'
 
 export const metadata = {
   title: 'Havn Rehberi — Sıkça Sorulan Sorular ve Bilgiler',
@@ -234,6 +234,86 @@ export default async function HelpPage() {
 
           <div className="mt-3.5 p-3.5 rounded-xl bg-accent/30 border border-border/40 text-[10px] text-muted-foreground leading-relaxed">
             💡 <strong>Seriyi Kaybetmeyin:</strong> Alev serinizin sıfırlanmaması için her 24 saat içinde en az bir kez platforma giriş yapıp etkileşimde bulunmanız gerekir. Bir gün bile kaçırırsanız seriniz sıfırdan başlar!
+          </div>
+        </section>
+
+        {/* Security & Personalization Section */}
+        <section className="bg-card border border-border/80 rounded-2xl p-6 relative overflow-hidden backdrop-blur-md">
+          <div className="absolute -left-20 -bottom-20 w-48 h-48 rounded-full bg-blue-500/5 blur-3xl pointer-events-none" />
+          
+          <h2 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+            <ShieldCheck size={16} className="text-blue-500" />
+            Güvenlik & Kişiselleştirme
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Single Session Check */}
+            <div className="p-5 rounded-2xl bg-card border border-border/60 hover:border-blue-500/40 transition-all flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <ShieldAlert size={18} className="text-blue-500" />
+                <h3 className="font-bold text-sm text-foreground">Oturum Güvenliği (Tekil Oturum)</h3>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Hesap güvenliğinizi en üst düzeyde tutmak amacıyla HAVN'da aynı anda sadece tek bir cihazda veya tarayıcıda aktif oturum açabilirsiniz.
+              </p>
+              <p className="text-[10px] text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border/40 mt-auto">
+                🔒 Başka bir cihazdan giriş yapıldığında, önceki oturumunuz güvenlik nedeniyle otomatik olarak sonlandırılır.
+              </p>
+            </div>
+
+            {/* Theme & Customization */}
+            <div className="p-5 rounded-2xl bg-card border border-border/60 hover:border-purple-500/40 transition-all flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Palette size={18} className="text-purple-500" />
+                <h3 className="font-bold text-sm text-foreground">Renk Teması ve Görünüm</h3>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Görünüm ve renk teması (Mor, İndigo, Pembe, Kehribar, Turkuaz) tercihleriniz Supabase veritabanında bulut tabanlı olarak profilinize kaydedilir.
+              </p>
+              <p className="text-[10px] text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border/40 mt-auto">
+                ☁️ Yeni bir bilgisayar veya telefondan giriş yapsanız dahi kişisel tema ayarlarınız otomatik olarak yüklenir ve senkronize edilir.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Destek & Yönetici Modülü Section */}
+        <section className="bg-card border border-border/80 rounded-2xl p-6 relative overflow-hidden backdrop-blur-md">
+          <div className="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
+          
+          <h2 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+            <LifeBuoy size={16} className="text-emerald-500" />
+            Destek Sistemi & Yönetici Kontrolleri
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Support Tickets */}
+            <div className="p-5 rounded-2xl bg-card border border-border/60 hover:border-emerald-500/40 transition-all flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <LifeBuoy size={18} className="text-emerald-500" />
+                <h3 className="font-bold text-sm text-foreground">Destek ve Talep Modülü</h3>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Platform ile ilgili yaşadığınız teknik sorunları veya şikayetleri Ayarlar altındaki Destek sekmesinden kuruculara bildirebilirsiniz.
+              </p>
+              <p className="text-[10px] text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border/40 mt-auto">
+                📨 Destek taleplerinizin güncel durumunu (Açık, Yanıtlandı, Kapatıldı) anlık olarak profilinizden veya destek sayfasından takip edebilirsiniz.
+              </p>
+            </div>
+
+            {/* Admin Controls */}
+            <div className="p-5 rounded-2xl bg-card border border-border/60 hover:border-amber-500/40 transition-all flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Search size={18} className="text-amber-500" />
+                <h3 className="font-bold text-sm text-foreground">Yönetici & Kurucu Paneli</h3>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Sistem Kurucuları (Founder), topluluk düzenini sağlamak için kullanıcı profillerine doğrudan müdahale yetkisine sahiptir.
+              </p>
+              <p className="text-[10px] text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border/40 mt-auto">
+                🛡️ Kurucular; rozet atama, isim/bio güncelleme ve kural ihlali durumlarında profil resmi/kapak sıfırlama gibi işlemleri anlık bildirimle gerçekleştirebilir.
+              </p>
+            </div>
           </div>
         </section>
       </div>
