@@ -16,6 +16,7 @@ type NotificationItem = {
   type: 'like' | 'comment' | 'join_request' | 'approved' | 'repost' | 'comment_like' | 'reply' | 'post_removed' | 'post_pinned' | 'follow' | 'support_reply' | 'support_ticket'
   is_read: boolean
   post_id: string | null
+  comment_id: string | null
   actor_id: string
   message?: string | null
   post_preview?: string | null
@@ -35,6 +36,161 @@ type NotificationItem = {
     status: 'open' | 'replied' | 'closed'
     subject: string
   } | null
+}
+
+type GroupedNotification = {
+  id: string
+  created_at: string
+  is_read: boolean
+  type: NotificationItem['type']
+  post_id: string | null
+  comment_id: string | null
+  actor_id: string
+  message?: string | null
+  post_preview?: string | null
+  communities?: NotificationItem['communities']
+  posts: NotificationItem['posts']
+  comments?: NotificationItem['comments']
+  support_ticket?: NotificationItem['support_ticket']
+  actors: {
+    id: string
+    username: string
+    avatar_url: string | null
+  }[]
+  ids: string[]
+}
+
+function getGroupedNotificationText(group: GroupedNotification) {
+  const count = group.actors.length
+  const actor1 = group.actors[0]?.username ?? 'Anonim'
+  
+  let nameSpan: React.ReactNode = ''
+  if (count === 1) {
+    nameSpan = (
+      <Link href={`/profile/${actor1}`} className="font-bold text-foreground hover:underline">
+        {actor1}
+      </Link>
+    )
+  } else if (count === 2) {
+    const actor2 = group.actors[1]?.username ?? 'Anonim'
+    nameSpan = (
+      <>
+        <Link href={`/profile/${actor1}`} className="font-bold text-foreground hover:underline">
+          {actor1}
+        </Link>{' '}
+        ve{' '}
+        <Link href={`/profile/${actor2}`} className="font-bold text-foreground hover:underline">
+          {actor2}
+        </Link>
+      </>
+    )
+  } else {
+    nameSpan = (
+      <>
+        <Link href={`/profile/${actor1}`} className="font-bold text-foreground hover:underline">
+          {actor1}
+        </Link>{' '}
+        ve diğer <span className="font-bold text-foreground">diğer {count - 1} kişi</span>
+      </>
+    )
+  }
+
+  let actionText = ''
+  if (group.type === 'like') {
+    actionText = ' gönderini beğendi ❤️'
+  } else if (group.type === 'comment_like') {
+    actionText = ' yanıtını beğendi ❤️'
+  }
+
+  return (
+    <span>
+      {nameSpan}
+      {actionText}
+    </span>
+  )
+}
+
+function groupNotifications(items: NotificationItem[]): GroupedNotification[] {
+  const groups: GroupedNotification[] = []
+  const groupMap = new Map<string, GroupedNotification>()
+
+  for (const item of items) {
+    let groupKey: string | null = null
+    if (item.type === 'like' && item.post_id) {
+      groupKey = `like_post_${item.post_id}`
+    } else if (item.type === 'comment_like' && item.comment_id) {
+      groupKey = `comment_like_comment_${item.comment_id}`
+    }
+
+    if (groupKey) {
+      const existing = groupMap.get(groupKey)
+      if (existing) {
+        if (!existing.actors.some(a => a.id === item.actor_id)) {
+          existing.actors.push({
+            id: item.actor_id,
+            username: item.actor?.username ?? 'Anonim',
+            avatar_url: item.actor?.avatar_url ?? null
+          })
+        }
+        existing.ids.push(item.id)
+        if (!item.is_read) {
+          existing.is_read = false
+        }
+        if (new Date(item.created_at) > new Date(existing.created_at)) {
+          existing.created_at = item.created_at
+          existing.id = item.id
+        }
+      } else {
+        const newGroup: GroupedNotification = {
+          id: item.id,
+          created_at: item.created_at,
+          is_read: item.is_read,
+          type: item.type,
+          post_id: item.post_id,
+          comment_id: item.comment_id ?? null,
+          actor_id: item.actor_id,
+          message: item.message,
+          post_preview: item.post_preview,
+          communities: item.communities,
+          posts: item.posts,
+          comments: item.comments,
+          support_ticket: item.support_ticket,
+          actors: [{
+            id: item.actor_id,
+            username: item.actor?.username ?? 'Anonim',
+            avatar_url: item.actor?.avatar_url ?? null
+          }],
+          ids: [item.id]
+        }
+        groups.push(newGroup)
+        groupMap.set(groupKey, newGroup)
+      }
+    } else {
+      groups.push({
+        id: item.id,
+        created_at: item.created_at,
+        is_read: item.is_read,
+        type: item.type,
+        post_id: item.post_id,
+        comment_id: item.comment_id ?? null,
+        actor_id: item.actor_id,
+        message: item.message,
+        post_preview: item.post_preview,
+        communities: item.communities,
+        posts: item.posts,
+        comments: item.comments,
+        support_ticket: item.support_ticket,
+        actors: [{
+          id: item.actor_id,
+          username: item.actor?.username ?? 'Anonim',
+          avatar_url: item.actor?.avatar_url ?? null
+        }],
+        ids: [item.id]
+      })
+    }
+  }
+
+  return groups.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 }
 
 interface NotificationsClientProps {
@@ -122,7 +278,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
     }
   }
 
-  async function handleDeleteNotification(notifId: string) {
+  async function handleDeleteNotification(notifIds: string[]) {
     setModalConfig({
       isOpen: true,
       title: 'Bildirimi Sil',
@@ -131,11 +287,11 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
       cancelText: 'İptal',
       isDanger: true,
       onConfirm: async () => {
-        const res = await deleteNotification(notifId)
-        if (!res.error) {
-          setNotifications(prev => prev.filter(n => n.id !== notifId))
-        } else {
-          showErrorAlert(res.error)
+        try {
+          await Promise.all(notifIds.map(id => deleteNotification(id)))
+          setNotifications(prev => prev.filter(n => !notifIds.includes(n.id)))
+        } catch (e) {
+          showErrorAlert('Bildirim silinirken bir hata oluştu.')
         }
       }
     })
@@ -294,9 +450,10 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
 
       <div className="flex flex-col gap-2">
         <AnimatePresence initial={false}>
-          {filteredNotifications.map((notif, index) => {
-            const username = notif.actor?.username ?? 'Anonim'
-            const avatarUrl = notif.actor?.avatar_url
+          {groupNotifications(filteredNotifications).map((group, index) => {
+            const notif = group
+            const username = group.actors[0]?.username ?? 'Anonim'
+            const avatarUrl = group.actors[0]?.avatar_url
             const community = Array.isArray(notif.communities)
               ? notif.communities[0]
               : notif.communities
@@ -313,21 +470,28 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
 
             switch (notif.type) {
               case 'like': {
-                const reaction = notif.message
-                if (reaction && reaction !== 'like') {
-                  icon = <span className="text-sm select-none">{reaction}</span>
-                  iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
-                  let verb = 'beğendi'
-                  if (reaction === '🔥') verb = 'gönderine alev attı 🔥'
-                  else if (reaction === '😂') verb = 'gönderine güldü 😂'
-                  else if (reaction === '😮') verb = 'gönderine şaşırdı 😮'
-                  else if (reaction === '😢') verb = 'gönderine üzüldü 😢'
-                  else verb = `gönderine ${reaction} tepkisi verdi`
-                  contentText = verb
+                const count = group.actors.length
+                if (count === 1) {
+                  const reaction = notif.message
+                  if (reaction && reaction !== 'like') {
+                    icon = <span className="text-sm select-none">{reaction}</span>
+                    iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
+                    let verb = 'beğendi'
+                    if (reaction === '🔥') verb = 'gönderine alev attı 🔥'
+                    else if (reaction === '😂') verb = 'gönderine güldü 😂'
+                    else if (reaction === '😮') verb = 'gönderine şaşırdı 😮'
+                    else if (reaction === '😢') verb = 'gönderine üzüldü 😢'
+                    else verb = `gönderine ${reaction} tepkisi verdi`
+                    contentText = verb
+                  } else {
+                    icon = <Heart size={14} className="fill-current" />
+                    iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
+                    contentText = 'gönderini beğendi ❤️'
+                  }
                 } else {
-                  icon = <Heart size={14} className="fill-current" />
+                  icon = <Heart size={14} className="fill-current text-rose-500" />
                   iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
-                  contentText = 'gönderini beğendi ❤️'
+                  contentText = getGroupedNotificationText(group)
                 }
                 break
               }
@@ -356,9 +520,15 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                 contentText = 'gönderini yeniden paylaştı'
                 break
               case 'comment_like':
-                icon = <Heart size={14} className="fill-current" />
-                iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
-                contentText = 'yorumunu beğendi'
+                if (group.actors.length === 1) {
+                  icon = <Heart size={14} className="fill-current" />
+                  iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
+                  contentText = 'yorumunu beğendi'
+                } else {
+                  icon = <Heart size={14} className="fill-current text-rose-500" />
+                  iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
+                  contentText = getGroupedNotificationText(group)
+                }
                 break
               case 'reply':
                 icon = <MessageCircle size={14} />
@@ -526,64 +696,115 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
               }
             }
 
+            const isGroupedLike = notif.type === 'like' || notif.type === 'comment_like'
+            const isMultiActor = group.actors.length > 1
+
             const itemContent = (
-              <div className="flex items-start gap-3 p-4">
-                {/* Type Icon (Standalone Column) */}
+              <div className="flex items-start gap-4 p-4">
+                {/* Column 1: Type Icon */}
                 <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm", iconBg)}>
                   {icon}
                 </div>
 
-                {/* User Avatar - Link to Profile */}
-                <Link href={`/profile/${username}`} className="flex-shrink-0 hover:opacity-85 transition-opacity">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt={username} className="w-10 h-10 rounded-full object-cover ring-1 ring-border" />
+                {/* Column 2: Content Details */}
+                <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                  {isGroupedLike && isMultiActor ? (
+                    /* Grouped multi-avatar row */
+                    <div className="flex -space-x-2 overflow-hidden select-none mb-0.5">
+                      {group.actors.slice(0, 7).map((actor, idx) => (
+                        <Link 
+                          key={actor.id}
+                          href={`/profile/${actor.username}`} 
+                          className="inline-block relative hover:scale-105 transition-all hover:z-10"
+                          style={{ zIndex: 10 - idx }}
+                        >
+                          {actor.avatar_url ? (
+                            <img 
+                              src={actor.avatar_url} 
+                              alt={actor.username} 
+                              className="w-8 h-8 rounded-full object-cover ring-2 ring-card bg-card" 
+                            />
+                          ) : (
+                            <div
+                              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] ring-2 ring-card bg-gradient-to-r from-primary to-primary/80 text-white"
+                              style={{
+                                filter: `hue-rotate(${(actor.username.charCodeAt(0) * 17) % 360}deg)`,
+                              }}
+                            >
+                              {actor.username.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                        </Link>
+                      ))}
+                      {group.actors.length > 7 && (
+                        <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[9px] font-black text-muted-foreground select-none relative z-0">
+                          +{group.actors.length - 7}
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ring-1 ring-border"
-                      style={{
-                        background: `linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))`,
-                        filter: `hue-rotate(${(username.charCodeAt(0) * 17) % 360}deg)`,
-                        color: 'var(--primary-foreground)',
-                      }}
-                    >
-                      {username.slice(0, 2).toUpperCase()}
+                    /* Single Avatar row */
+                    <div className="flex items-center justify-between gap-2">
+                      <Link href={`/profile/${username}`} className="flex-shrink-0 hover:opacity-85 transition-opacity">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt={username} className="w-8 h-8 rounded-full object-cover ring-1 ring-border" />
+                        ) : (
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] ring-1 ring-border text-white"
+                            style={{
+                              background: `linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))`,
+                              filter: `hue-rotate(${(username.charCodeAt(0) * 17) % 360}deg)`,
+                            }}
+                          >
+                            {username.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                      </Link>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-[10px] text-muted-foreground select-none">
+                          {formatRelativeTime(notif.created_at)}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteNotification(group.ids)}
+                          className="p-1.5 rounded-xl text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer select-none active:scale-95"
+                          title="Bildirimi Sil"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   )}
-                </Link>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <Link href={`/profile/${username}`} className="text-sm font-semibold text-foreground truncate hover:underline">
-                      {username}
-                    </Link>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-[10px] text-muted-foreground select-none">
-                        {formatRelativeTime(notif.created_at)}
-                      </span>
-                      <button
-                        onClick={() => handleDeleteNotification(notif.id)}
-                        className="p-1.5 rounded-xl text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer select-none active:scale-95"
-                        title="Bildirimi Sil"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                  {/* Text Description */}
+                  <div className="flex items-baseline justify-between gap-2 w-full">
+                    <div className="text-xs text-muted-foreground leading-relaxed">
+                      {isGroupedLike && isMultiActor ? (
+                        contentText
+                      ) : (
+                        <span>
+                          <Link href={`/profile/${username}`} className="font-semibold text-foreground hover:underline mr-1">
+                            {username}
+                          </Link>
+                          {contentText}
+                        </span>
+                      )}
                     </div>
+                    
+                    {isGroupedLike && isMultiActor && (
+                      <div className="flex items-center gap-1.5 flex-shrink-0 self-start mt-0.5">
+                        <span className="text-[10px] text-muted-foreground select-none">
+                          {formatRelativeTime(notif.created_at)}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteNotification(group.ids)}
+                          className="p-1.5 rounded-xl text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer select-none active:scale-95"
+                          title="Bildirimi Sil"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {notif.post_id ? (
-                      <Link href={`/post/${notif.post_id}`} className="hover:text-primary hover:underline transition-colors">
-                        {contentText}
-                      </Link>
-                    ) : (community?.slug ? (
-                      <Link href={`/communities/${community.slug}`} className="hover:text-primary hover:underline transition-colors">
-                        {contentText}
-                      </Link>
-                    ) : (
-                      contentText
-                    ))}
-                  </p>
 
                   {notif.type === 'post_removed' && notif.message && (
                     <p className="text-xs text-foreground/80 mt-1.5 italic">
@@ -632,7 +853,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       ) : (
                         <button
                           onClick={() => handleFollowBack(notif.actor_id)}
-                          disabled={actionActorId === notif.actor_id}
+                          disabled={actionActorId !== notif.actor_id}
                           className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:opacity-90 active:scale-95 text-primary-foreground text-xs font-bold transition-all cursor-pointer shadow-sm disabled:opacity-50"
                           style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                         >
@@ -680,7 +901,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
 
             return (
               <motion.div
-                key={notif.id}
+                key={group.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: index * 0.03 }}
