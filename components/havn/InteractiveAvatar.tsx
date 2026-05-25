@@ -92,7 +92,7 @@ export function InteractiveAvatar({
   if (size === 'lg') {
     if (level >= 31) {
       content = (
-        <div className="relative w-[106px] h-[106px] rounded-full flex items-center justify-center p-[5px] bg-card shadow-[0_0_25px_rgba(245,158,11,0.45)] border border-amber-500/20 select-none">
+        <div className="relative w-[106px] h-[106px] rounded-full flex items-center justify-center p-[5px] bg-card border border-amber-500/20 avatar-ring-gold select-none">
           <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-orange-500 animate-spin-slow opacity-95 blur-[0.5px]" />
           <div className="absolute inset-[4px] rounded-full bg-card" />
           <div className="relative z-10 w-24 h-24 rounded-full overflow-hidden flex items-center justify-center">
@@ -102,7 +102,7 @@ export function InteractiveAvatar({
       )
     } else if (level >= 16) {
       content = (
-        <div className="relative w-[104px] h-[104px] rounded-full flex items-center justify-center p-[4px] bg-card shadow-[0_0_20px_rgba(139,92,246,0.4)] border border-purple-500/20 animate-pulse select-none">
+        <div className="relative w-[104px] h-[104px] rounded-full flex items-center justify-center p-[4px] bg-card border border-purple-500/20 avatar-ring-purple select-none">
           <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-purple-600 via-pink-400 to-indigo-500 opacity-90 blur-[0.5px]" />
           <div className="absolute inset-[3px] rounded-full bg-card" />
           <div className="relative z-10 w-24 h-24 rounded-full overflow-hidden flex items-center justify-center">
@@ -112,7 +112,7 @@ export function InteractiveAvatar({
       )
     } else if (level >= 6) {
       content = (
-        <div className="relative w-[102px] h-[102px] rounded-full flex items-center justify-center p-[3px] bg-card shadow-[0_0_12px_rgba(16,185,129,0.3)] border border-emerald-500/20 select-none">
+        <div className="relative w-[102px] h-[102px] rounded-full flex items-center justify-center p-[3px] bg-card border border-emerald-500/20 avatar-ring-emerald select-none">
           <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-500 via-teal-400 to-emerald-600 opacity-80" />
           <div className="absolute inset-[2.5px] rounded-full bg-card" />
           <div className="relative z-10 w-24 h-24 rounded-full overflow-hidden flex items-center justify-center">
@@ -124,7 +124,7 @@ export function InteractiveAvatar({
   } else if (size === 'md') {
     if (level >= 31) {
       content = (
-        <div className="relative w-[56px] h-[56px] rounded-full flex items-center justify-center p-[3px] bg-card shadow-[0_0_12px_rgba(245,158,11,0.35)] border border-amber-500/20 select-none">
+        <div className="relative w-[56px] h-[56px] rounded-full flex items-center justify-center p-[3px] bg-card border border-amber-500/20 avatar-ring-gold select-none">
           <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-orange-500 animate-spin-slow opacity-95 blur-[0.5px]" />
           <div className="absolute inset-[2px] rounded-full bg-card" />
           <div className="relative z-10 w-12 h-12 rounded-full overflow-hidden flex items-center justify-center">
@@ -134,7 +134,7 @@ export function InteractiveAvatar({
       )
     } else if (level >= 16) {
       content = (
-        <div className="relative w-[54px] h-[54px] rounded-full flex items-center justify-center p-[2.5px] bg-card shadow-[0_0_10px_rgba(139,92,246,0.3)] border border-purple-500/20 animate-pulse select-none">
+        <div className="relative w-[54px] h-[54px] rounded-full flex items-center justify-center p-[2.5px] bg-card border border-purple-500/20 avatar-ring-purple select-none">
           <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-purple-600 via-pink-400 to-indigo-500 opacity-90 blur-[0.5px]" />
           <div className="absolute inset-[2px] rounded-full bg-card" />
           <div className="relative z-10 w-12 h-12 rounded-full overflow-hidden flex items-center justify-center">
@@ -144,7 +144,7 @@ export function InteractiveAvatar({
       )
     } else if (level >= 6) {
       content = (
-        <div className="relative w-[52px] h-[52px] rounded-full flex items-center justify-center p-[2px] bg-card shadow-[0_0_6px_rgba(16,185,129,0.2)] border border-emerald-500/20 select-none">
+        <div className="relative w-[52px] h-[52px] rounded-full flex items-center justify-center p-[2px] bg-card border border-emerald-500/20 avatar-ring-emerald select-none">
           <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-500 via-teal-400 to-emerald-600 opacity-80" />
           <div className="absolute inset-[1.5px] rounded-full bg-card" />
           <div className="relative z-10 w-12 h-12 rounded-full overflow-hidden flex items-center justify-center">

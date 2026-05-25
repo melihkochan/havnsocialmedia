@@ -233,18 +233,30 @@ body {
 }
 
 @keyframes pulse-glow-gold {
-  0%, 100% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.2), 0 0 15px rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.35); }
-  50% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.45), 0 0 30px rgba(245, 158, 11, 0.25); border-color: rgba(245, 158, 11, 0.7); }
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.35), 0 0 15px rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.45); }
+  50% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.75), 0 0 45px rgba(245, 158, 11, 0.4); border-color: rgba(245, 158, 11, 0.95); }
 }
 
 @keyframes pulse-glow-purple {
-  0%, 100% { box-shadow: 0 0 5px rgba(139, 92, 246, 0.2), 0 0 15px rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.3); }
-  50% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.4), 0 0 25px rgba(139, 92, 246, 0.2); border-color: rgba(139, 92, 246, 0.65); }
+  0%, 100% { box-shadow: 0 0 8px rgba(139, 92, 246, 0.35), 0 0 15px rgba(139, 92, 246, 0.2); border-color: rgba(139, 92, 246, 0.4); }
+  50% { box-shadow: 0 0 22px rgba(139, 92, 246, 0.7), 0 0 38px rgba(139, 92, 246, 0.35); border-color: rgba(139, 92, 246, 0.9); }
 }
 
 @keyframes pulse-glow-emerald {
-  0%, 100% { box-shadow: 0 0 3px rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.15); }
-  50% { box-shadow: 0 0 8px rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.35); }
+  0%, 100% { box-shadow: 0 0 6px rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.3); }
+  50% { box-shadow: 0 0 18px rgba(16, 185, 129, 0.6), 0 0 30px rgba(16, 185, 129, 0.3); border-color: rgba(16, 185, 129, 0.7); }
+}
+
+.avatar-ring-gold {
+  animation: pulse-glow-gold 2s ease-in-out infinite;
+}
+
+.avatar-ring-purple {
+  animation: pulse-glow-purple 2.5s ease-in-out infinite;
+}
+
+.avatar-ring-emerald {
+  animation: pulse-glow-emerald 3s ease-in-out infinite;
 }
 
 .level-card-gold {
