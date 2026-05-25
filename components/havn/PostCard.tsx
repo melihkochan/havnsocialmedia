@@ -551,12 +551,14 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                 </Link>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(displayPost.created_at)}</p>
           </div>
         </div>
 
         {/* Options menu */}
-        <div className="relative" ref={menuRef}>
+        <div className="flex items-center gap-1.5 flex-shrink-0 relative" ref={menuRef}>
+          <span className="text-[10px] text-muted-foreground font-semibold select-none mt-1">
+            {formatRelativeTime(displayPost.created_at)}
+          </span>
           <button
             type="button"
             onClick={() => {

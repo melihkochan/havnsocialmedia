@@ -226,7 +226,7 @@ export function Sidebar({
     };
   }, [currentUser?.id]);
 
-  // Load account list on mount and deduplicate strictly by profile.id
+  // Load account list on mount and self-heal any polluted/duplicate tokens
   useEffect(() => {
     const stored = localStorage.getItem("havn_accounts");
     if (stored) {
@@ -236,11 +236,35 @@ export function Sidebar({
           // Deduplicate strictly by profile id. Discard legacy entries with no id.
           const uniqueMap = new Map<string, any>()
           list.forEach((acc: any) => {
-            if (acc?.profile && acc.profile.id) {
+            if (acc?.profile && acc.profile.id && acc.session?.access_token) {
               uniqueMap.set(acc.profile.id, acc)
             }
           })
-          const cleaned = Array.from(uniqueMap.values())
+          
+          let cleaned = Array.from(uniqueMap.values())
+          
+          // Detect token pollution (duplicate tokens across different profiles)
+          const tokenToProfileMap = new Map<string, string>()
+          let hasPollution = false
+          cleaned.forEach((acc: any) => {
+            const token = acc.session.access_token
+            if (tokenToProfileMap.has(token)) {
+              hasPollution = true
+            } else {
+              tokenToProfileMap.set(token, acc.profile.id)
+            }
+          })
+          
+          if (hasPollution) {
+            console.warn("Session token pollution detected in localStorage havn_accounts. Cleaning up...");
+            // Keep only the currently active logged-in user if available to prevent logging back into Eray
+            if (currentUser) {
+              cleaned = cleaned.filter(acc => acc.profile.id === currentUser.id)
+            } else {
+              cleaned = []
+            }
+          }
+
           setAccounts(cleaned);
           localStorage.setItem("havn_accounts", JSON.stringify(cleaned));
         }
@@ -248,7 +272,7 @@ export function Sidebar({
         setAccounts([]);
       }
     }
-  }, []);
+  }, [currentUser]);
 
   // Sync active account to list
   useEffect(() => {
@@ -257,7 +281,13 @@ export function Sidebar({
     const syncAccount = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        if (!session || !session.user) return;
+
+        // PREVENT TOKEN POLLUTION: Only sync if the active session matches the currentUser prop!
+        if (session.user.id !== currentUser.id) {
+          console.warn("Active session ID does not match currentUser ID. Skipping sync to prevent token pollution.");
+          return;
+        }
 
         const stored = localStorage.getItem("havn_accounts");
         let list: any[] = [];
@@ -620,28 +650,30 @@ export function Sidebar({
                   
                   {/* Account List */}
                   <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto pr-0.5">
-                    {accounts.map((acc) => {
+                    {accounts.map((acc, index) => {
                       const isActive = acc.profile.id === currentUser.id || acc.profile.username === currentUser.username;
                       return (
-                        <button
-                          key={acc.profile.id || acc.profile.username}
-                          onClick={() => !isActive && handleSwitchAccount(acc)}
-                          disabled={isActive}
-                          className={cn(
-                            "flex items-center gap-2.5 px-2 py-2 rounded-xl text-left transition-all w-full",
-                            isActive
-                              ? "bg-accent/40 cursor-default"
-                              : "hover:bg-accent/70 cursor-pointer"
-                          )}
-                        >
-                          <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
-                          <div className="flex-1 min-w-0">
-                            <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} />
-                          </div>
-                          {isActive && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0 mr-1" />
-                          )}
-                        </button>
+                        <div key={acc.profile.id || acc.profile.username} className="flex flex-col">
+                          {index > 0 && <div className="border-t border-border/30 my-1 mx-2" />}
+                          <button
+                            onClick={() => !isActive && handleSwitchAccount(acc)}
+                            disabled={isActive}
+                            className={cn(
+                              "flex items-center gap-2.5 px-2 py-2 rounded-xl text-left transition-all w-full",
+                              isActive
+                                ? "bg-accent/40 cursor-default"
+                                : "hover:bg-accent/70 cursor-pointer"
+                            )}
+                          >
+                            <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
+                            <div className="flex-1 min-w-0">
+                              <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} />
+                            </div>
+                            {isActive && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0 mr-1" />
+                            )}
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
