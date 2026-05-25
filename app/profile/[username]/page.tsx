@@ -71,7 +71,7 @@ import { FollowButton } from '@/components/havn/FollowButton'
 import { FollowStatsModal } from '@/components/havn/FollowStatsModal'
 import { InteractiveAvatar } from '@/components/havn/InteractiveAvatar'
 import { getUserSupportTickets } from '@/lib/actions/support'
-import { VerificationToggleButtons } from '@/components/havn/VerificationToggleButtons'
+import { AdminControlsDropdown } from '@/components/havn/AdminControlsDropdown'
 
 export const dynamic = 'force-dynamic'
 
@@ -241,11 +241,7 @@ export default async function ProfilePage({
                   user && (
                     <div className="flex gap-2 items-center">
                       {isCurrentFounder && (
-                        <VerificationToggleButtons
-                          targetUserId={profile.id}
-                          initialIsVerified={profile.is_verified ?? false}
-                          initialIsGold={profile.is_gold ?? false}
-                        />
+                        <AdminControlsDropdown targetProfile={profile} />
                       )}
                       <FollowButton targetUserId={profile.id} initialIsFollowing={followStatus} />
                       <MuteProfileButton username={profile.username} />

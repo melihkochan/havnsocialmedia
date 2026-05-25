@@ -300,3 +300,97 @@ export async function toggleProfileVerification(targetUserId: string, type: 'ver
   revalidatePath(`/profile/${targetProfile.username}`)
   return { success: true, is_verified: newVerified, is_gold: newGold }
 }
+
+export async function adminUpdateProfile(
+  targetUserId: string,
+  fields: {
+    first_name?: string | null
+    last_name?: string | null
+    username?: string
+    bio?: string | null
+    resetAvatar?: boolean
+    resetBanner?: boolean
+  }
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  // Check if current user is founder
+  const { data: currentUserProfile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (!currentUserProfile || !isFounder(currentUserProfile)) {
+    return { error: 'Bu işlem için yetkiniz yok.' }
+  }
+
+  // Get current state of target profile
+  const { data: targetProfile, error: fetchErr } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', targetUserId)
+    .single()
+
+  if (fetchErr || !targetProfile) {
+    return { error: 'Hedef profil bulunamadı.' }
+  }
+
+  const supabaseAdmin = await createServiceClient()
+  const updates: Record<string, any> = {
+    updated_at: new Date().toISOString()
+  }
+
+  if (fields.first_name !== undefined) updates.first_name = fields.first_name
+  if (fields.last_name !== undefined) updates.last_name = fields.last_name
+  if (fields.username !== undefined && fields.username.trim() !== '') {
+    // Check username uniqueness
+    const { data: existing } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('username', fields.username.trim())
+      .neq('id', targetUserId)
+      .maybeSingle()
+
+    if (existing) {
+      return { error: 'Bu kullanıcı adı zaten kullanılıyor.' }
+    }
+    updates.username = fields.username.trim()
+  }
+
+  // Handle bio and reset media
+  if (fields.bio !== undefined) {
+    const dbHasColumns = await checkDbHasVerificationColumns()
+    if (dbHasColumns) {
+      updates.bio = fields.bio
+    } else {
+      const bioParts = (targetProfile.bio || '').split('\u200B')
+      const serializedMeta = bioParts[1] || '{}'
+      updates.bio = fields.bio ? `${fields.bio}\u200B${serializedMeta}` : `\u200B${serializedMeta}`
+    }
+  }
+
+  if (fields.resetAvatar) {
+    updates.avatar_url = null
+  }
+  if (fields.resetBanner) {
+    updates.banner_url = null
+  }
+
+  const { error: updateErr } = await supabaseAdmin
+    .from('profiles')
+    .update(updates)
+    .eq('id', targetUserId)
+
+  if (updateErr) {
+    return { error: updateErr.message }
+  }
+
+  revalidatePath(`/profile/${targetProfile.username}`)
+  if (fields.username && fields.username.trim() !== targetProfile.username) {
+    revalidatePath(`/profile/${fields.username.trim()}`)
+  }
+  return { success: true }
+}
