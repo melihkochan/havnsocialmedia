@@ -208,10 +208,10 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
     if (!liked) {
       setLiked(true)
       setLikeCount((c) => c + 1)
-      startTransition(async () => {
-        await toggleLike(displayPost.id)
-      })
     }
+    startTransition(async () => {
+      await toggleLike(displayPost.id, emoji, 'like')
+    })
   }
 
   const handleMouseEnter = () => {
@@ -435,7 +435,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       setActiveReaction(null)
       localStorage.removeItem(`havn_post_like_reaction_${displayPost.id}`)
       startTransition(async () => {
-        await toggleLike(displayPost.id)
+        await toggleLike(displayPost.id, 'like', 'unlike')
       })
     } else {
       setLiked(true)
@@ -444,7 +444,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       localStorage.setItem(`havn_post_like_reaction_${displayPost.id}`, '❤️')
       triggerReactionAnimation('❤️')
       startTransition(async () => {
-        await toggleLike(displayPost.id)
+        await toggleLike(displayPost.id, '❤️', 'like')
       })
     }
   }

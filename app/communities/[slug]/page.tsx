@@ -120,6 +120,7 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
           membershipRole={membership?.role}
           initialPosts={posts}
           activeSort={activeSort}
+          communityDescription={community.description}
         />
       </div>
     </MainLayout>

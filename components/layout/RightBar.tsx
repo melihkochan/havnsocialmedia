@@ -14,6 +14,7 @@ import { getDisplayName, getFullName } from '@/lib/profile-display'
 import { ProfileName } from '@/components/havn/ProfileName'
 import { cleanBio } from '@/lib/profile-enrich'
 import { getRightBarSuggestions } from '@/lib/actions/follows'
+import { parseCommunityDescription } from '@/lib/community-rules'
 
 interface CommunityData {
   id: string
@@ -493,11 +494,14 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
             </div>
             <div>
               <p className="text-base font-black text-foreground mb-1">{community.name}</p>
-              {community.description && (
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {community.description}
-                </p>
-              )}
+              {(() => {
+                const parsed = parseCommunityDescription(community.description)
+                return parsed.description ? (
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {parsed.description}
+                  </p>
+                ) : null
+              })()}
             </div>
 
             {/* Standard Stats */}
@@ -545,12 +549,18 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
           <div className="bg-card border border-border rounded-2xl p-4">
             <h2 className="text-sm font-bold text-foreground mb-3">Topluluk Kuralları</h2>
             <ol className="flex flex-col gap-2">
-              {['Saygılı ve yapıcı ol', 'Yalnızca ilgili içerik paylaş', 'Spam ve reklam yasaktır', 'Kaynakları atıfla belirt'].map((rule, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-xs text-muted-foreground">
-                  <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-px" style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)', color: 'var(--primary)' }}>{i + 1}</span>
-                  {rule}
-                </li>
-              ))}
+              {(() => {
+                const parsed = parseCommunityDescription(community.description)
+                const displayRules = parsed.rules.length > 0 
+                  ? parsed.rules 
+                  : ['Saygılı ve yapıcı ol', 'Yalnızca ilgili içerik paylaş', 'Spam ve reklam yasaktır', 'Kaynakları atıfla belirt']
+                return displayRules.map((rule, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-muted-foreground">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-px" style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)', color: 'var(--primary)' }}>{i + 1}</span>
+                    {rule}
+                  </li>
+                ))
+              })()}
             </ol>
           </div>
         </>

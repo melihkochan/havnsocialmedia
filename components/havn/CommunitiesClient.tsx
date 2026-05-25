@@ -5,14 +5,48 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Globe, Lock, Plus, Search, Check, Clock, X, Loader2 } from 'lucide-react'
 import { joinCommunity, leaveCommunity, createCommunity } from '@/lib/actions/communities'
 import { cn } from '@/lib/utils'
+import { parseCommunityDescription } from '@/lib/community-rules'
 
 type Community = {
   id: string; name: string; slug: string; description: string | null
   type: 'public' | 'request_to_join'
   community_members: { id: string }[]
+  creator?: {
+    username: string
+    first_name?: string | null
+    last_name?: string | null
+  } | null
 }
 
 type Membership = { community_id: string; role: string; status: string }
+
+function CommunityAvatar({ id, name }: { id: string; name: string }) {
+  const [error, setError] = useState(false)
+  const avatarUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/communities/${id}/avatar`
+
+  if (!error) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        onError={() => setError(true)}
+        className="w-12 h-12 rounded-2xl object-cover flex-shrink-0 shadow-sm border border-border/20"
+      />
+    )
+  }
+
+  return (
+    <div
+      className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black flex-shrink-0 text-white shadow-sm"
+      style={{
+        background: `linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))`,
+        filter: `hue-rotate(${(name.charCodeAt(0) * 30) % 360}deg)`,
+      }}
+    >
+      {name.charAt(0)}
+    </div>
+  )
+}
 
 interface CommunitiesClientProps {
   communities: Community[]
@@ -178,16 +212,7 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                 <a href={`/communities/${community.slug}`} className="flex flex-col gap-4 cursor-pointer">
                   {/* Header */}
                   <div className="flex items-start gap-3">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black flex-shrink-0"
-                      style={{
-                        background: `linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))`,
-                        filter: `hue-rotate(${(community.name.charCodeAt(0) * 30) % 360}deg)`,
-                        color: 'var(--primary-foreground)',
-                      }}
-                    >
-                      {community.name.charAt(0)}
-                    </div>
+                    <CommunityAvatar id={community.id} name={community.name} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-sm font-bold text-foreground">{community.name}</h3>
@@ -202,17 +227,30 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                           {community.type === 'public' ? 'Açık' : 'Başvurulu'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                        <Users size={11} />
-                        <span>{memberCount.toLocaleString('tr-TR')} üye</span>
+                      <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Users size={11} />
+                          <span>{memberCount.toLocaleString('tr-TR')} üye</span>
+                        </span>
+                        {community.creator && (
+                          <>
+                            <span className="opacity-40">•</span>
+                            <span>
+                              Kurucu: <span className="text-foreground font-semibold">@{community.creator.username}</span>
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Description */}
-                  {community.description && (
-                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{community.description}</p>
-                  )}
+                  {(() => {
+                    const parsed = parseCommunityDescription(community.description)
+                    return parsed.description ? (
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{parsed.description}</p>
+                    ) : null
+                  })()}
                 </a>
 
                 {/* Join button — outside clickable area */}

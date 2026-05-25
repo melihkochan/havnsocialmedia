@@ -2,11 +2,12 @@
 
 import { useState, useTransition, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Users, Lock, Globe, Settings, X, Loader2, ImagePlus } from "lucide-react"
+import { Users, Lock, Globe, Settings, X, Loader2, ImagePlus, Trash2, Plus, Megaphone } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { updateCommunitySettings } from "@/lib/actions/communities"
 import { PendingRequestsList } from "@/components/havn/PendingRequestsList"
 import { cn } from "@/lib/utils"
+import { parseCommunityDescription, serializeCommunityDescription } from "@/lib/community-rules"
 
 interface CommunityBannerProps {
   community: {
@@ -126,11 +127,14 @@ export function CommunityBanner({ community, isAdmin, initialPendingRequests = [
               </span>
             </div>
 
-            {community.description && (
-              <p className="text-xs text-white/80 line-clamp-2 max-w-md mb-2 drop-shadow-sm font-medium">
-                {community.description}
-              </p>
-            )}
+            {(() => {
+              const parsed = parseCommunityDescription(community.description)
+              return parsed.description ? (
+                <p className="text-xs text-white/80 line-clamp-2 max-w-md mb-2 drop-shadow-sm font-medium">
+                  {parsed.description}
+                </p>
+              ) : null
+            })()}
 
             <div className="flex items-center gap-4 text-white/95 text-xs drop-shadow-sm">
               <span className="flex items-center gap-1.5 font-semibold">
@@ -205,10 +209,17 @@ interface EditModalProps {
 }
 
 function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, onSave, pendingRequests, setPendingRequests, initialTab = "general" }: EditModalProps) {
-  const [activeTab, setActiveTab] = useState<"general" | "requests">(initialTab)
+  const [activeTab, setActiveTab] = useState<"general" | "rules" | "requests">(initialTab)
   const [type, setType] = useState(community.type)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  // Parse Rules & Announcement from raw description
+  const parsedData = useRef(parseCommunityDescription(community.description)).current
+  const [descText, setDescText] = useState(parsedData.description)
+  const [rules, setRules] = useState<string[]>(parsedData.rules)
+  const [announcement, setAnnouncement] = useState(parsedData.announcement || '')
+  const [newRule, setNewRule] = useState('')
 
   // Preview States
   const [avatarPreview, setAvatarPreview] = useState<string | null>(currentAvatar)
@@ -232,6 +243,10 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     fd.set("type", type)
+
+    // Serialize description text, rules list, and announcement into the single description field
+    const serializedDesc = serializeCommunityDescription(descText, rules, announcement)
+    fd.set("description", serializedDesc)
 
     startTransition(async () => {
       const res = await updateCommunitySettings(community.id, fd)
@@ -288,6 +303,18 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab("rules")}
+            className={cn(
+              "flex-1 py-3 text-xs font-bold border-b-2 transition-all cursor-pointer",
+              activeTab === "rules"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Kurallar & Duyuru
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab("requests")}
             className={cn(
               "flex-1 py-3 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center justify-center gap-2",
@@ -296,7 +323,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            <span>Üyelik Başvuruları</span>
+            <span>Başvurular</span>
             {pendingRequests.length > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black">
                 {pendingRequests.length}
@@ -305,148 +332,271 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
           </button>
         </div>
 
-        {/* Scrollable Tab Content Container */}
-        <div className="p-6 overflow-y-auto max-h-[450px]">
-          {activeTab === "general" ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Banner Area */}
-              <div className="relative h-28 bg-muted rounded-xl flex items-center justify-center overflow-hidden border border-border">
-                {bannerPreview ? (
-                  <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[11px] text-muted-foreground">Kapak görseli seçilmedi</span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => bannerInputRef.current?.click()}
-                  className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white text-[10px] font-semibold backdrop-blur-sm transition-all cursor-pointer"
-                >
-                  <ImagePlus size={11} /> Kapak Seç
-                </button>
-              </div>
-
-              {/* Avatar upload + Info details */}
-              <div className="flex gap-4 items-center">
-                <div className="relative w-16 h-16 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center group flex-shrink-0">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+        {/* Form Wrap */}
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+          {/* Scrollable Tab Content Container */}
+          <div className="p-6 overflow-y-auto max-h-[450px]">
+            {activeTab === "general" && (
+              <div className="space-y-4">
+                {/* Banner Area */}
+                <div className="relative h-28 bg-muted rounded-xl flex items-center justify-center overflow-hidden border border-border">
+                  {bannerPreview ? (
+                    <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-lg font-black text-muted-foreground">{community.name.charAt(0)}</span>
+                    <span className="text-[11px] text-muted-foreground">Kapak görseli seçilmedi</span>
                   )}
                   <button
                     type="button"
-                    onClick={() => avatarInputRef.current?.click()}
-                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white cursor-pointer"
+                    onClick={() => bannerInputRef.current?.click()}
+                    className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white text-[10px] font-semibold backdrop-blur-sm transition-all cursor-pointer"
                   >
-                    <ImagePlus size={14} />
+                    <ImagePlus size={11} /> Kapak Seç
                   </button>
                 </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-foreground">Topluluk Görseli</h3>
-                  <p className="text-[10px] text-muted-foreground">Logoyu değiştirmek için üzerine tıklayın.</p>
-                </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground">Topluluk Adı</label>
-                <input
-                  name="name"
-                  required
-                  minLength={3}
-                  maxLength={50}
-                  defaultValue={community.name}
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground">Açıklama</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  maxLength={300}
-                  defaultValue={community.description}
-                  placeholder="Açıklama girin..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground">Gizlilik Türü</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["public", "request_to_join"] as const).map((t) => (
+                {/* Avatar upload + Info details */}
+                <div className="flex gap-4 items-center">
+                  <div className="relative w-16 h-16 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center group flex-shrink-0">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-lg font-black text-muted-foreground">{community.name.charAt(0)}</span>
+                    )}
                     <button
-                      key={t}
                       type="button"
-                      onClick={() => setType(t)}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer justify-center",
-                        type === t
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:border-primary/40"
-                      )}
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white cursor-pointer"
                     >
-                      {t === "public" ? <Globe size={13} /> : <Lock size={13} />}
-                      {t === "public" ? "Herkese Açık" : "Başvurulu"}
+                      <ImagePlus size={14} />
                     </button>
-                  ))}
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-semibold text-foreground">Topluluk Görseli</h3>
+                    <p className="text-[10px] text-muted-foreground">Logoyu değiştirmek için üzerine tıklayın.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Topluluk Adı</label>
+                  <input
+                    name="name"
+                    required
+                    minLength={3}
+                    maxLength={50}
+                    defaultValue={community.name}
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Açıklama</label>
+                  <textarea
+                    rows={3}
+                    maxLength={300}
+                    value={descText}
+                    onChange={(e) => setDescText(e.target.value)}
+                    placeholder="Açıklama girin..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Gizlilik Türü</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["public", "request_to_join"] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setType(t)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer justify-center",
+                          type === t
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        )}
+                      >
+                        {t === "public" ? <Globe size={13} /> : <Lock size={13} />}
+                        {t === "public" ? "Herkese Açık" : "Başvurulu"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Hidden File Inputs */}
+                <input
+                  ref={avatarInputRef}
+                  name="avatar"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(e, "avatar")}
+                />
+                <input
+                  ref={bannerInputRef}
+                  name="banner"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(e, "banner")}
+                />
+
+                {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-accent text-foreground transition-all cursor-pointer"
+                  >
+                    İptal
+                  </button>
+                  <motion.button
+                    type="submit"
+                    disabled={isPending}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold shadow-lg cursor-pointer"
+                    style={{
+                      background: "linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))",
+                      color: "var(--primary-foreground)",
+                    }}
+                  >
+                    {isPending ? <Loader2 size={12} className="animate-spin" /> : null}
+                    Kaydet
+                  </motion.button>
                 </div>
               </div>
+            )}
 
-              {/* Hidden File Inputs */}
-              <input
-                ref={avatarInputRef}
-                name="avatar"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleFileChange(e, "avatar")}
-              />
-              <input
-                ref={bannerInputRef}
-                name="banner"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleFileChange(e, "banner")}
-              />
+            {activeTab === "rules" && (
+              <div className="space-y-5">
+                {/* Rules List Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-foreground">Topluluk Kuralları</h3>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase px-2 py-0.5 rounded-md bg-muted">
+                      {rules.length} kural
+                    </span>
+                  </div>
 
-              {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+                  <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1">
+                    {rules.length === 0 ? (
+                      <p className="text-xs text-muted-foreground/60 italic py-4 text-center">Henüz özel kural eklenmedi. Standart kurallar geçerli olacaktır.</p>
+                    ) : (
+                      rules.map((rule, idx) => (
+                        <div key={idx} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/80 shadow-sm hover:border-primary/20 transition-all">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-px">
+                              {idx + 1}
+                            </span>
+                            <span className="text-xs text-foreground font-medium break-all">{rule}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setRules(prev => prev.filter((_, i) => i !== idx))}
+                            className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
+                            title="Kuralı Sil"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-accent text-foreground transition-all cursor-pointer"
-                >
-                  İptal
-                </button>
-                <motion.button
-                  type="submit"
-                  disabled={isPending}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold shadow-lg cursor-pointer"
-                  style={{
-                    background: "linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))",
-                    color: "var(--primary-foreground)",
-                  }}
-                >
-                  {isPending ? <Loader2 size={12} className="animate-spin" /> : null}
-                  Kaydet
-                </motion.button>
+                  {/* Add Rule Input */}
+                  <div className="flex gap-2">
+                    <input
+                      value={newRule}
+                      onChange={(e) => setNewRule(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          if (newRule.trim()) {
+                            setRules(prev => [...prev, newRule.trim()])
+                            setNewRule('')
+                          }
+                        }
+                      }}
+                      placeholder="Yeni kural yazın..."
+                      className="flex-1 px-3.5 py-2 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/60"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newRule.trim()) {
+                          setRules(prev => [...prev, newRule.trim()])
+                          setNewRule('')
+                        }
+                      }}
+                      className="px-3 rounded-xl bg-primary/10 hover:bg-primary/15 text-primary text-xs font-bold border border-primary/20 transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus size={13} /> Ekle
+                    </button>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-border/60" />
+
+                {/* Announcement Section */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Megaphone size={13} className="text-primary" />
+                    <h3 className="text-xs font-bold text-foreground">Sabitlenmiş Duyuru</h3>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-normal">
+                    Topluluğun en üstünde tüm üyelere gösterilecek bir duyuru yayınlayın. Kaldırmak için metni tamamen silin.
+                  </p>
+                  <textarea
+                    value={announcement}
+                    onChange={(e) => setAnnouncement(e.target.value)}
+                    placeholder="Duyuru metni yazın (örn: Hoş geldiniz! Bu hafta sonu canlı sohbet etkinliğimiz var.)"
+                    rows={3}
+                    maxLength={250}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none placeholder:text-muted-foreground/60 leading-relaxed"
+                  />
+                </div>
+
+                {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+
+                {/* Save Button for rules tab */}
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-accent text-foreground transition-all cursor-pointer"
+                  >
+                    İptal
+                  </button>
+                  <motion.button
+                    type="submit"
+                    disabled={isPending}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold shadow-lg cursor-pointer"
+                    style={{
+                      background: "linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))",
+                      color: "var(--primary-foreground)",
+                    }}
+                  >
+                    {isPending ? <Loader2 size={12} className="animate-spin" /> : null}
+                    Kaydet
+                  </motion.button>
+                </div>
               </div>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <PendingRequestsList
-                communityId={community.id}
-                requests={pendingRequests}
-                setRequests={setPendingRequests}
-                minimal={true}
-              />
-            </div>
-          )}
-        </div>
+            )}
+
+            {activeTab === "requests" && (
+              <div className="space-y-4">
+                <PendingRequestsList
+                  communityId={community.id}
+                  requests={pendingRequests}
+                  setRequests={setPendingRequests}
+                  minimal={true}
+                />
+              </div>
+            )}
+          </div>
+        </form>
       </motion.div>
     </div>
   )

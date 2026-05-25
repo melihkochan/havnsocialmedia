@@ -8,7 +8,7 @@ export async function getCommunities() {
 
   const { data, error } = await supabase
     .from('communities')
-    .select(`*, community_members(id)`)
+    .select(`*, creator:profiles!created_by(id, username, first_name, last_name), community_members(id)`)
     .order('created_at', { ascending: false })
 
   if (error) return []
@@ -42,14 +42,15 @@ export async function createCommunity(formData: FormData) {
     .replace(/\s+/g, '-')
     .slice(0, 50)
 
-  // Check slug uniqueness
+  // Check slug or name uniqueness case-insensitively
   const { data: existing } = await supabase
     .from('communities')
     .select('id')
-    .eq('slug', slug)
-    .single()
+    .or(`slug.eq.${slug},name.ilike.${name}`)
+    .limit(1)
+    .maybeSingle()
 
-  if (existing) return { error: 'Bu isimde bir topluluk zaten var.' }
+  if (existing) return { error: 'Bu isimde veya benzer bir isimde bir topluluk zaten var.' }
 
   const { data: community, error } = await supabase
     .from('communities')
@@ -170,16 +171,17 @@ export async function updateCommunitySettings(communityId: string, formData: For
       .replace(/\s+/g, '-')
       .slice(0, 50)
     
-    // Check if new slug conflicts with another community
+    // Check if new slug or name conflicts with another community
     const { data: existing } = await supabase
       .from('communities')
       .select('id')
-      .eq('slug', newSlug)
       .neq('id', communityId)
-      .single()
+      .or(`slug.eq.${newSlug},name.ilike.${name}`)
+      .limit(1)
+      .maybeSingle()
 
     if (existing) {
-      return { error: 'Bu isimde bir topluluk zaten var, lütfen farklı bir isim seçin.' }
+      return { error: 'Bu isimde veya benzer bir isimde bir topluluk zaten var, lütfen farklı bir isim seçin.' }
     }
     updates.slug = newSlug
   }

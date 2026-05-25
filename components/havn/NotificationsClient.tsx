@@ -312,11 +312,25 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
             let contentText: string | React.ReactNode = ''
 
             switch (notif.type) {
-              case 'like':
-                icon = <Heart size={14} className="fill-current" />
-                iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
-                contentText = 'gönderini beğendi'
+              case 'like': {
+                const reaction = notif.message
+                if (reaction && reaction !== 'like') {
+                  icon = <span className="text-sm select-none">{reaction}</span>
+                  iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
+                  let verb = 'beğendi'
+                  if (reaction === '🔥') verb = 'gönderine alev attı'
+                  else if (reaction === '😂') verb = 'gönderine güldü'
+                  else if (reaction === '😮') verb = 'gönderine şaşırdı'
+                  else if (reaction === '😢') verb = 'gönderine üzüldü'
+                  else verb = `gönderine ${reaction} tepkisi verdi`
+                  contentText = verb
+                } else {
+                  icon = <Heart size={14} className="fill-current" />
+                  iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
+                  contentText = 'gönderini beğendi'
+                }
                 break
+              }
               case 'comment':
                 icon = <MessageCircle size={14} />
                 iconBg = 'bg-blue-500/10 text-blue-500 border border-blue-500/25'

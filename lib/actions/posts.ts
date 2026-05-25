@@ -312,7 +312,7 @@ export async function togglePinPost(postId: string, scope: 'community' | 'profil
   return { success: true, pinned: willPin }
 }
 
-export async function toggleLike(postId: string) {
+export async function toggleLike(postId: string, reaction: string = 'like', forceState?: 'like' | 'unlike') {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
@@ -325,17 +325,25 @@ export async function toggleLike(postId: string) {
     .eq('user_id', user.id)
     .single()
 
-  if (existing) {
-    await supabase.from('likes').delete().eq('id', existing.id)
+  const shouldUnlike = forceState === 'unlike' || (forceState !== 'like' && existing)
+
+  if (shouldUnlike) {
+    if (existing) {
+      await supabase.from('likes').delete().eq('id', existing.id)
+    }
     return { liked: false }
   } else {
-    await supabase.from('likes').insert({ post_id: postId, user_id: user.id })
+    if (!existing) {
+      await supabase.from('likes').insert({ post_id: postId, user_id: user.id })
+    }
     
     // Trigger notification
     const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single()
     if (post && post.user_id !== user.id) {
       const { createNotification } = await import('@/lib/actions/notifications')
-      await createNotification(post.user_id, user.id, 'like', postId)
+      await createNotification(post.user_id, user.id, 'like', postId, null, {
+        message: reaction !== 'like' ? reaction : null
+      })
     }
 
     return { liked: true }

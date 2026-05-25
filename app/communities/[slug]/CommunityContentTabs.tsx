@@ -8,6 +8,8 @@ import { CommunityChat } from '@/components/havn/CommunityChat'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { Megaphone, X } from 'lucide-react'
+import { parseCommunityDescription } from '@/lib/community-rules'
 
 interface Profile {
   id: string
@@ -27,6 +29,7 @@ interface CommunityContentTabsProps {
   membershipRole: 'owner' | 'moderator' | 'member' | undefined
   initialPosts: any[]
   activeSort: 'new' | 'popular'
+  communityDescription?: string | null
 }
 
 export function CommunityContentTabs({
@@ -37,12 +40,15 @@ export function CommunityContentTabs({
   isAdmin,
   membershipRole,
   initialPosts,
-  activeSort
+  activeSort,
+  communityDescription
 }: CommunityContentTabsProps) {
   const [activeTab, setActiveTab] = useState<'posts' | 'chat' | 'announcements'>('posts')
   const [unreadChatCount, setUnreadChatCount] = useState(0)
   const [unreadAnnCount, setUnreadAnnCount] = useState(0)
   const activeTabRef = useRef(activeTab)
+  const [showAnnouncement, setShowAnnouncement] = useState(true)
+  const { announcement } = parseCommunityDescription(communityDescription || null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -181,6 +187,33 @@ export function CommunityContentTabs({
       <div>
         {activeTab === 'posts' && (
           <div className="space-y-4">
+            {/* Pinned Announcement */}
+            {announcement && showAnnouncement && (
+              <div
+                className="relative overflow-hidden rounded-2xl p-4 border border-primary/20 bg-card/60 backdrop-blur-md shadow-md flex items-start gap-3 animate-fade-in"
+                style={{
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05), inset 0 0 20px rgba(var(--primary-rgb), 0.02)',
+                }}
+              >
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                  <Megaphone size={14} className="animate-pulse" />
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-xs font-bold text-foreground mb-0.5">Topluluk Duyurusu 📢</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{announcement}</p>
+                </div>
+
+                <button
+                  onClick={() => setShowAnnouncement(false)}
+                  className="p-1 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent/50 transition-all cursor-pointer flex-shrink-0"
+                  title="Kapat"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             {/* Post form — only if member */}
             {currentUser && isMember && (
               <NewPostForm
