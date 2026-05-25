@@ -4,3 +4,15 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export function getSessionId(accessToken?: string): string | null {
+  if (!accessToken) return null
+  try {
+    const payloadBase64 = accessToken.split('.')[1]
+    const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf8')
+    const payload = JSON.parse(payloadJson)
+    return payload.session_id || null
+  } catch {
+    return null
+  }
+}

@@ -388,7 +388,7 @@ export async function getRightBarSuggestions() {
   if (!user) {
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold')
+      .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at')
       .order('updated_at', { ascending: false })
       .limit(5)
     return (profiles ?? []).map(p => ({ ...p, relation: 'none' }))
@@ -397,7 +397,7 @@ export async function getRightBarSuggestions() {
   // Fetch recent profiles excluding current user
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold')
+    .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at')
     .neq('id', user.id)
     .order('updated_at', { ascending: false })
     .limit(5)

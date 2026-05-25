@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 import { signIn } from '@/lib/actions/auth'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
+  const searchParams = useSearchParams()
+  const reason = searchParams?.get('reason')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -51,6 +54,25 @@ export default function LoginPage() {
         <h1 className="text-3xl font-black text-foreground mb-2">Tekrar Hoşgeldin</h1>
         <p className="text-muted-foreground">Hesabına giriş yap ve topluluğuna katıl.</p>
       </div>
+
+      {reason === 'multi_session' && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 rounded-xl text-xs font-semibold flex items-start gap-2.5"
+          style={{
+            background: 'color-mix(in oklch, var(--primary) 12%, transparent)',
+            color: 'var(--primary)',
+            border: '1px solid color-mix(in oklch, var(--primary) 25%, transparent)',
+          }}
+        >
+          <AlertCircle size={15} className="mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-black uppercase tracking-wider text-[9px] mb-0.5">OTURUM SONLANDIRILDI</p>
+            <p className="text-muted-foreground leading-relaxed text-[11px]">Hesabınıza başka bir konumdan veya tarayıcıdan giriş yapıldığı için bu cihazdaki oturumunuz kapatıldı.</p>
+          </div>
+        </motion.div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email */}

@@ -2,6 +2,8 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { enrichProfile } from '@/lib/profile-enrich'
+import { getSessionId } from '@/lib/utils'
 
 export async function signIn(formData: FormData) {
   const supabase = await createClient()
@@ -12,6 +14,16 @@ export async function signIn(formData: FormData) {
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Record the new session ID
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session && session.user) {
+    const currentSessionId = getSessionId(session.access_token)
+    if (currentSessionId) {
+      const { saveProfileMetadata } = await import('@/lib/actions/profile-db')
+      await saveProfileMetadata(session.user.id, { last_session_id: currentSessionId })
+    }
   }
 
   redirect('/feed')
@@ -79,16 +91,34 @@ export async function signOut() {
 
 export async function getUser() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session || !session.user) return null
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', user.id)
+    .eq('id', session.user.id)
     .single()
 
-  return profile
+  if (!profile) return null
+  const enriched = enrichProfile(profile)
+  if (!enriched) return null
+
+  // Enforce single session
+  const currentSessionId = getSessionId(session.access_token)
+  if (currentSessionId) {
+    if (!enriched.last_session_id) {
+      const { saveProfileMetadata } = await import('@/lib/actions/profile-db')
+      await saveProfileMetadata(session.user.id, { last_session_id: currentSessionId })
+      enriched.last_session_id = currentSessionId
+    } else if (enriched.last_session_id !== currentSessionId) {
+      console.warn(`Session mismatch detected for user ${enriched.username}. Booting...`)
+      await supabase.auth.signOut()
+      redirect('/login?reason=multi_session')
+    }
+  }
+
+  return enriched
 }
 
 export async function switchSession(accessToken: string, refreshToken: string) {

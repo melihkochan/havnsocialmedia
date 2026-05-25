@@ -36,6 +36,7 @@ interface Member {
     first_name?: string | null
     last_name?: string | null
     avatar_url: string | null
+    updated_at?: string
   }
 }
 
@@ -44,10 +45,11 @@ interface RightBarProps {
   currentUserRole?: 'owner' | 'moderator' | 'member' | null
 }
 
-function Avatar({ username, avatarUrl, size = 'sm' }: { username: string; avatarUrl: string | null; size?: 'sm' | 'md' }) {
+function Avatar({ username, avatarUrl, size = 'sm', updatedAt }: { username: string; avatarUrl: string | null; size?: 'sm' | 'md'; updatedAt?: string }) {
   const sizeCls = size === 'md' ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs'
   if (avatarUrl) {
-    return <img src={avatarUrl} alt={username} className={cn(sizeCls, "rounded-full object-cover flex-shrink-0 ring-1 ring-border")} />
+    const finalUrl = updatedAt ? `${avatarUrl}?t=${new Date(updatedAt).getTime()}` : avatarUrl
+    return <img src={finalUrl} alt={username} className={cn(sizeCls, "rounded-full object-cover flex-shrink-0 ring-1 ring-border")} />
   }
   return (
     <div
@@ -274,7 +276,7 @@ function GlobalRightBar() {
                 className="w-full flex items-center justify-between gap-2.5 py-2.5 hover:opacity-85 transition-opacity group"
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <Avatar username={u.username} avatarUrl={u.avatar_url} />
+                  <Avatar username={u.username} avatarUrl={u.avatar_url} updatedAt={u.updated_at} />
                   <div className="flex-1 min-w-0">
                     <ProfileName profile={u} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} />
                     {u.bio && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{cleanBio(u.bio)}</p>}
@@ -376,7 +378,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
       const [membersResult, statsResult, countResult] = await Promise.all([
         supabase
           .from('community_members')
-          .select('user_id, role, status, profiles(id, username, first_name, last_name, avatar_url)')
+          .select('user_id, role, status, profiles(id, username, first_name, last_name, avatar_url, updated_at)')
           .eq('community_id', activeId)
           .eq('status', 'approved')
           .order('role', { ascending: true }),
@@ -586,7 +588,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
 
               return (
                 <div key={m.user_id} className="flex items-center gap-2 py-2.5">
-                  <Avatar username={m.profiles.username} avatarUrl={m.profiles.avatar_url} />
+                  <Avatar username={m.profiles.username} avatarUrl={m.profiles.avatar_url} updatedAt={m.profiles.updated_at} />
 
                   <div className="flex-1 min-w-0">
                     <Link href={`/profile/${m.profiles.username}`} className="text-xs font-bold text-foreground hover:text-primary transition-all truncate block">

@@ -30,6 +30,13 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
   }, []);
 
   useEffect(() => {
+    if (currentUser?.accent_theme) {
+      document.documentElement.setAttribute("data-accent", currentUser.accent_theme);
+      localStorage.setItem("havn_accent_theme", currentUser.accent_theme);
+    }
+  }, [currentUser?.accent_theme]);
+
+  useEffect(() => {
     const handleScroll = () => {
       const scrollPos = window.scrollY || document.documentElement.scrollTop || scrollContainerRef.current?.scrollTop || 0;
       setShowScrollTop(scrollPos > 400);
@@ -89,7 +96,10 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
     const update = async () => {
       try {
         const { updateLastSeen } = await import("@/lib/actions/profile");
-        await updateLastSeen();
+        const res = await updateLastSeen();
+        if (res && res.error === 'multi_session') {
+          window.location.href = '/login?reason=multi_session';
+        }
       } catch (e) {}
     };
     update();

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { HavnLogo } from '@/components/havn/HavnLogo'
 import { Shield, Users, Zap } from 'lucide-react'
+import { Suspense } from 'react'
 
 export const metadata: Metadata = {
   title: 'Giriş — HAVN',
@@ -78,7 +79,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="lg:hidden flex justify-center mb-8">
             <HavnLogo />
           </div>
-          {children}
+          <Suspense fallback={null}>
+            {children}
+          </Suspense>
         </div>
       </div>
     </div>

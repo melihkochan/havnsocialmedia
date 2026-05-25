@@ -7,6 +7,7 @@ import type { EnrichedProfile } from '@/lib/profile-enrich'
 import { saveProfileMetadata, checkDbHasVerificationColumns } from '@/lib/actions/profile-db'
 import { isFounder } from '@/lib/founder'
 import { createNotification } from '@/lib/actions/notifications'
+import { getSessionId } from '@/lib/utils'
 
 
 export async function getProfile(username: string) {
@@ -173,6 +174,7 @@ export async function updateProfile(formData: FormData) {
   revalidatePath('/profile')
   revalidatePath('/settings')
   if (username) revalidatePath(`/profile/${username}`)
+  revalidatePath('/', 'layout')
   return { success: true }
 }
 
@@ -210,13 +212,13 @@ export async function updateDefaultFeedType(feedType: 'for_you' | 'following') {
 
 export async function updateLastSeen() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session || !session.user) return
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', user.id)
+    .eq('id', session.user.id)
     .single()
 
   if (!profile) return
@@ -224,15 +226,23 @@ export async function updateLastSeen() {
   const enriched = enrichProfile(profile)
   if (!enriched) return
 
+  // Enforce single session check
+  const currentSessionId = getSessionId(session.access_token)
+  if (currentSessionId && enriched.last_session_id && enriched.last_session_id !== currentSessionId) {
+    console.warn(`Heartbeat mismatch: Booting user ${enriched.username}.`)
+    await supabase.auth.signOut()
+    return { error: 'multi_session' }
+  }
+
   // If status sharing is disabled, we don't update last_seen_at
   if (enriched.show_status === false) {
     if (enriched.last_seen_at) {
-      await saveProfileMetadata(user.id, { last_seen_at: null })
+      await saveProfileMetadata(session.user.id, { last_seen_at: null })
     }
     return
   }
 
-  await saveProfileMetadata(user.id, { last_seen_at: new Date().toISOString() })
+  await saveProfileMetadata(session.user.id, { last_seen_at: new Date().toISOString() })
 }
 
 export async function toggleProfileVerification(targetUserId: string, type: 'verified' | 'gold') {
@@ -317,6 +327,7 @@ export async function toggleProfileVerification(targetUserId: string, type: 'ver
   }
 
   revalidatePath(`/profile/${targetProfile.username}`)
+  revalidatePath('/', 'layout')
   return { success: true, is_verified: newVerified, is_gold: newGold }
 }
 
@@ -430,5 +441,20 @@ export async function adminUpdateProfile(
   if (fields.username && fields.username.trim() !== targetProfile.username) {
     revalidatePath(`/profile/${fields.username.trim()}`)
   }
+  revalidatePath('/', 'layout')
+  return { success: true }
+}
+
+export async function updateAccentTheme(themeName: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  const res = await saveProfileMetadata(user.id, { accent_theme: themeName })
+  if (res.error) return { error: res.error }
+  
+  revalidatePath('/profile')
+  revalidatePath('/settings')
+  revalidatePath('/', 'layout')
   return { success: true }
 }

@@ -21,6 +21,8 @@ export interface EnrichedProfile {
   xp?: number
   is_verified?: boolean
   is_gold?: boolean
+  accent_theme?: string
+  last_session_id?: string
 }
 
 export function cleanBio(bio: string | null): string {
@@ -42,6 +44,8 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
   let hidden_conversations = profile.hidden_conversations !== undefined ? profile.hidden_conversations || {} : {}
   let is_verified = profile.is_verified !== undefined ? !!profile.is_verified : false
   let is_gold = profile.is_gold !== undefined ? !!profile.is_gold : false
+  let accent_theme = 'purple'
+  let last_session_id = undefined
   
   let cleanBioText = cleanBio(bio)
 
@@ -60,6 +64,8 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
       if (profile.hidden_conversations === undefined) hidden_conversations = meta.hidden_conversations || {}
       if (profile.is_verified === undefined) is_verified = !!meta.is_verified
       if (profile.is_gold === undefined) is_gold = !!meta.is_gold
+      if (meta.accent_theme !== undefined) accent_theme = meta.accent_theme
+      if (meta.last_session_id !== undefined) last_session_id = meta.last_session_id
     } catch (e) {
       // ignore
     }
@@ -77,5 +83,7 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
     hidden_conversations,
     is_verified,
     is_gold,
+    accent_theme,
+    last_session_id,
   }
 }

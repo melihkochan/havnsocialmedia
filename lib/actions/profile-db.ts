@@ -42,6 +42,8 @@ interface ProfileUpdateMeta {
   default_feed_type?: 'for_you' | 'following'
   is_verified?: boolean
   is_gold?: boolean
+  accent_theme?: string
+  last_session_id?: string | null
 }
 
 // Update profile metadata columns in database if they exist, or fallback to bio
@@ -83,7 +85,7 @@ export async function saveProfileMetadata(userId: string, newMeta: ProfileUpdate
   const updates: Record<string, any> = { updated_at: new Date().toISOString() }
 
   if (dbHasColumns || dbHasVerification) {
-    // Write directly to columns AND clean the bio field (remove JSON suffix)
+    // Write directly to columns AND clean the bio field (remove JSON suffix unless there's custom meta)
     updates.bio = cleanBioText || null
     
     if (dbHasColumns) {
@@ -99,6 +101,28 @@ export async function saveProfileMetadata(userId: string, newMeta: ProfileUpdate
     if (dbHasVerification) {
       if (newMeta.is_verified !== undefined) updates.is_verified = newMeta.is_verified
       if (newMeta.is_gold !== undefined) updates.is_gold = newMeta.is_gold
+    }
+
+    // Keep accent_theme and last_session_id in the bio suffix since there are no native columns for them
+    const customMeta: any = {}
+    if (newMeta.accent_theme !== undefined) customMeta.accent_theme = newMeta.accent_theme
+    if (newMeta.last_session_id !== undefined) customMeta.last_session_id = newMeta.last_session_id
+
+    if (Object.keys(customMeta).length > 0 || (existingMeta && (existingMeta.accent_theme !== undefined || existingMeta.last_session_id !== undefined))) {
+      const mergedCustomMeta: any = {
+        accent_theme: customMeta.accent_theme !== undefined ? customMeta.accent_theme : existingMeta.accent_theme,
+        last_session_id: customMeta.last_session_id !== undefined ? customMeta.last_session_id : existingMeta.last_session_id
+      }
+      
+      // If last_session_id is explicitly set to null, delete it
+      if (mergedCustomMeta.last_session_id === null) {
+        delete mergedCustomMeta.last_session_id
+      }
+
+      if (Object.keys(mergedCustomMeta).length > 0) {
+        const serializedMeta = JSON.stringify(mergedCustomMeta)
+        updates.bio = cleanBioText ? `${cleanBioText}\u200B${serializedMeta}` : `\u200B${serializedMeta}`
+      }
     }
   } else {
     // Fallback to storing in bio column

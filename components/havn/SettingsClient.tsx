@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User, Lock, Palette, Loader2, Check, AlertCircle, Camera, LogOut, ArrowLeft, HelpCircle, Send, Bell, Volume2, VolumeX } from 'lucide-react'
-import { updateProfile, changePassword } from '@/lib/actions/profile'
+import { updateProfile, changePassword, updateAccentTheme } from '@/lib/actions/profile'
 import { signOut } from '@/lib/actions/auth'
 import { ThemeToggle } from '@/components/havn/ThemeToggle'
 import { AvatarUpload } from '@/components/havn/AvatarUpload'
@@ -124,14 +124,17 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   const [accentTheme, setAccentTheme] = useState('purple')
 
   useEffect(() => {
-    const saved = localStorage.getItem('havn_accent_theme') || 'purple'
+    const dbTheme = (profile as any).accent_theme || 'purple'
+    const saved = localStorage.getItem('havn_accent_theme') || dbTheme
     setAccentTheme(saved)
-  }, [])
+    document.documentElement.setAttribute('data-accent', saved)
+  }, [profile])
 
-  const changeAccentTheme = (themeName: string) => {
+  const changeAccentTheme = async (themeName: string) => {
     setAccentTheme(themeName)
     localStorage.setItem('havn_accent_theme', themeName)
     document.documentElement.setAttribute('data-accent', themeName)
+    await updateAccentTheme(themeName)
   }
 
   useEffect(() => {
