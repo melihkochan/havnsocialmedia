@@ -90,3 +90,17 @@ export async function getUser() {
 
   return profile
 }
+
+export async function switchSession(accessToken: string, refreshToken: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}

@@ -14,6 +14,7 @@ import type { ProfileNameFields } from "@/lib/profile-display";
 import { ProfileName } from "@/components/havn/ProfileName";
 import { isFounder } from "@/lib/founder";
 import { cleanBio } from "@/lib/profile-enrich";
+import { switchSession } from "@/lib/actions/auth";
 
 const navItems = [
   { href: "/feed", label: "Anasayfa", icon: Compass },
@@ -302,13 +303,14 @@ export function Sidebar({
 
   const handleSwitchAccount = async (targetAccount: any) => {
     try {
-      const { data, error } = await supabase.auth.setSession({
-        access_token: targetAccount.session.access_token,
-        refresh_token: targetAccount.session.refresh_token,
-      })
+      // First, set the session server-side to guarantee browser cookies are fully updated
+      const res = await switchSession(
+        targetAccount.session.access_token,
+        targetAccount.session.refresh_token
+      )
 
-      if (error || !data.session) {
-        // Token expired — remove it from the saved list
+      if (res.error) {
+        // Token expired/invalid — remove it from the saved list
         const stored = localStorage.getItem('havn_accounts')
         let list: any[] = []
         try { list = stored ? JSON.parse(stored) : [] } catch { list = [] }
@@ -319,7 +321,13 @@ export function Sidebar({
         return
       }
 
-      // Redirect to feed after account switch so server components re-render
+      // Sync the client-side browser client state immediately
+      await supabase.auth.setSession({
+        access_token: targetAccount.session.access_token,
+        refresh_token: targetAccount.session.refresh_token,
+      })
+
+      // Redirect to feed after account switch so server components re-render with the new session
       window.location.href = '/feed'
     } catch (err: any) {
       alert('Hesap geçişi başarısız: ' + err.message)
