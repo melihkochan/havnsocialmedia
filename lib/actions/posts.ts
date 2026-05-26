@@ -16,8 +16,8 @@ export type FeedContext =
 export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 'new') {
   const supabase = await createClient()
 
-  // For popular sort we need more posts to rank correctly; for new, use DB-level pagination
-  const fetchLimit = sortBy === 'popular' ? 100 : PAGE_SIZE
+  // DB-level ordering: likes_count DESC for popular, created_at DESC for new
+  const orderCol = sortBy === 'popular' ? 'likes_count' : 'created_at'
 
   const { data: posts, error } = await supabase
     .from('posts')
@@ -30,8 +30,8 @@ export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 
       parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))
     `)
     .eq('community_id', communityId)
-    .order('created_at', { ascending: false })
-    .limit(fetchLimit)
+    .order(orderCol, { ascending: false })
+    .limit(PAGE_SIZE)
 
   if (error) {
     console.error('getPosts error:', error)
@@ -48,10 +48,8 @@ export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 
 
   const roleMap = new Map((members ?? []).map(m => [m.user_id, m.role]))
 
-  let processed = posts
-    // Filter out orphan posts
+  const processed = posts
     .filter(p => p.content !== null || p.parent_post_id !== null)
-    // Filter out reposts inside communities to avoid duplicates as requested
     .filter(p => p.parent_post_id === null)
     .map(p => {
       const rawParent = (p as any).parent_post
@@ -65,52 +63,39 @@ export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 
       }
     })
 
-  return sortPostsWithPinned(processed, sortBy).slice(0, sortBy === 'popular' ? 50 : PAGE_SIZE)
+  // sortPostsWithPinned moves pinned posts to top while preserving DB ordering
+  return sortPostsWithPinned(processed, sortBy)
 }
 
 // Get only personal posts (no community posts) for the home feed
 export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 'new') {
   const supabase = await createClient()
 
-  // For popular sort fetch more to rank correctly; for new use DB-level pagination
-  const fetchLimit = sortBy === 'popular' ? 100 : PAGE_SIZE
+  // DB-level ordering: likes_count DESC for popular, created_at DESC for new
+  const orderCol = sortBy === 'popular' ? 'likes_count' : 'created_at'
 
   const { data: posts, error } = await supabase
     .from('posts')
     .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
     .is('community_id', null)
-    .order('created_at', { ascending: false })
-    .limit(fetchLimit)
+    .order(orderCol, { ascending: false })
+    .limit(PAGE_SIZE)
 
   if (error) {
     console.error('getFeedPosts error:', error)
     return []
   }
 
-  let processed = (posts ?? [])
+  return (posts ?? [])
     .filter(p => p.content !== null || p.parent_post_id !== null)
     .filter(p => !enrichProfile(p.profiles)?.is_private)
-    .map(p => ({ ...p, communities: null }))
-
-  // Sort by new or popular
-  if (sortBy === 'popular') {
-    processed = processed.sort((a, b) => (b.likes?.length ?? 0) - (a.likes?.length ?? 0))
-  } else {
-    processed = processed.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }
-
-  const sliceEnd = sortBy === 'popular' ? 50 : PAGE_SIZE
-  return processed.slice(0, sliceEnd).map(p => {
-    const rawParent = (p as any).parent_post
-    const parent_post = Array.isArray(rawParent)
-      ? (rawParent.length > 0 ? rawParent[0] : null)
-      : rawParent ?? null
-    return {
-      ...p,
-      parent_post,
-      community_members: [{ role: 'member' }],
-    }
-  })
+    .map(p => {
+      const rawParent = (p as any).parent_post
+      const parent_post = Array.isArray(rawParent)
+        ? (rawParent.length > 0 ? rawParent[0] : null)
+        : rawParent ?? null
+      return { ...p, parent_post, communities: null, community_members: [{ role: 'member' }] }
+    })
 }
 
 export async function createPost(formData: FormData) {
@@ -654,22 +639,28 @@ export async function loadMorePosts(
 ): Promise<{ posts: any[]; hasMore: boolean }> {
   const supabase = await createClient()
 
+  // DB-level ordering column based on sortBy
+  const getOrderCol = (sortBy?: 'new' | 'popular') =>
+    sortBy === 'popular' ? 'likes_count' : 'created_at'
+
   try {
     if (context.type === 'feed') {
+      const orderCol = getOrderCol(context.sortBy)
       const { data, error } = await supabase
         .from('posts')
         .select(FEED_SELECT)
         .is('community_id', null)
-        .order('created_at', { ascending: false })
+        .order(orderCol, { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) throw error
-      const posts = normalizePosts(data ?? []).filter(
-        (p: any) => !enrichProfile(p.profiles)?.is_private
-      ).map((p: any) => ({ ...p, communities: null }))
+      const posts = normalizePosts(data ?? [])
+        .filter((p: any) => !enrichProfile(p.profiles)?.is_private)
+        .map((p: any) => ({ ...p, communities: null }))
       return { posts, hasMore: (data ?? []).length === PAGE_SIZE }
     }
 
     if (context.type === 'following') {
+      const orderCol = getOrderCol(context.sortBy)
       const { data: followsData } = await supabase
         .from('follows')
         .select('following_id')
@@ -683,7 +674,7 @@ export async function loadMorePosts(
         .select(FEED_SELECT)
         .in('user_id', targetIds)
         .is('community_id', null)
-        .order('created_at', { ascending: false })
+        .order(orderCol, { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) throw error
       const posts = normalizePosts(data ?? []).map((p: any) => ({ ...p, communities: null }))
@@ -691,6 +682,7 @@ export async function loadMorePosts(
     }
 
     if (context.type === 'community') {
+      const orderCol = getOrderCol(context.sortBy)
       const { data: membersData } = await supabase
         .from('community_members')
         .select('user_id, role')
@@ -702,7 +694,7 @@ export async function loadMorePosts(
         .select(FEED_SELECT)
         .eq('community_id', context.communityId)
         .is('parent_post_id', null)
-        .order('created_at', { ascending: false })
+        .order(orderCol, { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) throw error
       const posts = normalizePosts(data ?? []).map((p: any) => ({
