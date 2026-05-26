@@ -438,9 +438,15 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
     return (
       <>
       <motion.article
+        layout
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: index * 0.06 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{
+          layout: { type: 'spring', stiffness: 300, damping: 30 },
+          opacity: { duration: 0.35, delay: index * 0.06 },
+          y: { duration: 0.35, delay: index * 0.06 }
+        }}
         className="bg-card/70 backdrop-blur-md border border-border/80 rounded-2xl p-5 opacity-60 group relative"
       >
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -569,9 +575,15 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   return (
     <>
     <motion.article
+      layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.06, ease: 'easeOut' }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{
+        layout: { type: 'spring', stiffness: 300, damping: 30 },
+        opacity: { duration: 0.35, delay: index * 0.06 },
+        y: { duration: 0.35, delay: index * 0.06 }
+      }}
       whileHover={{ y: -2 }}
       className={cn(
         'bg-card/70 backdrop-blur-md border rounded-2xl p-5 hover:border-primary/25 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group relative',
