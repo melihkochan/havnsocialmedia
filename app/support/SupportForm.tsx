@@ -242,6 +242,11 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
           setFilter('all') // Ensure it is not filtered out
           setExpandedTicketId(targetTicketId)
           setActiveTab('list') // Ensure we view list tab
+          // Scroll to the ticket after a short delay to let render complete
+          setTimeout(() => {
+            const el = document.getElementById(`ticket-${targetTicketId}`)
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 350)
         }
       }
     }
@@ -734,16 +739,26 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
               ) : (
                 filteredTickets.map(ticket => {
                   const isExpanded = expandedTicketId === ticket.id
+                  const isFocusedTicket = targetTicketId === ticket.id
                   
                   return (
                     <motion.div
                       layout
                       key={ticket.id}
+                      id={`ticket-${ticket.id}`}
                       className={cn(
                         "bg-card border rounded-2xl overflow-hidden transition-all duration-200",
-                        isExpanded ? "border-primary/40 shadow-sm" : "border-border hover:border-border/120"
+                        isFocusedTicket
+                          ? "border-primary/50 ring-2 ring-primary/15 shadow-[0_0_30px_color-mix(in_oklch,var(--primary)_15%,transparent)]"
+                          : isExpanded ? "border-primary/40 shadow-sm" : "border-border hover:border-border/120"
                       )}
                     >
+                      {isFocusedTicket && !isFounder && (
+                        <div className="flex items-center gap-2 px-5 py-2.5 border-b border-primary/20 bg-primary/5 select-none">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                          <span className="text-[10px] font-black text-primary tracking-wider uppercase">Odaklanılan Talep</span>
+                        </div>
+                      )}
                       {/* Ticket Header (Clickable) */}
                       <div
                         onClick={() => {

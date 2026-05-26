@@ -139,9 +139,9 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
       const timer = setTimeout(() => {
         const element = document.getElementById(`suggestion-${focusedSuggestionId}`)
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
-      }, 150)
+      }, 300)
       return () => clearTimeout(timer)
     }
   }, [focusedSuggestionId])
@@ -475,12 +475,19 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                 animate={isFocused ? { scale: 1, opacity: 1 } : undefined}
                 transition={isFocused ? { type: "spring", stiffness: 200, damping: 15 } : undefined}
                 className={cn(
-                  "bg-card border rounded-2xl p-5 flex gap-4 transition-all duration-300",
+                  "bg-card border rounded-2xl overflow-hidden transition-all duration-300",
                   isFocused 
-                    ? "border-primary/60 ring-2 ring-primary/15 shadow-[0_0_30px_color-mix(in_oklch,var(--primary)_22%,transparent)] bg-gradient-to-br from-card to-primary/[0.03]" 
+                    ? "border-primary/60 ring-2 ring-primary/20 shadow-[0_0_40px_color-mix(in_oklch,var(--primary)_25%,transparent)] bg-gradient-to-br from-card to-primary/[0.04]" 
                     : "border-border/80 hover:border-border/120"
                 )}
               >
+                {isFocused && (
+                  <div className="flex items-center gap-2 px-5 py-2.5 border-b border-primary/20 bg-primary/5 select-none">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    <span className="text-[10px] font-black text-primary tracking-wider uppercase">Odaklanılan Öneri</span>
+                  </div>
+                )}
+                <div className={cn("flex gap-4", isFocused ? "p-5" : "p-5")}>
                 {/* Vote panel */}
                 <div className="flex flex-col items-center gap-1 select-none">
                   <button
@@ -697,6 +704,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                       <span>{formatDate(item.created_at)}</span>
                     </div>
                   </div>
+                </div>
                 </div>
               </motion.div>
             )
