@@ -67,7 +67,6 @@ const Github = ({ size = 16, className = "" }: { size?: number; className?: stri
 import { sortPostsWithPinned } from '@/lib/sort-posts'
 import { FeedPostForm } from '@/components/havn/FeedPostForm'
 import { isFounder } from '@/lib/founder'
-import { checkFollowStatus, checkIsFollowing, getFollowStats } from '@/lib/actions/follows'
 import { FollowButton } from '@/components/havn/FollowButton'
 import { FollowStatsModal } from '@/components/havn/FollowStatsModal'
 import { InteractiveAvatar } from '@/components/havn/InteractiveAvatar'
@@ -108,8 +107,8 @@ export default async function ProfilePage({
     { data: posts },
     { data: rawMemberships },
     { count: profileViews },
-    followStats,
-    followStatus,
+    followersResult,
+    followingResult,
     followToTargetResult,
     followToUserResult,
   ] = await Promise.all([
@@ -134,20 +133,38 @@ export default async function ProfilePage({
     supabase
       .from('profile_views')
       .select('*', { count: 'exact', head: true }).eq('profile_id', profile.id),
-    getFollowStats(profile.id),
-    user ? checkFollowStatus(user.id, profile.id) : Promise.resolve('none' as const),
+    // Followers count inline
+    supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', profile.id),
+    // Following count inline
+    supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', profile.id),
     user ? supabase.from('follows').select('created_at').eq('follower_id', user.id).eq('following_id', profile.id).maybeSingle() : Promise.resolve({ data: null }),
     user ? supabase.from('follows').select('created_at').eq('follower_id', profile.id).eq('following_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
   ])
+
+  const followToTarget = followToTargetResult.data
+  const followToUser = followToUserResult.data
+
+  // Calculate follow status and stats directly from query results
+  const isFollowing = !!followToTarget
+  const isRequested = !isFollowing && user && profile.follow_requests?.includes(user.id)
+  const followStatus = isFollowing ? 'following' : (isRequested ? 'requested' : 'none')
+
+  const followStats = {
+    followersCount: followersResult.count ?? 0,
+    followingCount: followingResult.count ?? 0
+  }
 
   const currentProfileRaw = currentProfileResult.data
   const currentProfile = enrichProfile(currentProfileRaw)
   const isOwnProfile = user?.id === profile.id
   const isFollowingTarget = followStatus === 'following'
   const isLocked = profile.is_private && !isOwnProfile && !isFollowingTarget
-
-  const followToTarget = followToTargetResult.data
-  const followToUser = followToUserResult.data
 
   let relationInfo: { date?: string; text: string } | null = null
   if (user && user.id !== profile.id) {

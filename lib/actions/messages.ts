@@ -2,6 +2,7 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { calculateLastActiveStreak, calculateStreak, getIstanbulDateString } from '@/lib/streak-utils'
 
 export async function getUnreadMessagesCount() {
   const supabase = await createClient()
@@ -22,78 +23,11 @@ export async function getUnreadMessagesCount() {
   return count ?? 0
 }
 
-function getIstanbulDateString(dateObj: Date): string {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Istanbul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  return formatter.format(dateObj); // "YYYY-MM-DD"
-}
-
-function calculateStreak(messages: any[]): number {
-  if (!messages || messages.length === 0) return 0;
-  
-  // Group messages by their Istanbul date and collect unique senders
-  const sendersByDate = new Map<string, Set<string>>();
-  for (const msg of messages) {
-    const d = new Date(msg.created_at);
-    const dateStr = getIstanbulDateString(d);
-    if (!sendersByDate.has(dateStr)) {
-      sendersByDate.set(dateStr, new Set<string>());
-    }
-    sendersByDate.get(dateStr)!.add(msg.sender_id);
-  }
-  
-  // Find dates where at least 2 distinct users sent messages
-  const mutualDates = new Set<string>();
-  for (const [dateStr, senders] of sendersByDate.entries()) {
-    if (senders.size >= 2) {
-      mutualDates.add(dateStr);
-    }
-  }
-  
-  if (mutualDates.size === 0) return 0;
-  
-  // Sort mutual dates descending
-  const sortedMutualDates = Array.from(mutualDates).sort((a, b) => b.localeCompare(a));
-  
-  const todayStr = getIstanbulDateString(new Date());
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = getIstanbulDateString(yesterday);
-  
-  // If the latest mutual date is neither today nor yesterday, streak is broken
-  const latestMutualDate = sortedMutualDates[0];
-  if (latestMutualDate !== todayStr && latestMutualDate !== yesterdayStr) {
-    return 0;
-  }
-  
-  // Count consecutive days going backwards starting from the latest mutual day
-  let streak = 0;
-  let currentDate = latestMutualDate === todayStr ? new Date() : yesterday;
-  
-  while (true) {
-    const currentStr = getIstanbulDateString(currentDate);
-    if (mutualDates.has(currentStr)) {
-      streak++;
-      // Go to the previous day
-      currentDate.setDate(currentDate.getDate() - 1);
-    } else {
-      break;
-    }
-  }
-  
-  return streak;
-}
-
 export async function getConversations() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  // Fetch all direct messages involving the user
   const { data, error } = await supabase
     .from('direct_messages')
     .select(`
@@ -109,7 +43,6 @@ export async function getConversations() {
     return []
   }
 
-  // Group by the other user
   const conversationsMap = new Map<string, any>()
   const { enrichProfile } = await import('@/lib/profile-enrich')
 
@@ -135,19 +68,34 @@ export async function getConversations() {
     }
   }
 
-  // Fetch current user's profile to read hidden_conversations metadata
   const { data: currentUserRow } = await supabase
     .from('profiles')
-    .select('bio')
+    .select('bio, hidden_conversations, streak_restores')
     .eq('id', user.id)
     .single()
 
   const currentUser = enrichProfile(currentUserRow)
   const hiddenConvs = currentUser?.hidden_conversations || {}
+  const streakRestores = currentUserRow?.streak_restores || { lives: 5, restored_chats: {} }
+  const myRestoredChats = streakRestores.restored_chats || {}
 
   const conversationsList = Array.from(conversationsMap.values())
     .map(conv => {
-      const streak = calculateStreak(conv.messages)
+      const otherUserRestores = conv.otherUser.streak_restores || { lives: 5, restored_chats: {} }
+      const otherRestoredChats = otherUserRestores.restored_chats || {}
+      
+      const lastActive = calculateLastActiveStreak(conv.messages)
+      const targetRestoredDate = lastActive.latestMutualDate
+      
+      let restoredDate = null
+      if (targetRestoredDate) {
+        if (myRestoredChats[conv.otherUser.id] === targetRestoredDate || 
+            otherRestoredChats[user.id] === targetRestoredDate) {
+          restoredDate = targetRestoredDate
+        }
+      }
+      
+      const streak = calculateStreak(conv.messages, restoredDate)
       return {
         otherUser: conv.otherUser,
         lastMessage: conv.lastMessage,
@@ -161,13 +109,86 @@ export async function getConversations() {
         const hideTime = new Date(hideTimeStr).getTime()
         const lastMsgTime = new Date(c.lastMessage.created_at).getTime()
         if (lastMsgTime <= hideTime) {
-          return false // hide this conversation!
+          return false
         }
       }
       return true
     })
 
   return conversationsList
+}
+
+export async function restoreStreak(otherUserId: string) {
+  const { createServiceClient } = await import('@/lib/supabase/server')
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  const { data: msgs, error: fetchErr } = await supabase
+    .from('direct_messages')
+    .select('created_at, sender_id')
+    .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
+    .order('created_at', { ascending: false })
+
+  if (fetchErr || !msgs || msgs.length === 0) {
+    return { error: 'Sohbet geçmişi bulunamadı.' }
+  }
+
+  const { streak, latestMutualDate } = calculateLastActiveStreak(msgs)
+  if (streak <= 0 || !latestMutualDate) {
+    return { error: 'Geri yüklenebilecek aktif bir alev serisi bulunamadı.' }
+  }
+
+  const todayStr = getIstanbulDateString(new Date())
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = getIstanbulDateString(yesterday)
+
+  if (latestMutualDate === todayStr || latestMutualDate === yesterdayStr) {
+    return { error: 'Alev seriniz zaten aktif durumda.' }
+  }
+
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('streak_restores')
+    .eq('id', user.id)
+    .single()
+
+  if (profileErr || !profile) {
+    return { error: 'Profil bilgisi alınamadı.' }
+  }
+
+  const restores = profile.streak_restores || { lives: 5, restored_chats: {} }
+  const currentLives = typeof restores.lives === 'number' ? restores.lives : 5
+  const restoredChats = restores.restored_chats || {}
+
+  if (currentLives <= 0) {
+    return { error: 'Yeterli alev geri yükleme hakkınız (can) kalmadı.' }
+  }
+
+  if (restoredChats[otherUserId] === latestMutualDate) {
+    return { error: 'Bu alev serisi zaten geri yüklenmiş.' }
+  }
+
+  const supabaseAdmin = await createServiceClient()
+  restoredChats[otherUserId] = latestMutualDate
+  const updatedRestores = {
+    lives: currentLives - 1,
+    restored_chats: restoredChats
+  }
+
+  const { error: updateErr } = await supabaseAdmin
+    .from('profiles')
+    .update({ streak_restores: updatedRestores })
+    .eq('id', user.id)
+
+  if (updateErr) {
+    console.error('restoreStreak update error:', updateErr)
+    return { error: 'Alev serisi geri yüklenirken bir hata oldu.' }
+  }
+
+  revalidatePath('/messages')
+  return { success: true, newLives: currentLives - 1 }
 }
 
 export async function getMessagesWithUser(otherUserId: string) {

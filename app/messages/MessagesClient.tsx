@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, Send, Search, Loader2, ArrowLeft, Clock, ShieldCheck, CheckCircle, Trash2, Pencil } from 'lucide-react'
+import { MessageSquare, Send, Search, Loader2, ArrowLeft, Clock, ShieldCheck, CheckCircle, Trash2, Pencil, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileName } from '@/components/havn/ProfileName'
 import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
-import { sendDirectMessage, markMessagesAsRead, editDirectMessage, reopenConversation, deleteDirectMessage, closeConversation } from '@/lib/actions/messages'
+import { sendDirectMessage, markMessagesAsRead, editDirectMessage, reopenConversation, deleteDirectMessage, closeConversation, restoreStreak } from '@/lib/actions/messages'
+import { calculateLastActiveStreak, calculateStreak } from '@/lib/streak-utils'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { getOnlineStatus } from '@/lib/profile-display'
@@ -23,6 +24,10 @@ interface Profile {
   last_name: string | null
   avatar_url: string | null
   updated_at: string
+  streak_restores?: {
+    lives: number
+    restored_chats: Record<string, string>
+  }
 }
 
 interface Message {
@@ -41,72 +46,6 @@ interface Conversation {
   lastMessage: Message
   unreadCount: number
   streak?: number
-}
-
-function getIstanbulDateString(dateObj: Date): string {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Istanbul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  return formatter.format(dateObj); // "YYYY-MM-DD"
-}
-
-function calculateStreakClientSide(messages: Message[]): number {
-  if (!messages || messages.length === 0) return 0;
-  
-  // Group messages by their Istanbul date and collect unique senders
-  const sendersByDate = new Map<string, Set<string>>();
-  for (const msg of messages) {
-    const d = new Date(msg.created_at);
-    const dateStr = getIstanbulDateString(d);
-    if (!sendersByDate.has(dateStr)) {
-      sendersByDate.set(dateStr, new Set<string>());
-    }
-    sendersByDate.get(dateStr)!.add(msg.sender_id);
-  }
-  
-  // Find dates where at least 2 distinct users sent messages
-  const mutualDates = new Set<string>();
-  for (const [dateStr, senders] of sendersByDate.entries()) {
-    if (senders.size >= 2) {
-      mutualDates.add(dateStr);
-    }
-  }
-  
-  if (mutualDates.size === 0) return 0;
-  
-  // Sort mutual dates descending
-  const sortedMutualDates = Array.from(mutualDates).sort((a, b) => b.localeCompare(a));
-  
-  const todayStr = getIstanbulDateString(new Date());
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = getIstanbulDateString(yesterday);
-  
-  // If the latest mutual date is neither today nor yesterday, streak is broken
-  const latestMutualDate = sortedMutualDates[0];
-  if (latestMutualDate !== todayStr && latestMutualDate !== yesterdayStr) {
-    return 0;
-  }
-  
-  // Count consecutive days going backwards starting from the latest mutual day
-  let streak = 0;
-  let currentDate = latestMutualDate === todayStr ? new Date() : yesterday;
-  
-  while (true) {
-    const currentStr = getIstanbulDateString(currentDate);
-    if (mutualDates.has(currentStr)) {
-      streak++;
-      // Go to the previous day
-      currentDate.setDate(currentDate.getDate() - 1);
-    } else {
-      break;
-    }
-  }
-  
-  return streak;
 }
 
 function formatDividerDate(dateStr: string) {
@@ -241,7 +180,13 @@ export function MessagesClient({
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editInputText, setEditInputText] = useState('')
 
-  
+  // Streak Restore States
+  const [streakLives, setStreakLives] = useState<number>(() => {
+    return currentUser?.streak_restores?.lives ?? 5
+  })
+  const [restorePending, setRestorePending] = useState(false)
+  const [dismissedBanners, setDismissedBanners] = useState<Record<string, boolean>>({})
+
   // Streak Animation States
   const [prevStreak, setPrevStreak] = useState<number | null>(null)
   const [showStreakAnimation, setShowStreakAnimation] = useState(false)
@@ -319,7 +264,7 @@ export function MessagesClient({
         setTimeout(() => scrollToBottom('auto'), 150)
         
         // Calculate and update streak locally!
-        const newStreak = calculateStreakClientSide(data)
+        const newStreak = calculateStreak(data)
         setPrevStreak(newStreak) // Initialize prevStreak
 
         // Check if we should celebrate this streak on load
@@ -447,7 +392,7 @@ export function MessagesClient({
                 const updatedMsgs = [...prev, enrichedMsg]
                 
                 // Update streak locally
-                const newStreak = calculateStreakClientSide(updatedMsgs)
+                const newStreak = calculateStreak(updatedMsgs)
                 
                 // Trigger pop animation if streak increased
                 if (prevStreak !== null && newStreak > prevStreak && STREAK_MILESTONES.includes(newStreak)) {
@@ -496,7 +441,7 @@ export function MessagesClient({
                 .select('*')
                 .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUser.id})`)
                 .then(({ data: convMsgs }) => {
-                  const calculatedStreak = convMsgs ? calculateStreakClientSide(convMsgs as Message[]) : 0
+                  const calculatedStreak = convMsgs ? calculateStreak(convMsgs as Message[]) : 0
 
                   setConversations(prev => {
                     const existingIdx = prev.findIndex(c => c.otherUser.id === otherUserId)
@@ -678,6 +623,42 @@ export function MessagesClient({
     })
   }
 
+  async function handleRestoreStreak() {
+    if (!activeChatUser) return
+    const historicalStreakInfo = calculateLastActiveStreak(messages)
+    const historicalStreak = historicalStreakInfo.streak
+    if (historicalStreak <= 0) return
+
+    setRestorePending(true)
+    try {
+      const res = await restoreStreak(activeChatUser.id)
+      if (res.error) {
+        showErrorAlert(res.error)
+      } else if (res.success) {
+        setStreakLives(res.newLives ?? 0)
+        
+        // Trigger celebration animation
+        setAnimateOldNum(0)
+        setAnimateStreakNum(historicalStreak)
+        setShowStreakAnimation(true)
+        setTimeout(() => setShowStreakAnimation(false), 3000)
+        
+        // Update local conversation streak
+        setConversations(prev =>
+          prev.map(c =>
+            c.otherUser.id === activeChatUser.id
+              ? { ...c, streak: historicalStreak }
+              : c
+          )
+        )
+      }
+    } catch (err: any) {
+      showErrorAlert(err.message || 'Bir hata oluştu.')
+    } finally {
+      setRestorePending(false)
+    }
+  }
+
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
     if (!activeChatUser || !inputText.trim() || sendPending) return
@@ -710,7 +691,7 @@ export function MessagesClient({
         const sentMsg = res.message as Message
         
         const updatedMsgs = [...messages, sentMsg]
-        const newStreak = calculateStreakClientSide(updatedMsgs)
+        const newStreak = calculateStreak(updatedMsgs)
         
         // Trigger pop animation if streak increased
         if (prevStreak !== null && newStreak > prevStreak && STREAK_MILESTONES.includes(newStreak)) {
@@ -1037,6 +1018,60 @@ export function MessagesClient({
                 </button>
               )}
             </div>
+
+            {/* Streak Restore Banner */}
+            {(() => {
+              const activeConversation = conversations.find(c => c.otherUser.id === activeChatUser.id)
+              const currentStreak = activeConversation?.streak ?? 0
+              const historicalStreakInfo = calculateLastActiveStreak(messages)
+              const historicalStreak = historicalStreakInfo.streak
+              
+              const showRestoreBanner = 
+                activeChatUser &&
+                currentStreak === 0 &&
+                historicalStreak > 0 &&
+                !dismissedBanners[activeChatUser.id]
+              
+              if (!showRestoreBanner) return null
+
+              return (
+                <div className="mx-6 mt-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-between gap-3 shadow-sm relative overflow-hidden backdrop-blur-sm">
+                  <div className="absolute -left-4 -top-4 w-12 h-12 bg-orange-500/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="flex items-center gap-2.5 z-10 flex-1 min-w-0">
+                    <span className="text-xl animate-bounce">🔥</span>
+                    <div className="flex flex-col min-w-0">
+                      <p className="text-[11px] font-bold text-foreground leading-tight">
+                        Alev seriniz sönmüş!
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate leading-normal">
+                        {historicalStreak} günlük serinizi kurtarmak ister misiniz? (Can: {streakLives}/5)
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 z-10">
+                    <button
+                      onClick={handleRestoreStreak}
+                      disabled={restorePending || streakLives <= 0}
+                      className="px-2.5 py-1 text-[10px] font-black tracking-wider uppercase rounded-lg text-primary-foreground transition-all cursor-pointer select-none active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                      style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
+                    >
+                      {restorePending ? (
+                        <Loader2 size={10} className="animate-spin" />
+                      ) : (
+                        'Kurtar'
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setDismissedBanners(prev => ({ ...prev, [activeChatUser.id]: true }))}
+                      className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
+                      title="Kapat"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Message Stream */}
             <div className="flex-1 overflow-y-auto p-6 bg-muted/5 scrollbar-thin">
