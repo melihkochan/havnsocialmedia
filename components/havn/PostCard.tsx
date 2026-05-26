@@ -110,6 +110,8 @@ interface PostCardProps {
 
 export function PostCard({ post, role = 'member', currentUserId, viewerRole, pinContext, index = 0, viewCount }: PostCardProps) {
   const router = useRouter()
+  // Unique channel token per mounted instance to avoid Supabase channel collisions
+  const channelToken = useRef(`${Date.now()}_${Math.random().toString(36).substring(2, 7)}`)
   // A post is a repost when it has parent_post_id set, even if parent_post data is null (deleted)
   const hasParentId = !!(post as any).parent_post_id
   const isRepost = hasParentId && !!post.parent_post
@@ -345,7 +347,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
 
   // Real-time Likes & Comments Sync
   useEffect(() => {
-    const channel = supabase.channel(`post_interactions_${displayPost.id}`)
+    const channel = supabase.channel(`post_interactions_${displayPost.id}_${channelToken.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'likes', filter: `post_id=eq.${displayPost.id}` },
@@ -438,12 +440,9 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
     return (
       <>
       <motion.article
-        layout
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
         transition={{
-          layout: { type: 'spring', stiffness: 300, damping: 30 },
           opacity: { duration: 0.35, delay: index * 0.06 },
           y: { duration: 0.35, delay: index * 0.06 }
         }}
@@ -575,12 +574,9 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   return (
     <>
     <motion.article
-      layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
       transition={{
-        layout: { type: 'spring', stiffness: 300, damping: 30 },
         opacity: { duration: 0.35, delay: index * 0.06 },
         y: { duration: 0.35, delay: index * 0.06 }
       }}
