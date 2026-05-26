@@ -72,6 +72,7 @@ import { FollowStatsModal } from '@/components/havn/FollowStatsModal'
 import { InteractiveAvatar } from '@/components/havn/InteractiveAvatar'
 import { getUserSupportTickets } from '@/lib/actions/support'
 import { AdminControlsDropdown } from '@/components/havn/AdminControlsDropdown'
+import { ProfileTabsClient } from '@/components/havn/ProfileTabsClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -562,107 +563,19 @@ export default async function ProfilePage({
             </div>
           </div>
         ) : tab === 'tickets' && isCurrentFounder ? (
-          <div className="mt-2 flex flex-col gap-3">
-            <h2 className="text-sm font-bold text-foreground mb-1">Destek Talepleri</h2>
-            {userTickets.length === 0 ? (
-              <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground text-xs">
-                Bu kullanıcının henüz açtığı bir destek talebi bulunmamaktadır.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {userTickets.map((ticket: any) => (
-                  <Link
-                    key={ticket.id}
-                    href={`/support?ticketId=${ticket.id}`}
-                    className="bg-card border border-border rounded-2xl p-5 hover:border-primary/40 hover:shadow-sm transition-all duration-200 flex items-center justify-between gap-4"
-                  >
-                    <div className="flex flex-col gap-1 min-w-0">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="font-bold text-sm text-foreground truncate">{ticket.subject}</span>
-                        <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full border ${
-                          ticket.status === 'open' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
-                          ticket.status === 'replied' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' :
-                          'bg-zinc-500/10 border-zinc-500/20 text-muted-foreground'
-                        }`}>
-                          {ticket.status === 'open' ? 'Açık' : ticket.status === 'replied' ? 'Yanıtlandı' : 'Kapatıldı'}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        Açılış Tarihi: {new Date(ticket.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <div className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-black tracking-wider text-muted-foreground hover:bg-muted transition-all select-none">
-                      TALEP DETAYI
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+          <ProfileTabsClient
+            tickets={userTickets}
+            isCurrentFounder={isCurrentFounder}
+            profile={profile}
+            tab="tickets"
+          />
         ) : tab === 'suggestions' && isCurrentFounder ? (
-          <div className="mt-2 flex flex-col gap-3">
-            <h2 className="text-sm font-bold text-foreground mb-1">Açılan Öneriler</h2>
-            {userSuggestions.length === 0 ? (
-              <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground text-xs">
-                Bu kullanıcının henüz açtığı bir öneri bulunmamaktadır.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {userSuggestions.map((suggestion: any) => {
-                  const statusInfo = (() => {
-                    switch (suggestion.status) {
-                      case 'open':
-                        return { label: 'Açık', classes: 'bg-sky-500/10 border-sky-500/20 text-sky-600 dark:text-sky-400' }
-                      case 'in_progress':
-                        return { label: 'Yapılıyor', classes: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' }
-                      case 'completed':
-                        return { label: 'Tamamlandı', classes: 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400' }
-                      case 'closed':
-                        return { label: 'Kapatıldı', classes: 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400' }
-                      default:
-                        return { label: 'Bilinmiyor', classes: 'bg-zinc-500/10 border-zinc-500/20 text-muted-foreground' }
-                    }
-                  })()
-
-                  return (
-                    <Link
-                      key={suggestion.id}
-                      href={`/suggestions`}
-                      className="bg-card border border-border rounded-2xl p-5 hover:border-primary/40 hover:shadow-sm transition-all duration-200 flex items-center justify-between gap-4"
-                    >
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="font-bold text-sm text-foreground truncate">{suggestion.title}</span>
-                          <span className={cn("px-2 py-0.5 text-[9px] font-black rounded-full border tracking-wide uppercase", statusInfo.classes)}>
-                            {statusInfo.label}
-                          </span>
-                          {suggestion.is_private && (
-                            <span className="px-2 py-0.5 text-[9px] font-black rounded-full border bg-amber-500/10 border-amber-500/20 text-amber-500 flex items-center gap-1 select-none">
-                              🔒 Özel
-                            </span>
-                          )}
-                          {suggestion.is_anonymous && (
-                            <span className="px-2 py-0.5 text-[9px] font-black rounded-full border bg-zinc-500/10 border-zinc-500/20 text-muted-foreground select-none">
-                              👤 Anonim
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1 break-words">
-                          {suggestion.description}
-                        </p>
-                        <span className="text-[10px] text-muted-foreground mt-1 select-none">
-                          Açılış Tarihi: {new Date(suggestion.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} • Toplam Oy: {suggestion.score}
-                        </span>
-                      </div>
-                      <div className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-black tracking-wider text-muted-foreground hover:bg-muted transition-all select-none flex-shrink-0">
-                        PANODA GÖR
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+          <ProfileTabsClient
+            suggestions={userSuggestions}
+            isCurrentFounder={isCurrentFounder}
+            profile={profile}
+            tab="suggestions"
+          />
         ) : tab !== 'tickets' && tab !== 'suggestions' ? (
           <div className="mt-2">
             <h2 className="text-sm font-bold text-foreground mb-4">Gönderiler</h2>
