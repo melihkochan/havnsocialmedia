@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { PostCard } from '@/components/havn/PostCard'
-import { AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { UserRole } from '@/lib/supabase/types'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -45,6 +45,7 @@ export function PostFeed({
   isBookmarksPage
 }: PostFeedProps) {
   const [feedPosts, setFeedPosts] = useState(posts)
+  const [pendingPosts, setPendingPosts] = useState<typeof posts>([])
   const [visibleCount, setVisibleCount] = useState(8)
   const loaderRef = useRef<HTMLDivElement>(null)
 
@@ -141,13 +142,26 @@ export function PostFeed({
               }
             }
 
-            console.log('[Realtime-PostFeed] Post passed filters, appending to feed.')
+            console.log('[Realtime-PostFeed] Post passed filters, checking scroll state for insertion method.')
 
-            // Append new post to the list (top)
-            setFeedPosts(prev => {
-              if (prev.some(p => p.id === enrichedPost.id)) return prev
-              return [enrichedPost as any, ...prev]
-            })
+            // If the user is scrolled down (scrollY > 150px) and it's not their own post, queue it as a pending post.
+            // If the user is at the top of the feed or it's their own post, display it immediately.
+            const isAtTop = typeof window !== 'undefined' && window.scrollY <= 150
+            const isOwnPost = currentUserId && enrichedPost.user_id === currentUserId
+
+            if (isAtTop || isOwnPost) {
+              console.log('[Realtime-PostFeed] Inserting post directly to top. (At top or own post)')
+              setFeedPosts(prev => {
+                if (prev.some(p => p.id === enrichedPost.id)) return prev
+                return [enrichedPost as any, ...prev]
+              })
+            } else {
+              console.log('[Realtime-PostFeed] User is scrolled down. Queueing post to pending list.')
+              setPendingPosts(prev => {
+                if (prev.some(p => p.id === enrichedPost.id)) return prev
+                return [enrichedPost as any, ...prev]
+              })
+            }
           }
         }
       )
@@ -157,6 +171,7 @@ export function PostFeed({
         (payload) => {
           const deletedPostId = payload.old.id
           setFeedPosts(prev => prev.filter(p => p.id !== deletedPostId))
+          setPendingPosts(prev => prev.filter(p => p.id !== deletedPostId))
         }
       )
       .subscribe((status, err) => {
@@ -166,7 +181,18 @@ export function PostFeed({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [communityId, profileUserId, isBookmarksPage])
+  }, [communityId, profileUserId, isBookmarksPage, currentUserId])
+
+  const handleShowPendingPosts = () => {
+    setFeedPosts(prev => {
+      const uniquePending = pendingPosts.filter(p => !prev.some(existing => existing.id === p.id))
+      return [...uniquePending, ...prev]
+    })
+    setPendingPosts([])
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   if (feedPosts.length === 0) {
     return (
@@ -189,27 +215,44 @@ export function PostFeed({
 
   return (
     <div className="flex flex-col gap-4">
-      <AnimatePresence mode="popLayout">
-        {visiblePosts.map((post, index) => {
-          const memberEntry = post.community_members?.[0]
-          const role = memberEntry?.role ?? 'member'
-          const viewerRole =
-            currentUserRole ??
-            (post.community_id ? rolesByCommunityId?.[post.community_id] : undefined)
-
-          return (
-            <PostCard
-              key={post.id}
-              post={post}
-              role={role}
-              currentUserId={currentUserId}
-              viewerRole={viewerRole}
-              pinContext={pinContext}
-              index={index}
-            />
-          )
-        })}
+      {/* Sticky/Floating banner for pending posts */}
+      <AnimatePresence>
+        {pendingPosts.length > 0 && (
+          <motion.button
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            onClick={handleShowPendingPosts}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-black text-white rounded-2xl shadow-xl border border-transparent select-none cursor-pointer active:scale-[0.98] transition-all hover:opacity-95 sticky top-[76px] z-40"
+            style={{
+              background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
+              backdropFilter: 'blur(8px)'
+            }}
+          >
+            ✨ {pendingPosts.length} yeni gönderi mevcut - Görmek için tıkla
+          </motion.button>
+        )}
       </AnimatePresence>
+
+      {visiblePosts.map((post, index) => {
+        const memberEntry = post.community_members?.[0]
+        const role = memberEntry?.role ?? 'member'
+        const viewerRole =
+          currentUserRole ??
+          (post.community_id ? rolesByCommunityId?.[post.community_id] : undefined)
+
+        return (
+          <PostCard
+            key={post.id}
+            post={post}
+            role={role}
+            currentUserId={currentUserId}
+            viewerRole={viewerRole}
+            pinContext={pinContext}
+            index={index}
+          />
+        )
+      })}
 
       {visibleCount < feedPosts.length && (
         <div ref={loaderRef} className="flex items-center justify-center py-6">
