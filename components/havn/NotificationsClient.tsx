@@ -364,6 +364,14 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'notifications' },
+        (payload) => {
+          const deletedNotifId = payload.old.id
+          setNotifications(prev => prev.filter(n => n.id !== deletedNotifId))
+        }
+      )
       .subscribe()
 
     return () => {

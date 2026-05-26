@@ -334,6 +334,20 @@ export async function toggleLike(postId: string, reaction: string = 'like', forc
   if (shouldUnlike) {
     if (existing) {
       await supabase.from('likes').delete().eq('id', existing.id)
+      
+      // Delete the corresponding like notification
+      try {
+        const { createServiceClient } = await import('@/lib/supabase/server')
+        const supabaseAdmin = await createServiceClient()
+        await supabaseAdmin
+          .from('notifications')
+          .delete()
+          .eq('actor_id', user.id)
+          .eq('type', 'like')
+          .eq('post_id', postId)
+      } catch (err) {
+        console.error('Error deleting like notification:', err)
+      }
     }
     return { liked: false }
   } else {

@@ -93,6 +93,21 @@ export async function toggleCommentLike(commentId: string, postId: string) {
 
   if (existing) {
     await supabase.from('comment_likes').delete().eq('id', existing.id)
+    
+    // Delete comment like notification
+    try {
+      const { createServiceClient } = await import('@/lib/supabase/server')
+      const supabaseAdmin = await createServiceClient()
+      await supabaseAdmin
+        .from('notifications')
+        .delete()
+        .eq('actor_id', user.id)
+        .eq('type', 'comment_like')
+        .eq('comment_id', commentId)
+    } catch (err) {
+      console.error('Error deleting comment like notification:', err)
+    }
+
     revalidatePath(`/post/${postId}`)
     return { liked: false }
   } else {
