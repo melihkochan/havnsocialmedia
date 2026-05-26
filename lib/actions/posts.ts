@@ -540,8 +540,8 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
   // Always include own posts in following feed
   const targetUserIds = [...followingIds, userId]
 
-  // For popular sort fetch more to rank correctly; for new use DB-level pagination
-  const fetchLimit = sortBy === 'popular' ? 100 : PAGE_SIZE
+  // DB-level ordering: likes_count DESC for popular, created_at DESC for new
+  const orderCol = sortBy === 'popular' ? 'likes_count' : 'created_at'
 
   // 2. Fetch posts
   const { data: personalResult, error } = await supabase
@@ -549,37 +549,23 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
     .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
     .in('user_id', targetUserIds)
     .is('community_id', null)
-    .order('created_at', { ascending: false })
-    .limit(fetchLimit)
+    .order(orderCol, { ascending: false })
+    .limit(PAGE_SIZE)
 
   if (error) {
     console.error('getFollowingFeedPosts error:', error)
     return []
   }
 
-  const personalPosts = (personalResult ?? []).map((p: any) => ({ ...p, communities: null }))
-  let allPosts = personalPosts
+  return (personalResult ?? [])
     .filter(p => p.content !== null || p.parent_post_id !== null)
-
-  // Sort by new or popular
-  if (sortBy === 'popular') {
-    allPosts = allPosts.sort((a, b) => (b.likes?.length ?? 0) - (a.likes?.length ?? 0))
-  } else {
-    allPosts = allPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }
-
-  const sliceEnd = sortBy === 'popular' ? 50 : PAGE_SIZE
-  return allPosts.slice(0, sliceEnd).map(p => {
-    const rawParent = (p as any).parent_post
-    const parent_post = Array.isArray(rawParent)
-      ? (rawParent.length > 0 ? rawParent[0] : null)
-      : rawParent ?? null
-    return {
-      ...p,
-      parent_post,
-      community_members: [{ role: 'member' }],
-    }
-  })
+    .map((p: any) => {
+      const rawParent = p.parent_post
+      const parent_post = Array.isArray(rawParent)
+        ? (rawParent.length > 0 ? rawParent[0] : null)
+        : rawParent ?? null
+      return { ...p, parent_post, communities: null, community_members: [{ role: 'member' }] }
+    })
 }
 
 export async function getSinglePost(postId: string) {
