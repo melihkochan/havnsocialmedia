@@ -93,29 +93,54 @@ export function PostFeed({
           const enrichedPost = await getSinglePost(newPostId)
           if (enrichedPost) {
             // Apply filtering checks to match feed scope
-            
-            // 1. Filter by communityId if passed
-            if (communityId && enrichedPost.community_id !== communityId) {
-              return
+            console.log('[Realtime-PostFeed] INSERT event received:', payload)
+            console.log('[Realtime-PostFeed] Enriched post:', enrichedPost)
+            console.log('[Realtime-PostFeed] Filtering context:', {
+              communityId,
+              profileUserId,
+              pathname: typeof window !== 'undefined' ? window.location.pathname : null,
+              isBookmarksPage
+            })
+
+            // 1. Filter by communityId (Community Page context)
+            if (communityId) {
+              if (enrichedPost.community_id !== communityId) {
+                console.log('[Realtime-PostFeed] Filtered out: communityId mismatch')
+                return
+              }
             }
             
-            // 2. Filter by profileUserId if passed
-            if (profileUserId && enrichedPost.user_id !== profileUserId) {
-              return
+            // 2. Filter by profileUserId (Profile Page context)
+            else if (profileUserId) {
+              if (enrichedPost.user_id !== profileUserId || enrichedPost.community_id !== null) {
+                console.log('[Realtime-PostFeed] Filtered out: profileUserId mismatch or community post')
+                return
+              }
             }
             
             // 3. Fallback: URL path checks for Home Feed
-            if (typeof window !== 'undefined') {
+            else if (typeof window !== 'undefined') {
               const path = window.location.pathname
               if (path === '/feed' || path === '/') {
                 const commId = new URLSearchParams(window.location.search).get('communityId')
                 if (commId) {
-                  if (enrichedPost.community_id !== commId) return
+                  if (enrichedPost.community_id !== commId) {
+                    console.log('[Realtime-PostFeed] Filtered out: home feed communityId mismatch')
+                    return
+                  }
                 } else {
-                  if (enrichedPost.community_id !== null) return
+                  if (enrichedPost.community_id !== null) {
+                    console.log('[Realtime-PostFeed] Filtered out: home feed not a personal post')
+                    return
+                  }
                 }
+              } else {
+                console.log('[Realtime-PostFeed] Filtered out: unhandled page path', path)
+                return
               }
             }
+
+            console.log('[Realtime-PostFeed] Post passed filters, appending to feed.')
 
             // Append new post to the list (top)
             setFeedPosts(prev => {
