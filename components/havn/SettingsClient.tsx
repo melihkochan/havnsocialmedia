@@ -705,8 +705,8 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                             <Switch
                               checked={notifPrefs.support}
                               onChange={(val) => updateNotifPref('support', val)}
-                              label="Destek Talepleri"
-                              description="Destek talepleriniz güncellendiğinde veya yöneticiden mesaj geldiğinde bildirim alın"
+                              label="Destek Talepleri ve Öneriler"
+                              description="Destek talepleriniz veya önerileriniz güncellendiğinde, ya da yöneticiden bildirim geldiğinde bildirim alın"
                             />
                           </>
                         )}

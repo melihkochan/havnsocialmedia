@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info } from "lucide-react";
+import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HavnLogo } from "@/components/havn/HavnLogo";
 import { ThemeToggle } from "@/components/havn/ThemeToggle";
@@ -23,7 +23,6 @@ const navItems = [
   { href: "/notifications", label: "Bildirimler", icon: Bell },
   { href: "/bookmarks", label: "Kaydedilenler", icon: Bookmark },
   { href: "/profile", label: "Profil", icon: User },
-  { href: "/help", label: "Havn Rehberi", icon: Info },
 ];
 
 function Avatar({ username, avatarUrl, updatedAt }: { username: string; avatarUrl: string | null; updatedAt?: string | null }) {
@@ -452,8 +451,17 @@ export function Sidebar({
       isCollapsed ? "px-2 items-center overflow-visible" : "px-4 overflow-y-auto"
     )}>
       {/* Logo */}
-      <div className="px-1 mb-2">
+      <div className="px-1 mb-2 flex items-center justify-between w-full">
         <HavnLogo collapsed={isCollapsed} />
+        {!isCollapsed && (
+          <Link
+            href="/help"
+            className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-all cursor-pointer shadow-sm border border-transparent hover:border-border/40 select-none flex items-center justify-center"
+            title="Havn Rehberi"
+          >
+            <Info size={16} />
+          </Link>
+        )}
       </div>
 
       {/* Arama Input Butonu */}
@@ -565,6 +573,43 @@ export function Sidebar({
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Öneriler Link */}
+      <Link href="/suggestions" title={isCollapsed ? "Öneriler" : undefined}>
+        <motion.div
+          whileHover={isCollapsed ? { scale: 1.05 } : { x: 3 }}
+          whileTap={{ scale: 0.97 }}
+          className={cn(
+            "flex items-center transition-all duration-200 group border border-dashed border-sky-500/20 hover:border-sky-500/50 bg-sky-500/5 hover:bg-sky-500/10 cursor-pointer relative mb-1.5",
+            isCollapsed
+              ? "w-10 h-10 justify-center p-0 rounded-xl mx-auto"
+              : "gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold",
+            pathname.startsWith("/suggestions")
+              ? "text-sky-500 border-sky-500/50 bg-sky-500/10"
+              : "text-foreground hover:text-sky-500"
+          )}
+        >
+          <div className="relative">
+            <Sparkles
+              className={cn(
+                "flex-shrink-0 transition-colors",
+                pathname.startsWith("/suggestions")
+                  ? "text-sky-500"
+                  : "text-muted-foreground group-hover:text-sky-500"
+              )}
+              size={18}
+            />
+          </div>
+          {!isCollapsed && (
+            <>
+              <span className="truncate">Öneriler</span>
+              {pathname.startsWith("/suggestions") && (
+                <ChevronRight className="w-4 h-4 ml-auto opacity-60 text-sky-500" />
+              )}
+            </>
+          )}
+        </motion.div>
+      </Link>
 
       {/* Destek Link */}
       <Link href="/support" title={isCollapsed ? "Destek Talepleri" : undefined}>

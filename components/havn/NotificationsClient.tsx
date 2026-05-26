@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, Heart, MessageCircle, UserPlus, CheckCircle2, Loader2, Repeat, Trash2, Pin, UserCheck, HelpCircle, Shield } from 'lucide-react'
+import { Bell, Heart, MessageCircle, UserPlus, CheckCircle2, Loader2, Repeat, Trash2, Pin, UserCheck, HelpCircle, Shield, Sparkles } from 'lucide-react'
 import { markNotificationsAsRead, clearAllNotifications, deleteNotification } from '@/lib/actions/notifications'
 import { followUser, approveFollowRequest, declineFollowRequest } from '@/lib/actions/follows'
 import type { EnrichedProfile } from '@/lib/profile-enrich'
@@ -100,6 +100,8 @@ function getGroupedNotificationText(group: GroupedNotification) {
     actionText = ' gönderini beğendi ❤️'
   } else if (group.type === 'comment_like') {
     actionText = ' yanıtını beğendi ❤️'
+  } else if (group.type === 'support_reply') {
+    actionText = ' yeni öneriler paylaştı ✨'
   }
 
   return (
@@ -120,6 +122,12 @@ function groupNotifications(items: NotificationItem[]): GroupedNotification[] {
       groupKey = `like_post_${item.post_id}`
     } else if (item.type === 'comment_like' && item.comment_id) {
       groupKey = `comment_like_comment_${item.comment_id}`
+    } else if (item.type === 'support_reply' && item.message && (
+      item.message.includes('Yeni bir öneri paylaşıldı') || 
+      item.message.includes('yeni bir öneri') ||
+      item.message.includes('Yeni bir öneri')
+    )) {
+      groupKey = 'new_suggestions_group'
     }
 
     if (groupKey) {
@@ -431,7 +439,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
           { key: 'likes', label: 'Beğeniler' },
           { key: 'comments', label: 'Yorumlar' },
           { key: 'follows', label: 'Takip' },
-          { key: 'system', label: 'Destek & Sistem' }
+          { key: 'system', label: 'Destek, Öneri & Sistem' }
         ].map(tab => (
           <button
             key={tab.key}
@@ -603,7 +611,14 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     )
                   }
                 } else {
-                  const isAdminAction = notif.message && (
+                  const isSuggestion = notif.message && (
+                    notif.message.includes('öneri') || 
+                    notif.message.includes('Öneri') || 
+                    notif.message.includes('öneriniz') || 
+                    notif.message.includes('Öneriniz')
+                  )
+                  
+                  const isAdminAction = !isSuggestion && notif.message && (
                     notif.message.includes('yönetici') || 
                     notif.message.includes('doğrula') || 
                     notif.message.includes('sıfırla') || 
@@ -613,12 +628,17 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     notif.message.includes('sarı')
                   )
                   
-                  const isNewConvo = !isAdminAction && notif.message && (notif.message.includes('yeni bir konuşma başlattı') || notif.message.includes('yeni bir destek talebi'))
+                  const isNewConvo = !isSuggestion && !isAdminAction && notif.message && (notif.message.includes('yeni bir konuşma başlattı') || notif.message.includes('yeni bir destek talebi'))
                   
                   let badgeText = 'Destek Yanıtı'
                   let badgeBg = 'bg-purple-500/15 text-purple-500 border border-purple-500/25'
                   
-                  if (isAdminAction) {
+                  if (isSuggestion) {
+                    badgeText = 'Öneri Bildirimi'
+                    badgeBg = 'bg-sky-500/15 text-sky-500 border border-sky-500/25'
+                    icon = <Sparkles size={14} className="text-sky-500" />
+                    iconBg = 'bg-sky-500/10 text-sky-500 border border-sky-500/25'
+                  } else if (isAdminAction) {
                     badgeText = 'Sistem Bildirimi'
                     badgeBg = 'bg-amber-500/15 text-amber-500 border border-amber-500/25'
                     icon = <Shield size={14} className="text-amber-500 fill-amber-500/10" />
@@ -716,7 +736,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
               }
             }
 
-            const isGroupedLike = notif.type === 'like' || notif.type === 'comment_like'
+            const isGroupedType = notif.type === 'like' || notif.type === 'comment_like' || notif.type === 'support_reply'
             const isMultiActor = group.actors.length > 1
 
             const itemContent = (
@@ -728,7 +748,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
 
                 {/* Column 2: Content Details */}
                 <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                  {isGroupedLike && isMultiActor ? (
+                  {isGroupedType && isMultiActor ? (
                     /* Grouped multi-avatar row */
                     <div className="flex -space-x-2 overflow-hidden select-none mb-0.5">
                       {group.actors.slice(0, 7).map((actor, idx) => (
@@ -798,8 +818,19 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                   {/* Text Description */}
                   <div className="flex items-baseline justify-between gap-2 w-full">
                     <div className="text-xs text-muted-foreground leading-relaxed">
-                      {isGroupedLike && isMultiActor ? (
-                        contentText
+                      {isGroupedType && isMultiActor ? (
+                        notif.type === 'support_reply' ? (
+                          <span className="flex items-center gap-1.5 flex-wrap">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-sky-500/15 text-sky-500 border border-sky-500/25 select-none uppercase tracking-wider">
+                              Yeni Öneriler
+                            </span>
+                            <span className="font-semibold text-foreground/90">
+                              {getGroupedNotificationText(group)}
+                            </span>
+                          </span>
+                        ) : (
+                          contentText
+                        )
                       ) : (
                         <span>
                           <Link href={`/profile/${username}`} className="font-semibold text-foreground hover:underline mr-1">
@@ -810,7 +841,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       )}
                     </div>
                     
-                    {isGroupedLike && isMultiActor && (
+                    {isGroupedType && isMultiActor && (
                       <div className="flex items-center gap-1.5 flex-shrink-0 self-start mt-0.5">
                         <span className="text-[10px] text-muted-foreground select-none">
                           {formatRelativeTime(notif.created_at)}

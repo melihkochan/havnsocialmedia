@@ -53,7 +53,7 @@ export function ThemeToggle({ variant = "sidebar", onExpand }: ThemeToggleProps)
         }}
         title={variant === "compact" ? "Tema Değiştir" : undefined}
         className={cn(
-          "glass flex items-center transition-all duration-200",
+          "glass flex items-center transition-all duration-200 rounded-xl",
           "hover:border-primary/40 hover:shadow-sm active:scale-95",
           variant === "sidebar"
             ? "w-full px-3 py-2.5 text-sm font-medium text-foreground gap-2.5"
@@ -65,7 +65,7 @@ export function ThemeToggle({ variant = "sidebar", onExpand }: ThemeToggleProps)
         )}
       >
         <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
           style={{
             background: "linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))",
           }}

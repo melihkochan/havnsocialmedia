@@ -334,6 +334,7 @@ export function RightBar({ communityId: propCommunityId, currentUserRole: propUs
 
 function CommunityRightBar({ communityId: propCommunityId, currentUserRole: propUserRole }: RightBarProps) {
   const [activeTab, setActiveTab] = useState<'about' | 'members'>('about')
+  const [memberFilter, setMemberFilter] = useState<'all' | 'staff'>('all')
   const [community, setCommunity] = useState<CommunityData | null>(null)
   const [memberCount, setMemberCount] = useState(0)
   const [members, setMembers] = useState<Member[]>([])
@@ -574,72 +575,113 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
       ) : (
         /* Members Tab */
         <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
-          <h2 className="text-sm font-bold text-foreground">Topluluk Üyeleri</h2>
+          <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2.5 mb-1 flex-wrap">
+            <h2 className="text-sm font-bold text-foreground">Topluluk Üyeleri</h2>
+            <div className="flex items-center gap-1 p-0.5 bg-muted/40 border border-border/60 rounded-xl select-none">
+              <button
+                onClick={() => setMemberFilter('all')}
+                className={cn(
+                  "px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer",
+                  memberFilter === 'all'
+                    ? "bg-background text-foreground shadow-sm border border-border/20"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Tümü
+              </button>
+              <button
+                onClick={() => setMemberFilter('staff')}
+                className={cn(
+                  "px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer",
+                  memberFilter === 'staff'
+                    ? "bg-background text-foreground shadow-sm border border-border/20"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Yöneticiler
+              </button>
+            </div>
+          </div>
 
           <div className="flex flex-col gap-1 divide-y divide-border/60 max-h-[450px] overflow-y-auto pr-1">
-            {members.map((m) => {
-              const isTargetOwner = m.role === 'owner'
-              const isTargetMod = m.role === 'moderator'
-              const isSelf = m.user_id === currentUserId
+            {(() => {
+              const filteredMembers = members.filter(m => {
+                if (memberFilter === 'all') return true
+                return m.role === 'owner' || m.role === 'moderator'
+              })
 
-              const canPromoteDemote = isOwner && !isSelf
-              const canKick = !isTargetOwner && !isSelf && (isOwner || (isMod && !isTargetMod))
-              const isPendingAction = actionUserId === m.user_id
+              if (filteredMembers.length === 0) {
+                return (
+                  <p className="text-xs text-muted-foreground text-center py-8 select-none">
+                    Bu rolde üye bulunmamaktadır.
+                  </p>
+                )
+              }
 
-              return (
-                <div key={m.user_id} className="flex items-center gap-2 py-2.5">
-                  <Avatar username={m.profiles.username} avatarUrl={m.profiles.avatar_url} updatedAt={m.profiles.updated_at} />
+              return filteredMembers.map((m) => {
+                const isTargetOwner = m.role === 'owner'
+                const isTargetMod = m.role === 'moderator'
+                const isSelf = m.user_id === currentUserId
 
-                  <div className="flex-1 min-w-0">
-                    <Link href={`/profile/${m.profiles.username}`} className="text-xs font-bold text-foreground hover:text-primary transition-all truncate block">
-                      {getDisplayName(m.profiles)}
-                    </Link>
-                    {getFullName(m.profiles) && (
-                      <p className="text-[10px] text-muted-foreground truncate">@{m.profiles.username}</p>
-                    )}
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <RoleChip role={m.role} />
-                    </div>
-                  </div>
+                const canPromoteDemote = isOwner && !isSelf
+                const canKick = !isTargetOwner && !isSelf && (isOwner || (isMod && !isTargetMod))
+                const isPendingAction = actionUserId === m.user_id
 
-                  {/* Admin Actions */}
-                  {isAdmin && (canPromoteDemote || canKick) && (
-                    <div className="flex items-center gap-1">
-                      {isPendingAction ? (
-                        <Loader2 size={12} className="animate-spin text-muted-foreground mx-2" />
-                      ) : (
-                        <>
-                          {canPromoteDemote && (
-                            <button
-                              onClick={() => handleToggleMod(m)}
-                              title={isTargetMod ? "Moderatörlüğü Kaldır" : "Moderatör Yap"}
-                              className={cn(
-                                "p-1.5 rounded-lg border transition-all cursor-pointer",
-                                isTargetMod
-                                  ? "bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20"
-                                  : "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
-                              )}
-                            >
-                              {isTargetMod ? <ShieldAlert size={12} /> : <UserCheck size={12} />}
-                            </button>
-                          )}
+                return (
+                  <div key={m.user_id} className="flex items-center gap-2 py-2.5">
+                    <Avatar username={m.profiles.username} avatarUrl={m.profiles.avatar_url} updatedAt={m.profiles.updated_at} />
 
-                          {canKick && (
-                            <button
-                              onClick={() => handleKick(m)}
-                              title="Topluluktan Çıkar"
-                              className="p-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-all cursor-pointer"
-                            >
-                              <UserMinus size={12} />
-                            </button>
-                          )}
-                        </>
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/profile/${m.profiles.username}`} className="text-xs font-bold text-foreground hover:text-primary transition-all truncate block">
+                        {getDisplayName(m.profiles)}
+                      </Link>
+                      {getFullName(m.profiles) && (
+                        <p className="text-[10px] text-muted-foreground truncate">@{m.profiles.username}</p>
                       )}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <RoleChip role={m.role} />
+                      </div>
                     </div>
-                  )}
-                </div>
-              )
-            })}
+
+                    {/* Admin Actions */}
+                    {isAdmin && (canPromoteDemote || canKick) && (
+                      <div className="flex items-center gap-1">
+                        {isPendingAction ? (
+                          <Loader2 size={12} className="animate-spin text-muted-foreground mx-2" />
+                        ) : (
+                          <>
+                            {canPromoteDemote && (
+                              <button
+                                onClick={() => handleToggleMod(m)}
+                                title={isTargetMod ? "Moderatörlüğü Kaldır" : "Moderatör Yap"}
+                                className={cn(
+                                  "p-1.5 rounded-lg border transition-all cursor-pointer",
+                                  isTargetMod
+                                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20"
+                                    : "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                                )}
+                              >
+                                {isTargetMod ? <ShieldAlert size={12} /> : <UserCheck size={12} />}
+                              </button>
+                            )}
+
+                            {canKick && (
+                              <button
+                                onClick={() => handleKick(m)}
+                                title="Topluluktan Çıkar"
+                                className="p-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-all cursor-pointer"
+                              >
+                                <UserMinus size={12} />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            })()}
           </div>
         </div>
       )}
