@@ -248,11 +248,13 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
     setBannerFile(null)
   }, [profile.updated_at, profile.banner_url])
 
-  function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setBannerFile(file)
-    setBannerPreview(URL.createObjectURL(file))
+    const { compressImage } = await import('@/lib/image-compression')
+    const compressed = await compressImage(file, 1200, 0.8)
+    setBannerFile(compressed)
+    setBannerPreview(URL.createObjectURL(compressed))
   }
 
   async function handleProfileSubmit(e: React.FormEvent<HTMLFormElement>) {

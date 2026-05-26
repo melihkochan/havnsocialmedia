@@ -17,15 +17,21 @@ export function ImageUpload({ onFileSelect, className }: ImageUploadProps) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const handleFile = useCallback((file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     const isVid = file.type.startsWith('video/')
     const isImg = file.type.startsWith('image/')
     if (!isImg && !isVid) return
     
-    const url = URL.createObjectURL(file)
+    let finalFile = file
+    if (isImg) {
+      const { compressImage } = await import('@/lib/image-compression')
+      finalFile = await compressImage(file, 1200, 0.8)
+    }
+
+    const url = URL.createObjectURL(finalFile)
     setPreview(url)
     setIsVideo(isVid)
-    onFileSelect(file)
+    onFileSelect(finalFile)
   }, [onFileSelect])
 
   const handleDrop = useCallback((e: React.DragEvent) => {

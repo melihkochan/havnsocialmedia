@@ -85,10 +85,10 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
     // Convert to file
     canvas.toBlob((blob) => {
       if (blob) {
-        const file = new File([blob], 'avatar.png', { type: 'image/png' })
+        const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
         onFileSelect(file)
       }
-    }, 'image/png')
+    }, 'image/jpeg', 0.85)
   }, [onFileSelect])
 
   // Drag handlers

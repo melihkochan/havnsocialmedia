@@ -244,17 +244,27 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
   // Preview States
   const [avatarPreview, setAvatarPreview] = useState<string | null>(currentAvatar)
   const [bannerPreview, setBannerPreview] = useState<string | null>(currentBanner)
+  
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [bannerFile, setBannerFile] = useState<File | null>(null)
 
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>, target: "avatar" | "banner") {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>, target: "avatar" | "banner") {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = URL.createObjectURL(file)
+    
+    const { compressImage } = await import('@/lib/image-compression')
+    const maxDimension = target === "avatar" ? 400 : 1200
+    const compressed = await compressImage(file, maxDimension, 0.8)
+    
+    const url = URL.createObjectURL(compressed)
     if (target === "avatar") {
+      setAvatarFile(compressed)
       setAvatarPreview(url)
     } else {
+      setBannerFile(compressed)
       setBannerPreview(url)
     }
   }
@@ -263,6 +273,10 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     fd.set("type", type)
+
+    // Append compressed files if selected
+    if (avatarFile) fd.set("avatar", avatarFile)
+    if (bannerFile) fd.set("banner", bannerFile)
 
     // Save description, rules list, and announcement as separate fields
     fd.set("description", descText)
