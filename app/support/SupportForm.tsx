@@ -210,44 +210,26 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
   const [confirmCloseTicketId, setConfirmCloseTicketId] = useState<string | null>(null)
   const [confirmAdminCloseTicketId, setConfirmAdminCloseTicketId] = useState<string | null>(null)
   
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>(targetTicketId)
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null)
   const [autoOpenedId, setAutoOpenedId] = useState<string | null>(null)
 
-  // Remove ticketId query param from URL when ticket is closed
-  useEffect(() => {
-    if (!selectedTicket && !expandedTicketId && targetTicketId) {
-      const params = new URLSearchParams(window.location.search)
-      if (params.has('ticketId')) {
-        params.delete('ticketId')
-        const newQuery = params.toString()
-        const newPath = window.location.pathname + (newQuery ? `?${newQuery}` : '')
-        window.history.replaceState(null, '', newPath)
-      }
-    }
-  }, [selectedTicket, expandedTicketId, targetTicketId])
-
+  // When targetTicketId is set, scroll to it and visually highlight (no modal, no expand)
   useEffect(() => {
     if (targetTicketId && autoOpenedId !== targetTicketId) {
       const ticket = tickets.find(t => t.id === targetTicketId)
       if (ticket) {
         setAutoOpenedId(targetTicketId)
+        // Ensure correct tab is shown so the ticket is visible in list
         if (isFounder) {
           const isInitiatedByAdmin = ticket.message?.trim().startsWith('[Kurucu - Yanıt') || ticket.message?.trim().startsWith('[Yönetici - Yanıt')
           setActiveTab(isInitiatedByAdmin ? 'admin-create' : 'list')
-          setFilter('all') // Ensure it is not filtered out from lists
-          setSelectedTicket(ticket)
-          setReplyText('')
-          setReplyResult(null)
-        } else {
-          setFilter('all') // Ensure it is not filtered out
-          setExpandedTicketId(targetTicketId)
-          setActiveTab('list') // Ensure we view list tab
-          // Scroll to the ticket after a short delay to let render complete
-          setTimeout(() => {
-            const el = document.getElementById(`ticket-${targetTicketId}`)
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }, 350)
         }
+        setFilter('all') // Make sure ticket isn't filtered out
+        // Scroll to the ticket
+        setTimeout(() => {
+          const el = document.getElementById(`ticket-${targetTicketId}`)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 350)
       }
     }
   }, [targetTicketId, tickets, isFounder, autoOpenedId])
