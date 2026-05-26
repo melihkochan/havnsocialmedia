@@ -136,7 +136,7 @@ export async function createPost(formData: FormData) {
   if (error) return { error: error.message }
 
   // Reward user with +10 XP
-  const { rewardXP } = await import('@/lib/actions/communities-premium')
+  const { rewardXP } = await import('@/lib/xp')
   await rewardXP(user.id, 10)
 
   revalidatePath('/feed')
@@ -354,7 +354,7 @@ export async function toggleLike(postId: string, reaction: string = 'like', forc
     if (!existing) {
       await supabase.from('likes').insert({ post_id: postId, user_id: user.id })
       // Reward user with +2 XP
-      const { rewardXP } = await import('@/lib/actions/communities-premium')
+      const { rewardXP } = await import('@/lib/xp')
       await rewardXP(user.id, 2)
     }
     
