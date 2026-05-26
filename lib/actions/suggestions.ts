@@ -218,6 +218,21 @@ export async function voteSuggestion(suggestionId: string, voteType: number) {
     return { error: 'Geçersiz oy tipi.' }
   }
 
+  // Fetch the suggestion to check status
+  const { data: suggestion, error: fetchErr } = await supabase
+    .from('suggestions')
+    .select('status')
+    .eq('id', suggestionId)
+    .single()
+
+  if (fetchErr || !suggestion) {
+    return { error: 'Öneri bulunamadı.' }
+  }
+
+  if (suggestion.status === 'closed') {
+    return { error: 'Kapatılmış bir öneriye oy verilemez.' }
+  }
+
   if (voteType === 0) {
     // Delete vote
     const { error } = await supabase

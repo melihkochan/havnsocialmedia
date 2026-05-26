@@ -430,7 +430,7 @@ export function ProfileTabsClient({ tickets = [], suggestions = [], isCurrentFou
                 {/* Modal Actions */}
                 <div className="p-6 border-t border-border/60 bg-muted/10 flex justify-end gap-2">
                   <Link
-                    href={`/suggestions`}
+                    href={`/suggestions?suggestionId=${selectedSuggestion.id}`}
                     className="px-4 py-2.5 rounded-xl text-xs font-bold text-primary-foreground transition-all cursor-pointer flex items-center gap-1.5 select-none"
                     style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                   >

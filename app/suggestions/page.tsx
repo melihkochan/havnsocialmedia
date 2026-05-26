@@ -8,7 +8,12 @@ import { SuggestionsClient } from './SuggestionsClient'
 export const metadata = { title: 'Öneriler ve Geri Bildirim — HAVN' }
 export const dynamic = 'force-dynamic'
 
-export default async function SuggestionsPage() {
+export default async function SuggestionsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ suggestionId?: string }>
+}) {
+  const { suggestionId } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -30,6 +35,7 @@ export default async function SuggestionsPage() {
         profile={profile} 
         isAdmin={isAdmin} 
         initialSuggestions={initialSuggestions} 
+        focusedSuggestionId={suggestionId}
       />
     </MainLayout>
   )

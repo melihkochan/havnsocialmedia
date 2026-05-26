@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Plus, X, Loader2, Check, AlertCircle, Clock, ChevronUp, ShieldAlert } from 'lucide-react'
+import { Lightbulb, Plus, X, Loader2, Check, AlertCircle, Clock, ChevronUp, ShieldAlert } from 'lucide-react'
 import { createSuggestion, voteSuggestion, updateSuggestionStatus, deleteSuggestion } from '@/lib/actions/suggestions'
 import { ConfirmDialog } from '@/components/havn/ConfirmDialog'
 import { InteractiveAvatar } from '@/components/havn/InteractiveAvatar'
@@ -10,6 +10,7 @@ import { ProfileName } from '@/components/havn/ProfileName'
 import { getRankInfo } from '@/lib/gamification'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface Suggestion {
   id: string
@@ -59,6 +60,7 @@ interface SuggestionsClientProps {
   profile: any
   isAdmin: boolean
   initialSuggestions: any[]
+  focusedSuggestionId?: string
 }
 
 function formatDate(dateStr: string) {
@@ -75,7 +77,7 @@ function formatDate(dateStr: string) {
   }
 }
 
-export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: SuggestionsClientProps) {
+export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focusedSuggestionId }: SuggestionsClientProps) {
   const router = useRouter()
   const [items, setItems] = useState<Suggestion[]>(initialSuggestions)
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'completed' | 'closed'>('all')
@@ -131,14 +133,32 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
     setItems(initialSuggestions)
   }, [initialSuggestions])
 
+  // Scroll to focused suggestion if present
+  useEffect(() => {
+    if (focusedSuggestionId) {
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`suggestion-${focusedSuggestionId}`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 150)
+      return () => clearTimeout(timer)
+    }
+  }, [focusedSuggestionId])
+
   // Filter and sort items locally
   const filteredAndSortedItems = items
     .filter(item => {
+      if (focusedSuggestionId && item.id === focusedSuggestionId) return true
       if (showMySuggestions && item.user_id !== profile.id) return false
       if (statusFilter === 'all') return true
       return item.status === statusFilter
     })
     .sort((a, b) => {
+      if (focusedSuggestionId) {
+        if (a.id === focusedSuggestionId) return -1
+        if (b.id === focusedSuggestionId) return 1
+      }
       if (sortBy === 'new') {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       } else {
@@ -152,6 +172,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
   const handleVote = async (itemId: string, direction: 'up' | 'down') => {
     const item = items.find(i => i.id === itemId)
     if (!item) return
+    if (item.status === 'closed') return // Block voting on closed suggestions
 
     const currentVote = item.userVote
     let targetVote = 0
@@ -342,7 +363,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
               color: 'var(--primary-foreground)',
             }}
           >
-            <Sparkles size={20} />
+            <Lightbulb size={20} />
           </div>
           <div>
             <h1 className="text-lg font-black text-foreground">Öneri ve Geri Bildirim Forumu</h1>
@@ -434,11 +455,12 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
       <div className="space-y-4">
         {filteredAndSortedItems.length === 0 ? (
           <div className="bg-card/40 border border-border rounded-2xl p-12 text-center text-muted-foreground text-sm flex flex-col items-center justify-center gap-2 select-none">
-            <Sparkles size={24} className="text-muted-foreground/50 animate-pulse" />
+            <Lightbulb size={24} className="text-muted-foreground/50 animate-pulse" />
             <span>Seçilen filtrelere uygun öneri bulunamadı. Havn'ı geliştirmek için ilk adımı sen at!</span>
           </div>
         ) : (
           filteredAndSortedItems.map(item => {
+            const isFocused = item.id === focusedSuggestionId
             const statusInfo = getStatusConfig(item.status)
             const authorXp = item.profiles?.xp ?? 0
             const authorRank = getRankInfo(authorXp)
@@ -448,17 +470,29 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
               <motion.div
                 layout
                 key={item.id}
-                className="bg-card border border-border/80 hover:border-border/120 rounded-2xl p-5 flex gap-4 transition-all duration-200"
+                id={`suggestion-${item.id}`}
+                initial={isFocused ? { scale: 0.98, opacity: 0.85 } : undefined}
+                animate={isFocused ? { scale: 1, opacity: 1 } : undefined}
+                transition={isFocused ? { type: "spring", stiffness: 200, damping: 15 } : undefined}
+                className={cn(
+                  "bg-card border rounded-2xl p-5 flex gap-4 transition-all duration-300",
+                  isFocused 
+                    ? "border-primary/60 ring-2 ring-primary/15 shadow-[0_0_30px_color-mix(in_oklch,var(--primary)_22%,transparent)] bg-gradient-to-br from-card to-primary/[0.03]" 
+                    : "border-border/80 hover:border-border/120"
+                )}
               >
                 {/* Vote panel */}
                 <div className="flex flex-col items-center gap-1 select-none">
                   <button
-                    onClick={() => handleVote(item.id, 'up')}
+                    onClick={() => item.status !== 'closed' && handleVote(item.id, 'up')}
+                    disabled={item.status === 'closed'}
                     className={cn(
-                      "p-1.5 rounded-lg border transition-all cursor-pointer",
-                      item.userVote === 1
-                        ? "bg-primary/10 border-primary/20 text-primary"
-                        : "hover:bg-accent border-transparent text-muted-foreground hover:text-foreground"
+                      "p-1.5 rounded-lg border transition-all select-none",
+                      item.status === 'closed'
+                        ? "opacity-35 cursor-not-allowed border-transparent text-muted-foreground/60"
+                        : item.userVote === 1
+                          ? "bg-primary/10 border-primary/20 text-primary cursor-pointer"
+                          : "hover:bg-accent border-transparent text-muted-foreground hover:text-foreground cursor-pointer"
                     )}
                   >
                     <ChevronUp size={18} className="stroke-[3]" />
@@ -604,15 +638,43 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
 
                   {/* Footer - user info and date */}
                   <div className="flex items-center justify-between border-t border-border/40 pt-2.5 mt-1 flex-wrap gap-2 text-[10px]">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-border/60 bg-accent/20">
-                        {item.profiles?.avatar_url ? (
-                          <img
-                            src={item.profiles.avatar_url}
-                            alt={item.profiles.username}
-                            className="w-full h-full object-cover"
+                    {item.profiles?.username && item.profiles.username !== 'gizli' ? (
+                      <Link
+                        href={`/profile/${item.profiles.username}`}
+                        className="flex items-center gap-2.5 min-w-0 hover:opacity-85 transition-opacity cursor-pointer group"
+                      >
+                        <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-border/60 bg-accent/20">
+                          {item.profiles?.avatar_url ? (
+                            <img
+                              src={item.profiles.avatar_url}
+                              alt={item.profiles.username}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div
+                              className="w-full h-full flex items-center justify-center font-black text-[10px]"
+                              style={{
+                                background: `linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))`,
+                                color: 'var(--primary-foreground)',
+                              }}
+                            >
+                              {initials}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="text-[10px] text-muted-foreground flex-shrink-0 group-hover:text-foreground transition-colors">başlatan:</span>
+                          <ProfileName 
+                            profile={item.profiles} 
+                            layout="inline" 
+                            showHandle={true} 
+                            nameClassName="text-xs font-semibold"
                           />
-                        ) : (
+                        </div>
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-2.5 min-w-0 select-none">
+                        <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-border/60 bg-accent/20">
                           <div
                             className="w-full h-full flex items-center justify-center font-black text-[10px]"
                             style={{
@@ -622,22 +684,13 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
                           >
                             {initials}
                           </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 min-w-0">
-                        <span className="text-[10px] text-muted-foreground flex-shrink-0">başlatan:</span>
-                        {item.profiles?.username === 'gizli' ? (
+                        </div>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="text-[10px] text-muted-foreground flex-shrink-0">başlatan:</span>
                           <span className="text-xs font-semibold text-foreground">Gizli Kullanıcı</span>
-                        ) : (
-                          <ProfileName 
-                            profile={item.profiles || { username: 'deleted' }} 
-                            layout="inline" 
-                            showHandle={true} 
-                            nameClassName="text-xs font-semibold"
-                          />
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Clock size={11} />
@@ -672,7 +725,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
               <div className="p-5 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                    <Sparkles size={16} />
+                    <Lightbulb size={16} />
                   </div>
                   <span className="font-black text-sm text-foreground">Yeni Öneri Gönder</span>
                 </div>
