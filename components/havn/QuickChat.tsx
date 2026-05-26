@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, Send, Search, X, Minimize2, ArrowLeft, Clock, MessageCircle, ChevronUp, Loader2, CheckCircle, Trash2, Pencil } from 'lucide-react'
+import { MessageSquare, Send, Search, X, Minimize2, ArrowLeft, Clock, MessageCircle, ChevronUp, Loader2, CheckCircle, Trash2, Pencil, Heart } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ProfileName } from '@/components/havn/ProfileName'
 import { sendDirectMessage, markMessagesAsRead, getMessagesWithUser, getConversations, editDirectMessage, reopenConversation, deleteDirectMessage, closeConversation, restoreStreak } from '@/lib/actions/messages'
@@ -776,24 +776,51 @@ export function QuickChat({ currentUser }: QuickChatProps) {
                     if (!showRestoreBanner) return null
 
                     return (
-                      <div className="mx-3 mt-2.5 p-2 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-between gap-2 shadow-xs relative overflow-hidden backdrop-blur-xs">
+                      <div className="mx-3 mt-2.5 p-3.5 bg-background/40 border border-orange-500/30 rounded-2xl flex items-center justify-between gap-2 shadow-[0_0_15px_rgba(249,115,22,0.06)] relative overflow-hidden backdrop-blur-md">
                         <div className="absolute -left-4 -top-4 w-10 h-10 bg-orange-500/10 rounded-full blur-lg pointer-events-none" />
-                        <div className="flex items-center gap-2 z-10 flex-1 min-w-0">
-                          <span className="text-base animate-bounce">🔥</span>
+                        <div className="flex items-center gap-3 z-10 flex-1 min-w-0">
+                          <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/35 overflow-hidden flex-shrink-0">
+                            <motion.span
+                              animate={{ y: [0, -1.5, 0], scale: [1, 1.1, 1] }}
+                              transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+                              className="text-sm z-10 filter drop-shadow-[0_2px_4px_rgba(249,115,22,0.5)] select-none"
+                            >
+                              🔥
+                            </motion.span>
+                            <div className="absolute inset-0 bg-orange-500/5 animate-pulse" />
+                          </div>
                           <div className="flex flex-col min-w-0">
-                            <p className="text-[10px] font-bold text-foreground leading-tight">
-                              Alev seriniz sönmüş!
+                            <p className="text-[10px] font-black text-foreground leading-tight tracking-wide uppercase bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
+                              Alev Seriniz Sönmüş!
                             </p>
-                            <p className="text-[9px] text-muted-foreground truncate leading-normal">
-                              {historicalStreak} günlük serinizi kurtarın! (Can: {streakLives}/5)
+                            <p className="text-[9px] text-muted-foreground truncate leading-normal mt-0.5">
+                              {historicalStreak} günlük serinizi kurtarın!
                             </p>
+                            {/* Heart Lives Indicator */}
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="text-[8px] text-muted-foreground uppercase font-black tracking-wider select-none mr-0.5">Can:</span>
+                              <div className="flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                  <Heart
+                                    key={i}
+                                    size={8}
+                                    className={cn(
+                                      "transition-all duration-300",
+                                      i <= streakLives
+                                        ? "fill-rose-500 text-rose-500 drop-shadow-[0_0_2px_rgba(244,63,94,0.6)]"
+                                        : "fill-zinc-200 text-zinc-200 dark:fill-zinc-800 dark:text-zinc-800"
+                                    )}
+                                  />
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-1 z-10 flex-shrink-0">
                           <button
                             onClick={handleRestoreStreak}
                             disabled={restorePending || streakLives <= 0}
-                            className="px-2 py-0.5 text-[9px] font-black tracking-wider uppercase rounded-md text-primary-foreground transition-all cursor-pointer select-none active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                            className="px-2.5 py-1 text-[9px] font-black tracking-wider uppercase rounded-xl text-primary-foreground transition-all cursor-pointer select-none active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-xs"
                             style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                           >
                             {restorePending ? (
@@ -804,7 +831,7 @@ export function QuickChat({ currentUser }: QuickChatProps) {
                           </button>
                           <button
                             onClick={() => setDismissedBanners(prev => ({ ...prev, [activeChatUser.id]: true }))}
-                            className="p-0.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded transition-colors cursor-pointer"
+                            className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded transition-colors cursor-pointer"
                             title="Kapat"
                           >
                             <X size={10} />
@@ -1173,30 +1200,69 @@ export function QuickChat({ currentUser }: QuickChatProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 backdrop-blur-md select-none"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 backdrop-blur-md select-none overflow-hidden"
           >
+            {/* Custom rising particles (flames/sparks) */}
+            {Array.from({ length: 25 }).map((_, i) => {
+              const size = Math.random() * 8 + 4
+              const duration = Math.random() * 2 + 1.5
+              const delay = Math.random() * 0.5
+              const xOffset = Math.random() * 320 - 160
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ y: 250, x: xOffset, opacity: 1, scale: 1 }}
+                  animate={{
+                    y: -350,
+                    x: xOffset + (Math.random() * 60 - 30),
+                    opacity: 0,
+                    scale: 0.2,
+                  }}
+                  transition={{
+                    duration,
+                    delay,
+                    ease: "easeOut",
+                    repeat: Infinity,
+                  }}
+                  className="absolute rounded-full pointer-events-none z-10"
+                  style={{
+                    width: size,
+                    height: size,
+                    background: Math.random() > 0.4 
+                      ? 'radial-gradient(circle, #f97316 0%, #ef4444 100%)' 
+                      : 'radial-gradient(circle, #fbbf24 0%, #f97316 100%)',
+                    boxShadow: '0 0 10px rgba(249, 115, 22, 0.8)',
+                  }}
+                />
+              )
+            })}
+
             <motion.div
               initial={{ scale: 0.8, y: 20 }}
               animate={{ scale: 1, y: 0, transition: { type: 'spring', damping: 15 } }}
               exit={{ scale: 0.8, y: 20 }}
-              className="bg-card/90 border border-orange-500/30 rounded-3xl p-8 flex flex-col items-center text-center gap-4 max-w-xs shadow-2xl relative overflow-hidden"
+              className="bg-card/90 border border-orange-500/35 rounded-3xl p-8 flex flex-col items-center text-center gap-4 max-w-xs shadow-2xl relative overflow-hidden z-20"
             >
-              {/* Glow Effect */}
+              {/* Concentric glowing waves behind the 🔥 emoji */}
+              <div className="absolute w-28 h-28 rounded-full bg-orange-500/10 border border-orange-500/20 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
+              <div className="absolute w-36 h-36 rounded-full bg-orange-500/5 border border-orange-500/10 animate-ping pointer-events-none" style={{ animationDuration: '4s' }} />
+              
+              {/* Glow Background Effect */}
               <div className="absolute -inset-10 bg-orange-500/10 blur-3xl rounded-full" />
               
               <motion.div
                 animate={{ 
-                  scale: [1, 1.25, 1],
-                  rotate: [0, -10, 10, 0],
+                  scale: [1, 1.2, 1],
+                  rotate: [0, -8, 8, 0],
                 }}
-                transition={{ duration: 1, repeat: 1, repeatType: 'reverse' }}
-                className="text-7xl drop-shadow-[0_0_15px_rgba(249,115,22,0.4)]"
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                className="text-7xl filter drop-shadow-[0_4px_15px_rgba(249,115,22,0.55)] select-none z-10"
               >
                 🔥
               </motion.div>
               
               <div className="space-y-1 z-10">
-                <h3 className="text-lg font-black text-foreground uppercase tracking-wider bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
+                <h3 className="text-lg font-black text-foreground uppercase tracking-wider bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent filter drop-shadow-[0_2px_4px_rgba(249,115,22,0.15)]">
                   {animateStreakNum === 1 ? 'Seri Başladı!' : 'Seri Büyüyor!'}
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -1213,7 +1279,7 @@ export function QuickChat({ currentUser }: QuickChatProps) {
                     animate={{ scale: 1, y: 0, opacity: 1 }}
                     exit={{ scale: 0.4, y: -15, opacity: 0 }}
                     transition={{ type: 'spring', damping: 10, stiffness: 150 }}
-                    className="text-5xl font-black text-foreground font-mono"
+                    className="text-5xl font-black text-foreground font-mono filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
                   >
                     {displayNum}
                   </motion.span>

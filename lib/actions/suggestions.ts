@@ -365,6 +365,17 @@ export async function deleteSuggestion(suggestionId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  // Fetch the suggestion to check the owner
+  const { data: suggestion, error: fetchError } = await supabase
+    .from('suggestions')
+    .select('user_id')
+    .eq('id', suggestionId)
+    .single()
+
+  if (fetchError || !suggestion) {
+    return { error: 'Öneri bulunamadı.' }
+  }
+
   // Fetch current user's profile to verify if they are an admin
   const { data: profile } = await supabase
     .from('profiles')
@@ -373,11 +384,29 @@ export async function deleteSuggestion(suggestionId: string) {
     .single()
 
   const isAdmin = profile?.is_gold || isFounder(profile)
-  if (!isAdmin) {
+  const isOwner = suggestion.user_id === user.id
+
+  if (!isAdmin && !isOwner) {
     return { error: 'Bu işlem için yetkiniz bulunmamaktadır.' }
   }
 
-  const { error } = await supabase
+  const { createServiceClient } = await import('@/lib/supabase/server')
+  const serviceClient = await createServiceClient()
+
+  // First, delete related votes to avoid foreign key violations
+  await serviceClient
+    .from('suggestion_votes')
+    .delete()
+    .eq('suggestion_id', suggestionId)
+
+  // Second, delete related comments
+  await serviceClient
+    .from('suggestion_comments')
+    .delete()
+    .eq('suggestion_id', suggestionId)
+
+  // Finally, delete the suggestion
+  const { error } = await serviceClient
     .from('suggestions')
     .delete()
     .eq('id', suggestionId)

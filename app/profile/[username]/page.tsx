@@ -111,6 +111,7 @@ export default async function ProfilePage({
     followingResult,
     followToTargetResult,
     followToUserResult,
+    suggestionsResultRow,
   ] = await Promise.all([
     user
       ? supabase.from('profiles').select('*').eq('id', user.id).single()
@@ -145,6 +146,17 @@ export default async function ProfilePage({
       .eq('follower_id', profile.id),
     user ? supabase.from('follows').select('created_at').eq('follower_id', user.id).eq('following_id', profile.id).maybeSingle() : Promise.resolve({ data: null }),
     user ? supabase.from('follows').select('created_at').eq('follower_id', profile.id).eq('following_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
+    supabase
+      .from('suggestions')
+      .select(`
+        *,
+        suggestion_votes (
+          vote_type,
+          user_id
+        )
+      `)
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false }),
   ])
 
   const followToTarget = followToTargetResult.data
@@ -210,6 +222,28 @@ export default async function ProfilePage({
 
   const isCurrentFounder = currentProfile ? isFounder(currentProfile) : false
   const userTickets = isCurrentFounder ? await getUserSupportTickets(profile.id) : []
+
+  const userSuggestionsRaw = suggestionsResultRow?.data || []
+  const userSuggestions = userSuggestionsRaw.map((item: any) => {
+    const votes = item.suggestion_votes || []
+    let score = 0
+    let userVote = 0
+
+    votes.forEach((v: any) => {
+      score += v.vote_type
+      if (user && v.user_id === user.id) {
+        userVote = v.vote_type
+      }
+    })
+
+    return {
+      ...item,
+      score,
+      userVote,
+      voteCount: votes.length,
+      profiles: profile,
+    }
+  })
 
   return (
     <MainLayout currentUser={currentProfile}>
@@ -472,7 +506,7 @@ export default async function ProfilePage({
           </div>
         </div>
 
-        {!isLocked && tab !== 'tickets' && isOwnProfile && currentProfile && (
+        {!isLocked && tab !== 'tickets' && tab !== 'suggestions' && isOwnProfile && currentProfile && (
           <FeedPostForm
             communities={(comms ?? []).map(c => ({ id: c.id, name: c.name }))}
             currentUser={{ username: currentProfile.username, avatar_url: currentProfile.avatar_url }}
@@ -485,7 +519,7 @@ export default async function ProfilePage({
             <Link
               href={`/profile/${username}?tab=posts`}
               className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
-                tab !== 'tickets'
+                tab !== 'tickets' && tab !== 'suggestions'
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
@@ -501,6 +535,16 @@ export default async function ProfilePage({
               }`}
             >
               Destek Talepleri ({userTickets.length})
+            </Link>
+            <Link
+              href={`/profile/${username}?tab=suggestions`}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
+                tab === 'suggestions'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Öneriler ({userSuggestions.length})
             </Link>
           </div>
         )}
@@ -555,7 +599,71 @@ export default async function ProfilePage({
               </div>
             )}
           </div>
-        ) : (
+        ) : tab === 'suggestions' && isCurrentFounder ? (
+          <div className="mt-2 flex flex-col gap-3">
+            <h2 className="text-sm font-bold text-foreground mb-1">Açılan Öneriler</h2>
+            {userSuggestions.length === 0 ? (
+              <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground text-xs">
+                Bu kullanıcının henüz açtığı bir öneri bulunmamaktadır.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {userSuggestions.map((suggestion: any) => {
+                  const statusInfo = (() => {
+                    switch (suggestion.status) {
+                      case 'open':
+                        return { label: 'Açık', classes: 'bg-sky-500/10 border-sky-500/20 text-sky-600 dark:text-sky-400' }
+                      case 'in_progress':
+                        return { label: 'Yapılıyor', classes: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' }
+                      case 'completed':
+                        return { label: 'Tamamlandı', classes: 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400' }
+                      case 'closed':
+                        return { label: 'Kapatıldı', classes: 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400' }
+                      default:
+                        return { label: 'Bilinmiyor', classes: 'bg-zinc-500/10 border-zinc-500/20 text-muted-foreground' }
+                    }
+                  })()
+
+                  return (
+                    <Link
+                      key={suggestion.id}
+                      href={`/suggestions`}
+                      className="bg-card border border-border rounded-2xl p-5 hover:border-primary/40 hover:shadow-sm transition-all duration-200 flex items-center justify-between gap-4"
+                    >
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <span className="font-bold text-sm text-foreground truncate">{suggestion.title}</span>
+                          <span className={cn("px-2 py-0.5 text-[9px] font-black rounded-full border tracking-wide uppercase", statusInfo.classes)}>
+                            {statusInfo.label}
+                          </span>
+                          {suggestion.is_private && (
+                            <span className="px-2 py-0.5 text-[9px] font-black rounded-full border bg-amber-500/10 border-amber-500/20 text-amber-500 flex items-center gap-1 select-none">
+                              🔒 Özel
+                            </span>
+                          )}
+                          {suggestion.is_anonymous && (
+                            <span className="px-2 py-0.5 text-[9px] font-black rounded-full border bg-zinc-500/10 border-zinc-500/20 text-muted-foreground select-none">
+                              👤 Anonim
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1 break-words">
+                          {suggestion.description}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground mt-1 select-none">
+                          Açılış Tarihi: {new Date(suggestion.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} • Toplam Oy: {suggestion.score}
+                        </span>
+                      </div>
+                      <div className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-black tracking-wider text-muted-foreground hover:bg-muted transition-all select-none flex-shrink-0">
+                        PANODA GÖR
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        ) : tab !== 'tickets' && tab !== 'suggestions' ? (
           <div className="mt-2">
             <h2 className="text-sm font-bold text-foreground mb-4">Gönderiler</h2>
             <PostFeed
@@ -567,7 +675,7 @@ export default async function ProfilePage({
               initialHasMore={(posts?.length ?? 0) >= 20}
             />
           </div>
-        )}
+        ) : null}
       </div>
     </MainLayout>
   )

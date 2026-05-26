@@ -80,6 +80,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
   const [items, setItems] = useState<Suggestion[]>(initialSuggestions)
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'completed' | 'closed'>('all')
   const [sortBy, setSortBy] = useState<'votes' | 'new'>('votes')
+  const [showMySuggestions, setShowMySuggestions] = useState(false)
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [addTitle, setAddTitle] = useState('')
@@ -133,6 +134,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
   // Filter and sort items locally
   const filteredAndSortedItems = items
     .filter(item => {
+      if (showMySuggestions && item.user_id !== profile.id) return false
       if (statusFilter === 'all') return true
       return item.status === statusFilter
     })
@@ -387,30 +389,44 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
           })}
         </div>
 
-        {/* Sort by selector */}
-        <div className="flex items-center gap-1 p-0.5 bg-background/50 rounded-xl w-fit border border-border/40 ml-auto sm:ml-0">
+        {/* Right side: Own filter & Sort selector */}
+        <div className="flex items-center gap-2 ml-auto sm:ml-0">
           <button
-            onClick={() => setSortBy('votes')}
+            onClick={() => setShowMySuggestions(prev => !prev)}
             className={cn(
-              "px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer",
-              sortBy === 'votes'
-                ? "bg-background text-foreground shadow-sm border border-border/20"
-                : "text-muted-foreground hover:text-foreground"
+              "px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer border select-none",
+              showMySuggestions
+                ? "bg-primary/10 border-primary/25 text-primary shadow-xs"
+                : "bg-background/50 border-border/40 text-muted-foreground hover:text-foreground"
             )}
           >
-            Popüler
+            Önerilerim
           </button>
-          <button
-            onClick={() => setSortBy('new')}
-            className={cn(
-              "px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer",
-              sortBy === 'new'
-                ? "bg-background text-foreground shadow-sm border border-border/20"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Yeni
-          </button>
+
+          <div className="flex items-center gap-1 p-0.5 bg-background/50 rounded-xl w-fit border border-border/40">
+            <button
+              onClick={() => setSortBy('votes')}
+              className={cn(
+                "px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer select-none",
+                sortBy === 'votes'
+                  ? "bg-background text-foreground shadow-sm border border-border/20"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Popüler
+            </button>
+            <button
+              onClick={() => setSortBy('new')}
+              className={cn(
+                "px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer select-none",
+                sortBy === 'new'
+                  ? "bg-background text-foreground shadow-sm border border-border/20"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Yeni
+            </button>
+          </div>
         </div>
       </div>
 
@@ -480,7 +496,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
                       </p>
                     </div>
 
-                    {isAdmin && (
+                    {(isAdmin || item.user_id === profile.id) && (
                       <div className="flex gap-2">
                         <button
                           onClick={() => setConfirmDeleteId(item.id)}
@@ -488,17 +504,19 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions }: Sugg
                         >
                           Sil
                         </button>
-                        <button
-                          onClick={() => {
-                            setModeratingItem(item)
-                            setModStatus(item.status)
-                            setModAdminNote(item.admin_note || '')
-                            setModError(null)
-                          }}
-                          className="px-2.5 py-1.5 rounded-lg border border-border hover:bg-accent text-[10px] font-bold text-foreground transition-all cursor-pointer flex-shrink-0"
-                        >
-                          Yönet
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              setModeratingItem(item)
+                              setModStatus(item.status)
+                              setModAdminNote(item.admin_note || '')
+                              setModError(null)
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg border border-border hover:bg-accent text-[10px] font-bold text-foreground transition-all cursor-pointer flex-shrink-0"
+                          >
+                            Yönet
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
