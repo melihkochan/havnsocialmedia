@@ -202,3 +202,42 @@ export async function deleteNotification(notificationId: string) {
   revalidatePath('/notifications')
   return { success: true }
 }
+
+export async function getSingleNotification(notificationId: string) {
+  const supabaseAdmin = await createServiceClient()
+  const { data, error } = await supabaseAdmin
+    .from('notifications')
+    .select(`
+      *,
+      actor:profiles!actor_id(*),
+      posts(*),
+      comments(*),
+      communities(name, slug)
+    `)
+    .eq('id', notificationId)
+    .single()
+
+  if (error || !data) {
+    console.error('getSingleNotification error:', error)
+    return null
+  }
+
+  // Fetch support ticket details if needed
+  if ((data.type === 'support_ticket' || data.type === 'support_reply') && data.post_preview) {
+    try {
+      const { data: ticket } = await supabaseAdmin
+        .from('support_tickets')
+        .select('id, status, subject')
+        .eq('id', data.post_preview)
+        .single()
+      if (ticket) {
+        return {
+          ...data,
+          support_ticket: ticket
+        }
+      }
+    } catch (e) {}
+  }
+
+  return data
+}

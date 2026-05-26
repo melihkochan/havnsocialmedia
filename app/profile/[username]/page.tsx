@@ -543,6 +543,7 @@ export default async function ProfilePage({
               posts={sortedPosts.map(p => ({ ...p, community_members: [{ role: 'member' as const }] })) as Parameters<typeof PostFeed>[0]['posts']}
               currentUserId={user?.id}
               pinContext={isOwnProfile ? 'profile' : undefined}
+              profileUserId={profile.id}
             />
           </div>
         )}

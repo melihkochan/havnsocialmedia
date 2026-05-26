@@ -4,17 +4,19 @@ import { useState, useEffect, useRef } from 'react'
 import { PostCard } from '@/components/havn/PostCard'
 import type { UserRole } from '@/lib/supabase/types'
 import { Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { getSinglePost } from '@/lib/actions/posts'
 
 interface PostFeedProps {
   posts: {
     id: string
-    content: string
+    content: string | null
     image_url: string | null
     created_at: string
     user_id: string
     community_id?: string | null
     is_pinned?: boolean
-    profiles: { username: string; avatar_url: string | null } | null
+    profiles: { username: string; avatar_url: string | null; first_name?: string | null; last_name?: string | null; xp?: number } | null
     community_members: { role: 'owner' | 'moderator' | 'member' }[]
     likes: { user_id: string }[]
     comments: { id: string }[]
@@ -26,26 +28,40 @@ interface PostFeedProps {
   /** Ana sayfa: topluluk id → görüntüleyen kullanıcının rolü */
   rolesByCommunityId?: Record<string, UserRole>
   pinContext?: 'community' | 'profile'
+  communityId?: string | null
+  profileUserId?: string | null
+  isBookmarksPage?: boolean
 }
 
-export function PostFeed({ posts, currentUserId, currentUserRole, rolesByCommunityId, pinContext }: PostFeedProps) {
+export function PostFeed({
+  posts,
+  currentUserId,
+  currentUserRole,
+  rolesByCommunityId,
+  pinContext,
+  communityId,
+  profileUserId,
+  isBookmarksPage
+}: PostFeedProps) {
+  const [feedPosts, setFeedPosts] = useState(posts)
   const [visibleCount, setVisibleCount] = useState(8)
   const loaderRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // Reset visible count when posts list changes
+    setFeedPosts(posts)
     setVisibleCount(8)
   }, [posts])
 
   useEffect(() => {
-    if (visibleCount >= posts.length) return
+    if (visibleCount >= feedPosts.length) return
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
           // Delay slightly to prevent jarring load transitions
           setTimeout(() => {
-            setVisibleCount(prev => Math.min(posts.length, prev + 8))
+            setVisibleCount(prev => Math.min(feedPosts.length, prev + 8))
           }, 200)
         }
       },
@@ -57,9 +73,74 @@ export function PostFeed({ posts, currentUserId, currentUserRole, rolesByCommuni
     }
 
     return () => observer.disconnect()
-  }, [visibleCount, posts.length])
+  }, [visibleCount, feedPosts.length])
 
-  if (posts.length === 0) {
+  // Real-time Post Streaming (New posts & deletions)
+  useEffect(() => {
+    if (isBookmarksPage) return
+
+    const supabase = createClient()
+    const channelToken = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    
+    const channel = supabase.channel(`feed_posts_realtime_${channelToken}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'posts' },
+        async (payload) => {
+          const newPostId = payload.new.id
+          
+          // Fetch enriched post details from server action
+          const enrichedPost = await getSinglePost(newPostId)
+          if (enrichedPost) {
+            // Apply filtering checks to match feed scope
+            
+            // 1. Filter by communityId if passed
+            if (communityId && enrichedPost.community_id !== communityId) {
+              return
+            }
+            
+            // 2. Filter by profileUserId if passed
+            if (profileUserId && enrichedPost.user_id !== profileUserId) {
+              return
+            }
+            
+            // 3. Fallback: URL path checks for Home Feed
+            if (typeof window !== 'undefined') {
+              const path = window.location.pathname
+              if (path === '/feed' || path === '/') {
+                const commId = new URLSearchParams(window.location.search).get('communityId')
+                if (commId) {
+                  if (enrichedPost.community_id !== commId) return
+                } else {
+                  if (enrichedPost.community_id !== null) return
+                }
+              }
+            }
+
+            // Append new post to the list (top)
+            setFeedPosts(prev => {
+              if (prev.some(p => p.id === enrichedPost.id)) return prev
+              return [enrichedPost as any, ...prev]
+            })
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'posts' },
+        (payload) => {
+          const deletedPostId = payload.old.id
+          setFeedPosts(prev => prev.filter(p => p.id !== deletedPostId))
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [communityId, profileUserId, isBookmarksPage])
+
+  if (feedPosts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <div
@@ -76,7 +157,7 @@ export function PostFeed({ posts, currentUserId, currentUserRole, rolesByCommuni
     )
   }
 
-  const visiblePosts = posts.slice(0, visibleCount)
+  const visiblePosts = feedPosts.slice(0, visibleCount)
 
   return (
     <div className="flex flex-col gap-4">
@@ -100,7 +181,7 @@ export function PostFeed({ posts, currentUserId, currentUserRole, rolesByCommuni
         )
       })}
 
-      {visibleCount < posts.length && (
+      {visibleCount < feedPosts.length && (
         <div ref={loaderRef} className="flex items-center justify-center py-6">
           <Loader2 className="animate-spin text-primary opacity-60" size={24} />
         </div>

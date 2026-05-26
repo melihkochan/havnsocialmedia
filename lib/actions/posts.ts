@@ -564,4 +564,38 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
   })
 }
 
+export async function getSinglePost(postId: string) {
+  const supabase = await createClient()
+
+  const { data: post, error } = await supabase
+    .from('posts')
+    .select(`
+      *,
+      profiles(*),
+      likes(user_id),
+      comments(id),
+      bookmarks(user_id),
+      communities(name, slug),
+      parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))
+    `)
+    .eq('id', postId)
+    .single()
+
+  if (error || !post) {
+    console.error('getSinglePost error:', error)
+    return null
+  }
+
+  const rawParent = (post as any).parent_post
+  const parent_post = Array.isArray(rawParent)
+    ? (rawParent.length > 0 ? rawParent[0] : null)
+    : rawParent ?? null
+
+  return {
+    ...post,
+    parent_post,
+    community_members: [{ role: 'member' }],
+  }
+}
+
 

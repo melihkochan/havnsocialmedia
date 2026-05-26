@@ -193,6 +193,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
             posts={posts as Parameters<typeof PostFeed>[0]['posts']}
             currentUserId={user?.id}
             rolesByCommunityId={user ? rolesByCommunityId : undefined}
+            communityId={communityId}
           />
         ) : (
           <>

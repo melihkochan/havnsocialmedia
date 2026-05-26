@@ -73,7 +73,7 @@ export default async function BookmarksPage() {
             </p>
           </div>
         ) : (
-          <PostFeed posts={bookmarkedPosts} currentUserId={user.id} />
+          <PostFeed posts={bookmarkedPosts} currentUserId={user.id} isBookmarksPage={true} />
         )}
       </div>
     </MainLayout>

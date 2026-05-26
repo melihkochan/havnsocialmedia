@@ -330,6 +330,7 @@ export function CommunityContentTabs({
                   currentUserId={currentUser?.id}
                   currentUserRole={isMember ? membershipRole : undefined}
                   pinContext="community"
+                  communityId={communityId}
                 />
               </>
             )}

@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { FormattedMessage } from '@/components/havn/FormattedMessage'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 type NotificationItem = {
   id: string
@@ -335,6 +336,40 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
     }
     clearNotifications()
   }, [])
+
+  // Real-time Notification Streaming
+  useEffect(() => {
+    if (!currentUser?.id) return
+
+    const supabase = createClient()
+    const channelToken = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    
+    const channel = supabase.channel(`notifications_realtime_list_${channelToken}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
+        async (payload) => {
+          const newNotifId = payload.new.id
+          
+          // Fetch enriched notification details
+          const { getSingleNotification } = await import('@/lib/actions/notifications')
+          const enrichedNotif = await getSingleNotification(newNotifId)
+          if (enrichedNotif) {
+            setNotifications(prev => {
+              if (prev.some(n => n.id === enrichedNotif.id)) return prev
+              return [enrichedNotif as any, ...prev]
+            })
+            // Auto mark read as user is already viewing the page
+            await markNotificationsAsRead()
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUser?.id])
 
   async function handleFollowBack(actorId: string) {
     if (actionActorId) return
