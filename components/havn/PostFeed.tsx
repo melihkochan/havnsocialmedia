@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { PostCard } from '@/components/havn/PostCard'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { UserRole } from '@/lib/supabase/types'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -44,6 +45,7 @@ export function PostFeed({
   isBookmarksPage
 }: PostFeedProps) {
   const [feedPosts, setFeedPosts] = useState(posts)
+  const [pendingPosts, setPendingPosts] = useState<typeof posts>([])
   const [visibleCount, setVisibleCount] = useState(8)
   const loaderRef = useRef<HTMLDivElement>(null)
 
@@ -142,11 +144,19 @@ export function PostFeed({
 
             console.log('[Realtime-PostFeed] Post passed filters, appending to feed.')
 
-            // Append new post to the list (top)
-            setFeedPosts(prev => {
-              if (prev.some(p => p.id === enrichedPost.id)) return prev
-              return [enrichedPost as any, ...prev]
-            })
+            // If the post belongs to the current logged-in user, show it immediately
+            if (currentUserId && enrichedPost.user_id === currentUserId) {
+              setFeedPosts(prev => {
+                if (prev.some(p => p.id === enrichedPost.id)) return prev
+                return [enrichedPost as any, ...prev]
+              })
+            } else {
+              // Otherwise, queue it as a pending post
+              setPendingPosts(prev => {
+                if (prev.some(p => p.id === enrichedPost.id)) return prev
+                return [enrichedPost as any, ...prev]
+              })
+            }
           }
         }
       )
@@ -156,6 +166,7 @@ export function PostFeed({
         (payload) => {
           const deletedPostId = payload.old.id
           setFeedPosts(prev => prev.filter(p => p.id !== deletedPostId))
+          setPendingPosts(prev => prev.filter(p => p.id !== deletedPostId))
         }
       )
       .subscribe()
@@ -165,7 +176,15 @@ export function PostFeed({
     }
   }, [communityId, profileUserId, isBookmarksPage])
 
-  if (feedPosts.length === 0) {
+  const handleShowPendingPosts = () => {
+    setFeedPosts(prev => {
+      const uniquePending = pendingPosts.filter(p => !prev.some(existing => existing.id === p.id))
+      return [...uniquePending, ...prev]
+    })
+    setPendingPosts([])
+  }
+
+  if (feedPosts.length === 0 && pendingPosts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <div
@@ -186,6 +205,24 @@ export function PostFeed({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Twitter-style pending posts bar */}
+      <AnimatePresence>
+        {pendingPosts.length > 0 && (
+          <motion.button
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            onClick={handleShowPendingPosts}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-black text-white rounded-2xl shadow-lg border border-transparent select-none cursor-pointer active:scale-95 transition-all hover:opacity-90"
+            style={{
+              background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))'
+            }}
+          >
+            ✨ {pendingPosts.length} yeni gönderi mevcut - Görmek için tıkla
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {visiblePosts.map((post, index) => {
         const memberEntry = post.community_members?.[0]
         const role = memberEntry?.role ?? 'member'
