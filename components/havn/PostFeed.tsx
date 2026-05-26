@@ -169,7 +169,9 @@ export function PostFeed({
           setPendingPosts(prev => prev.filter(p => p.id !== deletedPostId))
         }
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        console.log(`[Realtime-PostFeed] Subscription status: ${status}`, err || '')
+      })
 
     return () => {
       supabase.removeChannel(channel)
