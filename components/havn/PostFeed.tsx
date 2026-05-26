@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import { PostCard } from '@/components/havn/PostCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { UserRole } from '@/lib/supabase/types'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { getSinglePost } from '@/lib/actions/posts'
+import { getSinglePost, loadMorePosts } from '@/lib/actions/posts'
+import type { FeedContext } from '@/lib/actions/posts'
 
 interface PostFeedProps {
   posts: {
@@ -32,6 +33,10 @@ interface PostFeedProps {
   communityId?: string | null
   profileUserId?: string | null
   isBookmarksPage?: boolean
+  /** Server-side infinite scroll context. When provided, enables real pagination. */
+  feedContext?: FeedContext
+  /** Whether there are more posts to load on the server (used when feedContext is set) */
+  initialHasMore?: boolean
 }
 
 export function PostFeed({
@@ -42,126 +47,121 @@ export function PostFeed({
   pinContext,
   communityId,
   profileUserId,
-  isBookmarksPage
+  isBookmarksPage,
+  feedContext,
+  initialHasMore = false,
 }: PostFeedProps) {
   const [feedPosts, setFeedPosts] = useState(posts)
   const [pendingPosts, setPendingPosts] = useState<typeof posts>([])
-  const [visibleCount, setVisibleCount] = useState(8)
   const loaderRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    // Reset visible count when posts list changes
-    setFeedPosts(posts)
-    setVisibleCount(8)
-  }, [posts])
+  // ─── Server-side infinite scroll state ───────────────────────────────────
+  const [hasMore, setHasMore] = useState(initialHasMore)
+  const [isLoadingMore, startLoadingMore] = useTransition()
+
+  // ─── Client-side slice (fallback when no feedContext, e.g. bookmarks) ─────
+  const [visibleCount, setVisibleCount] = useState(feedContext ? feedPosts.length : 8)
 
   useEffect(() => {
-    if (visibleCount >= feedPosts.length) return
+    setFeedPosts(posts)
+    setPendingPosts([])
+    setHasMore(initialHasMore)
+    setVisibleCount(feedContext ? posts.length : 8)
+  }, [posts, initialHasMore, feedContext])
+
+  // ─── Intersection observer ────────────────────────────────────────────────
+  useEffect(() => {
+    if (feedContext) {
+      // Server-side mode: fetch more when loader is visible
+      if (!hasMore || isLoadingMore) return
+    } else {
+      // Client-side mode: show more already-loaded posts
+      if (visibleCount >= feedPosts.length) return
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          // Delay slightly to prevent jarring load transitions
+        if (!entries[0].isIntersecting) return
+
+        if (feedContext) {
+          // Fetch next page from server
+          startLoadingMore(async () => {
+            const { posts: morePosts, hasMore: more } = await loadMorePosts(
+              feedContext,
+              feedPosts.length
+            )
+            if (morePosts.length > 0) {
+              setFeedPosts(prev => {
+                const existingIds = new Set(prev.map(p => p.id))
+                const unique = morePosts.filter((p: any) => !existingIds.has(p.id))
+                return [...prev, ...unique] as typeof posts
+              })
+            }
+            setHasMore(more)
+          })
+        } else {
+          // Reveal more already-loaded posts
           setTimeout(() => {
             setVisibleCount(prev => Math.min(feedPosts.length, prev + 8))
           }, 200)
         }
       },
-      { threshold: 0.1, rootMargin: '150px' }
+      { threshold: 0.1, rootMargin: '200px' }
     )
 
-    if (loaderRef.current) {
-      observer.observe(loaderRef.current)
-    }
-
+    if (loaderRef.current) observer.observe(loaderRef.current)
     return () => observer.disconnect()
-  }, [visibleCount, feedPosts.length])
+  }, [feedContext, hasMore, isLoadingMore, visibleCount, feedPosts.length])
 
-  // Real-time Post Streaming (New posts & deletions)
+  // ─── Supabase real-time (new posts & deletions) ───────────────────────────
   useEffect(() => {
     if (isBookmarksPage) return
 
     const supabase = createClient()
     const channelToken = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-    
+
     const channel = supabase.channel(`feed_posts_realtime_${channelToken}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'posts' },
         async (payload) => {
           const newPostId = payload.new.id
-          
-          // Fetch enriched post details from server action
+
           const enrichedPost = await getSinglePost(newPostId)
-          if (enrichedPost) {
-            // Apply filtering checks to match feed scope
-            console.log('[Realtime-PostFeed] INSERT event received:', payload)
-            console.log('[Realtime-PostFeed] Enriched post:', enrichedPost)
-            console.log('[Realtime-PostFeed] Filtering context:', {
-              communityId,
-              profileUserId,
-              pathname: typeof window !== 'undefined' ? window.location.pathname : null,
-              isBookmarksPage
-            })
+          if (!enrichedPost) return
 
-            // 1. Filter by communityId (Community Page context)
-            if (communityId) {
-              if (enrichedPost.community_id !== communityId) {
-                console.log('[Realtime-PostFeed] Filtered out: communityId mismatch')
-                return
-              }
-            }
-            
-            // 2. Filter by profileUserId (Profile Page context)
-            else if (profileUserId) {
-              if (enrichedPost.user_id !== profileUserId || enrichedPost.community_id !== null) {
-                console.log('[Realtime-PostFeed] Filtered out: profileUserId mismatch or community post')
-                return
-              }
-            }
-            
-            // 3. Fallback: URL path checks for Home Feed
-            else if (typeof window !== 'undefined') {
-              const path = window.location.pathname
-              if (path === '/feed' || path === '/') {
-                const commId = new URLSearchParams(window.location.search).get('communityId')
-                if (commId) {
-                  if (enrichedPost.community_id !== commId) {
-                    console.log('[Realtime-PostFeed] Filtered out: home feed communityId mismatch')
-                    return
-                  }
-                } else {
-                  if (enrichedPost.community_id !== null) {
-                    console.log('[Realtime-PostFeed] Filtered out: home feed not a personal post')
-                    return
-                  }
-                }
+          // Filter by feed context
+          if (communityId) {
+            if (enrichedPost.community_id !== communityId) return
+          } else if (profileUserId) {
+            if (enrichedPost.user_id !== profileUserId || enrichedPost.community_id !== null) return
+          } else if (typeof window !== 'undefined') {
+            const path = window.location.pathname
+            if (path === '/feed' || path === '/') {
+              const commId = new URLSearchParams(window.location.search).get('communityId')
+              if (commId) {
+                if (enrichedPost.community_id !== commId) return
               } else {
-                console.log('[Realtime-PostFeed] Filtered out: unhandled page path', path)
-                return
+                if (enrichedPost.community_id !== null) return
               }
-            }
-
-            console.log('[Realtime-PostFeed] Post passed filters, checking scroll state for insertion method.')
-
-            // If the user is scrolled down (scrollY > 150px) and it's not their own post, queue it as a pending post.
-            // If the user is at the top of the feed or it's their own post, display it immediately.
-            const isAtTop = typeof window !== 'undefined' && window.scrollY <= 150
-            const isOwnPost = currentUserId && enrichedPost.user_id === currentUserId
-
-            if (isAtTop || isOwnPost) {
-              console.log('[Realtime-PostFeed] Inserting post directly to top. (At top or own post)')
-              setFeedPosts(prev => {
-                if (prev.some(p => p.id === enrichedPost.id)) return prev
-                return [enrichedPost as any, ...prev]
-              })
             } else {
-              console.log('[Realtime-PostFeed] User is scrolled down. Queueing post to pending list.')
-              setPendingPosts(prev => {
-                if (prev.some(p => p.id === enrichedPost.id)) return prev
-                return [enrichedPost as any, ...prev]
-              })
+              return
             }
+          }
+
+          const isAtTop = typeof window !== 'undefined' && window.scrollY <= 150
+          const isOwnPost = currentUserId && enrichedPost.user_id === currentUserId
+
+          if (isAtTop || isOwnPost) {
+            setFeedPosts(prev => {
+              if (prev.some(p => p.id === enrichedPost.id)) return prev
+              return [enrichedPost as any, ...prev]
+            })
+          } else {
+            setPendingPosts(prev => {
+              if (prev.some(p => p.id === enrichedPost.id)) return prev
+              return [enrichedPost as any, ...prev]
+            })
           }
         }
       )
@@ -174,9 +174,7 @@ export function PostFeed({
           setPendingPosts(prev => prev.filter(p => p.id !== deletedPostId))
         }
       )
-      .subscribe((status, err) => {
-        console.log(`[Realtime-PostFeed] Subscription status: ${status}`, err || '')
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
@@ -194,7 +192,7 @@ export function PostFeed({
     }
   }
 
-  if (feedPosts.length === 0) {
+  if (feedPosts.length === 0 && !isLoadingMore) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <div
@@ -211,11 +209,13 @@ export function PostFeed({
     )
   }
 
-  const visiblePosts = feedPosts.slice(0, visibleCount)
+  // Determine which posts to display
+  const visiblePosts = feedContext ? feedPosts : feedPosts.slice(0, visibleCount)
+  const showLoader = feedContext ? hasMore : visibleCount < feedPosts.length
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Sticky/Floating banner for pending posts */}
+      {/* Sticky/Floating banner for pending real-time posts */}
       <AnimatePresence>
         {pendingPosts.length > 0 && (
           <motion.button
@@ -254,9 +254,19 @@ export function PostFeed({
         )
       })}
 
-      {visibleCount < feedPosts.length && (
+      {/* Loader / infinite scroll sentinel */}
+      {showLoader && (
         <div ref={loaderRef} className="flex items-center justify-center py-6">
           <Loader2 className="animate-spin text-primary opacity-60" size={24} />
+        </div>
+      )}
+
+      {/* End of feed message */}
+      {feedContext && !hasMore && feedPosts.length > 0 && (
+        <div className="flex flex-col items-center justify-center py-8 gap-2 opacity-50">
+          <div className="w-8 h-px bg-border" />
+          <p className="text-xs text-muted-foreground">Tüm gönderiler yüklendi</p>
+          <div className="w-8 h-px bg-border" />
         </div>
       )}
     </div>

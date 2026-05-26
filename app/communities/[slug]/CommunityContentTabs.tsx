@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Megaphone, X, Lock, Clock, Loader2, Plus } from 'lucide-react'
 import { parseCommunityDescription } from '@/lib/community-rules'
 import { joinCommunity, leaveCommunity } from '@/lib/actions/communities'
+import type { FeedContext } from '@/lib/actions/posts'
 
 interface Profile {
   id: string
@@ -331,6 +332,8 @@ export function CommunityContentTabs({
                   currentUserRole={isMember ? membershipRole : undefined}
                   pinContext="community"
                   communityId={communityId}
+                  feedContext={{ type: 'community', communityId, sortBy: activeSort } satisfies FeedContext}
+                  initialHasMore={initialPosts.length >= 20}
                 />
               </>
             )}

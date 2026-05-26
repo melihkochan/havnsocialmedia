@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { MainLayout } from '@/components/layout/MainLayout'
 import Link from 'next/link'
 import { PostFeed } from '@/components/havn/PostFeed'
+import type { FeedContext } from '@/lib/actions/posts'
 import { RoleBadge } from '@/components/havn/RoleBadge'
 import { ProfileViewTracker } from '@/components/havn/ViewTracker'
 import { CalendarDays, Users, Eye, Heart, MessageSquare, Lock, BadgeCheck } from 'lucide-react'
@@ -115,13 +116,14 @@ export default async function ProfilePage({
     user
       ? supabase.from('profiles').select('*').eq('id', user.id).single()
       : Promise.resolve({ data: null }),
-    // Posts inline — NO separate createClient
+    // Posts inline — NO separate createClient (limit to first 20 for performance)
     supabase
       .from('posts')
       .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
       .eq('user_id', profile.id)
       .is('community_id', null)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .range(0, 19),
     // Memberships
     supabase
       .from('community_members')
@@ -544,6 +546,8 @@ export default async function ProfilePage({
               currentUserId={user?.id}
               pinContext={isOwnProfile ? 'profile' : undefined}
               profileUserId={profile.id}
+              feedContext={{ type: 'profile', profileUserId: profile.id } satisfies FeedContext}
+              initialHasMore={(posts?.length ?? 0) >= 20}
             />
           </div>
         )}

@@ -3,6 +3,7 @@ import { MainLayout } from '@/components/layout/MainLayout'
 import { PostFeed } from '@/components/havn/PostFeed'
 import { FeedPostForm } from '@/components/havn/FeedPostForm'
 import { getFeedPosts, getFollowingFeedPosts, getPosts } from '@/lib/actions/posts'
+import type { FeedContext } from '@/lib/actions/posts'
 import { getSuggestedUsers } from '@/lib/actions/follows'
 import { FollowButton } from '@/components/havn/FollowButton'
 import { Compass, Users, Sparkles } from 'lucide-react'
@@ -194,6 +195,14 @@ export default async function FeedPage({ searchParams }: PageProps) {
             currentUserId={user?.id}
             rolesByCommunityId={user ? rolesByCommunityId : undefined}
             communityId={communityId}
+            feedContext={
+              communityId
+                ? ({ type: 'community', communityId, sortBy: activeSort } satisfies FeedContext)
+                : activeFeedType === 'following' && user
+                ? ({ type: 'following', userId: user.id, sortBy: activeSort } satisfies FeedContext)
+                : ({ type: 'feed', sortBy: activeSort } satisfies FeedContext)
+            }
+            initialHasMore={posts.length >= 20}
           />
         ) : (
           <>

@@ -5,8 +5,19 @@ import { revalidatePath } from 'next/cache'
 import { sortPostsWithPinned } from '@/lib/sort-posts'
 import { enrichProfile } from '@/lib/profile-enrich'
 
+const PAGE_SIZE = 20
+
+export type FeedContext =
+  | { type: 'feed'; sortBy?: 'new' | 'popular' }
+  | { type: 'following'; userId: string; sortBy?: 'new' | 'popular' }
+  | { type: 'community'; communityId: string; sortBy?: 'new' | 'popular' }
+  | { type: 'profile'; profileUserId: string }
+
 export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 'new') {
   const supabase = await createClient()
+
+  // For popular sort we need more posts to rank correctly; for new, use DB-level pagination
+  const fetchLimit = sortBy === 'popular' ? 100 : PAGE_SIZE
 
   const { data: posts, error } = await supabase
     .from('posts')
@@ -20,7 +31,7 @@ export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 
     `)
     .eq('community_id', communityId)
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(fetchLimit)
 
   if (error) {
     console.error('getPosts error:', error)
@@ -54,19 +65,22 @@ export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 
       }
     })
 
-  return sortPostsWithPinned(processed, sortBy).slice(0, 50)
+  return sortPostsWithPinned(processed, sortBy).slice(0, sortBy === 'popular' ? 50 : PAGE_SIZE)
 }
 
 // Get only personal posts (no community posts) for the home feed
 export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 'new') {
   const supabase = await createClient()
 
+  // For popular sort fetch more to rank correctly; for new use DB-level pagination
+  const fetchLimit = sortBy === 'popular' ? 100 : PAGE_SIZE
+
   const { data: posts, error } = await supabase
     .from('posts')
     .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
     .is('community_id', null)
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(fetchLimit)
 
   if (error) {
     console.error('getFeedPosts error:', error)
@@ -85,7 +99,8 @@ export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 
     processed = processed.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }
 
-  return processed.slice(0, 50).map(p => {
+  const sliceEnd = sortBy === 'popular' ? 50 : PAGE_SIZE
+  return processed.slice(0, sliceEnd).map(p => {
     const rawParent = (p as any).parent_post
     const parent_post = Array.isArray(rawParent)
       ? (rawParent.length > 0 ? rawParent[0] : null)
@@ -540,6 +555,9 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
   // Always include own posts in following feed
   const targetUserIds = [...followingIds, userId]
 
+  // For popular sort fetch more to rank correctly; for new use DB-level pagination
+  const fetchLimit = sortBy === 'popular' ? 100 : PAGE_SIZE
+
   // 2. Fetch posts
   const { data: personalResult, error } = await supabase
     .from('posts')
@@ -547,7 +565,7 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
     .in('user_id', targetUserIds)
     .is('community_id', null)
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(fetchLimit)
 
   if (error) {
     console.error('getFollowingFeedPosts error:', error)
@@ -565,7 +583,8 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
     allPosts = allPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }
 
-  return allPosts.slice(0, 50).map(p => {
+  const sliceEnd = sortBy === 'popular' ? 50 : PAGE_SIZE
+  return allPosts.slice(0, sliceEnd).map(p => {
     const rawParent = (p as any).parent_post
     const parent_post = Array.isArray(rawParent)
       ? (rawParent.length > 0 ? rawParent[0] : null)
@@ -613,3 +632,101 @@ export async function getSinglePost(postId: string) {
 }
 
 
+// ─── Unified Server Action for Infinite Scroll ─────────────────────────────
+
+const FEED_SELECT = '*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))'
+
+function normalizePosts(raw: any[]) {
+  return raw
+    .filter((p: any) => p.content !== null || p.parent_post_id !== null)
+    .map((p: any) => {
+      const rawParent = p.parent_post
+      const parent_post = Array.isArray(rawParent)
+        ? (rawParent.length > 0 ? rawParent[0] : null)
+        : rawParent ?? null
+      return { ...p, parent_post, community_members: [{ role: 'member' }] }
+    })
+}
+
+export async function loadMorePosts(
+  context: FeedContext,
+  offset: number
+): Promise<{ posts: any[]; hasMore: boolean }> {
+  const supabase = await createClient()
+
+  try {
+    if (context.type === 'feed') {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(FEED_SELECT)
+        .is('community_id', null)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1)
+      if (error) throw error
+      const posts = normalizePosts(data ?? []).filter(
+        (p: any) => !enrichProfile(p.profiles)?.is_private
+      ).map((p: any) => ({ ...p, communities: null }))
+      return { posts, hasMore: (data ?? []).length === PAGE_SIZE }
+    }
+
+    if (context.type === 'following') {
+      const { data: followsData } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', context.userId)
+      const targetIds = [
+        ...(followsData ?? []).map((f: any) => f.following_id),
+        context.userId,
+      ]
+      const { data, error } = await supabase
+        .from('posts')
+        .select(FEED_SELECT)
+        .in('user_id', targetIds)
+        .is('community_id', null)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1)
+      if (error) throw error
+      const posts = normalizePosts(data ?? []).map((p: any) => ({ ...p, communities: null }))
+      return { posts, hasMore: (data ?? []).length === PAGE_SIZE }
+    }
+
+    if (context.type === 'community') {
+      const { data: membersData } = await supabase
+        .from('community_members')
+        .select('user_id, role')
+        .eq('community_id', context.communityId)
+      const roleMap = new Map((membersData ?? []).map((m: any) => [m.user_id, m.role]))
+
+      const { data, error } = await supabase
+        .from('posts')
+        .select(FEED_SELECT)
+        .eq('community_id', context.communityId)
+        .is('parent_post_id', null)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1)
+      if (error) throw error
+      const posts = normalizePosts(data ?? []).map((p: any) => ({
+        ...p,
+        community_members: [{ role: roleMap.get(p.user_id) ?? 'member' }],
+      }))
+      return { posts, hasMore: (data ?? []).length === PAGE_SIZE }
+    }
+
+    if (context.type === 'profile') {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(FEED_SELECT)
+        .eq('user_id', context.profileUserId)
+        .is('community_id', null)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1)
+      if (error) throw error
+      const posts = normalizePosts(data ?? [])
+      return { posts, hasMore: (data ?? []).length === PAGE_SIZE }
+    }
+  } catch (err) {
+    console.error('[loadMorePosts] error:', err)
+  }
+
+  return { posts: [], hasMore: false }
+}
