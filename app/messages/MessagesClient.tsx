@@ -184,8 +184,25 @@ export function MessagesClient({
   const [streakLives, setStreakLives] = useState<number>(() => {
     return currentUser?.streak_restores?.lives ?? 5
   })
+  const [myRestoredChats, setMyRestoredChats] = useState<Record<string, string>>(() => {
+    return currentUser?.streak_restores?.restored_chats || {}
+  })
   const [restorePending, setRestorePending] = useState(false)
   const [dismissedBanners, setDismissedBanners] = useState<Record<string, boolean>>({})
+
+  const getRestoredDate = (otherUser: Profile, msgsList: Message[]) => {
+    const lastActive = calculateLastActiveStreak(msgsList)
+    const targetRestoredDate = lastActive.latestMutualDate
+    if (!targetRestoredDate) return null
+
+    const myRestoredDate = myRestoredChats[otherUser.id]
+    const otherRestoredDate = otherUser.streak_restores?.restored_chats?.[currentUser.id]
+
+    if (myRestoredDate === targetRestoredDate || otherRestoredDate === targetRestoredDate) {
+      return targetRestoredDate
+    }
+    return null
+  }
 
   // Streak Animation States
   const [prevStreak, setPrevStreak] = useState<number | null>(null)
@@ -264,7 +281,8 @@ export function MessagesClient({
         setTimeout(() => scrollToBottom('auto'), 150)
         
         // Calculate and update streak locally!
-        const newStreak = calculateStreak(data)
+        const restoredDate = getRestoredDate(targetChatUser!, data)
+        const newStreak = calculateStreak(data, restoredDate)
         setPrevStreak(newStreak) // Initialize prevStreak
 
         // Check if we should celebrate this streak on load
@@ -392,7 +410,8 @@ export function MessagesClient({
                 const updatedMsgs = [...prev, enrichedMsg]
                 
                 // Update streak locally
-                const newStreak = calculateStreak(updatedMsgs)
+                const restoredDate = getRestoredDate(activeChatUser!, updatedMsgs)
+                const newStreak = calculateStreak(updatedMsgs, restoredDate)
                 
                 // Trigger pop animation if streak increased
                 if (prevStreak !== null && newStreak > prevStreak && STREAK_MILESTONES.includes(newStreak)) {
@@ -441,7 +460,8 @@ export function MessagesClient({
                 .select('*')
                 .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUser.id})`)
                 .then(({ data: convMsgs }) => {
-                  const calculatedStreak = convMsgs ? calculateStreak(convMsgs as Message[]) : 0
+                  const restoredDate = convMsgs ? getRestoredDate(otherUser as Profile, convMsgs as Message[]) : null
+                  const calculatedStreak = convMsgs ? calculateStreak(convMsgs as Message[], restoredDate) : 0
 
                   setConversations(prev => {
                     const existingIdx = prev.findIndex(c => c.otherUser.id === otherUserId)
@@ -636,6 +656,12 @@ export function MessagesClient({
         showErrorAlert(res.error)
       } else if (res.success) {
         setStreakLives(res.newLives ?? 0)
+        if (res.restoredDate) {
+          setMyRestoredChats(prev => ({
+            ...prev,
+            [activeChatUser.id]: res.restoredDate
+          }))
+        }
         
         // Trigger celebration animation
         setAnimateOldNum(0)
@@ -691,7 +717,8 @@ export function MessagesClient({
         const sentMsg = res.message as Message
         
         const updatedMsgs = [...messages, sentMsg]
-        const newStreak = calculateStreak(updatedMsgs)
+        const restoredDate = getRestoredDate(activeChatUser, updatedMsgs)
+        const newStreak = calculateStreak(updatedMsgs, restoredDate)
         
         // Trigger pop animation if streak increased
         if (prevStreak !== null && newStreak > prevStreak && STREAK_MILESTONES.includes(newStreak)) {

@@ -188,7 +188,7 @@ export async function restoreStreak(otherUserId: string) {
   }
 
   revalidatePath('/messages')
-  return { success: true, newLives: currentLives - 1 }
+  return { success: true, newLives: currentLives - 1, restoredDate: latestMutualDate }
 }
 
 export async function getMessagesWithUser(otherUserId: string) {
