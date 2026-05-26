@@ -40,6 +40,7 @@ interface SupportFormProps {
   isFounder: boolean
   initialTickets: any[]
   userProfiles?: any[]
+  focusedTicketId?: string
 }
 
 function formatDate(dateStr: string) {
@@ -154,9 +155,10 @@ function parseConversation(messageText: string, initialTimestamp?: string): Conv
   return messages;
 }
 
-export function SupportForm({ profile, isFounder, initialTickets, userProfiles = [] }: SupportFormProps) {
+export function SupportForm({ profile, isFounder, initialTickets, userProfiles = [], focusedTicketId }: SupportFormProps) {
   const searchParams = useSearchParams()
   const ticketIdParam = searchParams.get('ticketId')
+  const targetTicketId = focusedTicketId || ticketIdParam || null
 
   const [activeTab, setActiveTab] = useState<'create' | 'list' | 'admin-create'>(() => {
     if (!isFounder) return 'create'
@@ -208,24 +210,42 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
   const [confirmCloseTicketId, setConfirmCloseTicketId] = useState<string | null>(null)
   const [confirmAdminCloseTicketId, setConfirmAdminCloseTicketId] = useState<string | null>(null)
   
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>(ticketIdParam)
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>(targetTicketId)
   const [autoOpenedId, setAutoOpenedId] = useState<string | null>(null)
 
+  // Remove ticketId query param from URL when ticket is closed
   useEffect(() => {
-    if (ticketIdParam && autoOpenedId !== ticketIdParam) {
-      const ticket = tickets.find(t => t.id === ticketIdParam)
+    if (!selectedTicket && !expandedTicketId && targetTicketId) {
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('ticketId')) {
+        params.delete('ticketId')
+        const newQuery = params.toString()
+        const newPath = window.location.pathname + (newQuery ? `?${newQuery}` : '')
+        window.history.replaceState(null, '', newPath)
+      }
+    }
+  }, [selectedTicket, expandedTicketId, targetTicketId])
+
+  useEffect(() => {
+    if (targetTicketId && autoOpenedId !== targetTicketId) {
+      const ticket = tickets.find(t => t.id === targetTicketId)
       if (ticket) {
-        setAutoOpenedId(ticketIdParam)
+        setAutoOpenedId(targetTicketId)
         if (isFounder) {
+          const isInitiatedByAdmin = ticket.message?.trim().startsWith('[Kurucu - Yanıt') || ticket.message?.trim().startsWith('[Yönetici - Yanıt')
+          setActiveTab(isInitiatedByAdmin ? 'admin-create' : 'list')
+          setFilter('all') // Ensure it is not filtered out from lists
           setSelectedTicket(ticket)
           setReplyText('')
+          setReplyResult(null)
         } else {
-          setExpandedTicketId(ticketIdParam)
+          setFilter('all') // Ensure it is not filtered out
+          setExpandedTicketId(targetTicketId)
           setActiveTab('list') // Ensure we view list tab
         }
       }
     }
-  }, [ticketIdParam, tickets, isFounder, autoOpenedId])
+  }, [targetTicketId, tickets, isFounder, autoOpenedId])
 
   useEffect(() => {
     if (!isFounder) return
@@ -354,6 +374,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
   }
 
   const filteredTickets = tickets.filter(t => {
+    if (targetTicketId && t.id === targetTicketId) return true
     const isInitiatedByAdmin = t.message?.trim().startsWith('[Kurucu - Yanıt') || t.message?.trim().startsWith('[Yönetici - Yanıt')
     
     // For admins:

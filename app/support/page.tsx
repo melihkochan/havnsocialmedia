@@ -8,7 +8,12 @@ import { isFounder as checkIsFounder } from '@/lib/founder'
 export const metadata = { title: 'Destek ve Yardım — HAVN' }
 export const dynamic = 'force-dynamic'
 
-export default async function SupportPage() {
+export default async function SupportPage({
+  searchParams
+}: {
+  searchParams: Promise<{ ticketId?: string }>
+}) {
+  const { ticketId } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -39,6 +44,7 @@ export default async function SupportPage() {
         isFounder={isFounder} 
         initialTickets={initialTickets} 
         userProfiles={userProfiles || []}
+        focusedTicketId={ticketId}
       />
     </MainLayout>
   )

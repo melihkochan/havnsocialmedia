@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles } from "lucide-react";
+import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles, Lightbulb } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HavnLogo } from "@/components/havn/HavnLogo";
 import { ThemeToggle } from "@/components/havn/ThemeToggle";
@@ -590,7 +590,7 @@ export function Sidebar({
           )}
         >
           <div className="relative">
-            <Sparkles
+            <Lightbulb
               className={cn(
                 "flex-shrink-0 transition-colors",
                 pathname.startsWith("/suggestions")
