@@ -356,10 +356,11 @@ export function Sidebar({
     }
   }, [currentUser]);
 
-  // Sync active account to list
+  // Sync active account and listen to token rotation / refreshes
   useEffect(() => {
     if (!currentUser) return;
 
+    // 1. Initial sync
     const syncAccount = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -415,24 +416,87 @@ export function Sidebar({
           }
         };
 
+        let updated = false;
         if (existingIdx > -1) {
-          list[existingIdx] = currentAccount;
+          // Compare and update if tokens changed
+          const prev = list[existingIdx];
+          if (prev.session.access_token !== session.access_token || prev.session.refresh_token !== session.refresh_token) {
+            list[existingIdx] = currentAccount;
+            updated = true;
+          }
         } else {
-          // Limit to max 4 accounts. If we exceed, drop the oldest one.
           if (list.length >= 4) {
             list = list.slice(list.length - 3);
           }
           list.push(currentAccount);
+          updated = true;
         }
 
-        localStorage.setItem("havn_accounts", JSON.stringify(list));
-        setAccounts(list);
+        if (updated) {
+          localStorage.setItem("havn_accounts", JSON.stringify(list));
+          setAccounts(list);
+        }
       } catch {
         // silent
       }
     };
 
     syncAccount();
+
+    // 2. Listen to token refreshes / rotations in the background
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session && session.user && session.user.id === currentUser.id) {
+        const stored = localStorage.getItem("havn_accounts");
+        let list: SavedAccount[] = [];
+        if (stored) {
+          try {
+            list = JSON.parse(stored) as SavedAccount[];
+          } catch {
+            list = [];
+          }
+        }
+
+        const existingIdx = list.findIndex(acc => acc.profile.id === currentUser.id);
+        const currentAccount: SavedAccount = {
+          session: {
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          },
+          profile: {
+            id: currentUser.id!,
+            username: currentUser.username,
+            first_name: currentUser.first_name ?? null,
+            last_name: currentUser.last_name ?? null,
+            avatar_url: currentUser.avatar_url,
+            updated_at: currentUser.updated_at,
+          }
+        };
+
+        let updated = false;
+        if (existingIdx > -1) {
+          const prev = list[existingIdx];
+          if (prev.session.access_token !== session.access_token || prev.session.refresh_token !== session.refresh_token) {
+            list[existingIdx] = currentAccount;
+            updated = true;
+          }
+        } else {
+          if (list.length >= 4) {
+            list = list.slice(list.length - 3);
+          }
+          list.push(currentAccount);
+          updated = true;
+        }
+
+        if (updated) {
+          localStorage.setItem("havn_accounts", JSON.stringify(list));
+          setAccounts(list);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [currentUser]);
 
   const handleSwitchAccount = async (targetAccount: SavedAccount) => {
