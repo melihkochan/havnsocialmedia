@@ -524,7 +524,7 @@ export function Sidebar({
         targetAccount.session.refresh_token
       )
 
-      if (res.error) {
+      if (res.error || !res.session) {
         // Token expired/invalid — remove it from the saved list
         const stored = localStorage.getItem('havn_accounts')
         let list: SavedAccount[] = []
@@ -547,16 +547,16 @@ export function Sidebar({
         return
       }
 
-      // Sync the client-side browser client state immediately
+      // Sync the client-side browser client state immediately with fresh tokens returned by the server
       const { data, error } = await supabase.auth.setSession({
-        access_token: targetAccount.session.access_token,
-        refresh_token: targetAccount.session.refresh_token,
+        access_token: res.session.access_token,
+        refresh_token: res.session.refresh_token,
       })
 
       if (!error && data.session) {
         const stored = localStorage.getItem('havn_accounts')
         let list: SavedAccount[] = []
-        try { list = stored ? JSON.parse(stored) : [] } catch { list = [] }
+        try { list = stored ? JSON.parse(stored) as SavedAccount[] : [] } catch { list = [] }
         const updatedList = list.map(acc => {
           if (acc.profile.id === targetAccount.profile.id) {
             return {

@@ -152,5 +152,11 @@ export async function switchSession(accessToken: string, refreshToken: string) {
     return { error: error.message }
   }
 
-  return { success: true }
+  return { 
+    success: true,
+    session: data.session ? {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    } : null
+  }
 }
