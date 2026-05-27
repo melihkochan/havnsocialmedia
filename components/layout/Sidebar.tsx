@@ -419,30 +419,39 @@ export function Sidebar({
         }
       }
 
-      // Remove current active account
+      // Remove current active account from list
       const updatedList = list.filter(acc => acc.profile.id !== currentUser.id);
       localStorage.setItem("havn_accounts", JSON.stringify(updatedList));
 
-      // Sign out current session
-      await supabase.auth.signOut();
-
-      // If we have another account, switch to it immediately
+      // If we have another account, switch to it immediately without signing out first!
       if (updatedList.length > 0) {
         const nextAccount = updatedList[0]
+        
+        // Sync server-side session first
+        await switchSession(
+          nextAccount.session.access_token,
+          nextAccount.session.refresh_token
+        )
+
+        // Set the session client-side
         const { data, error } = await supabase.auth.setSession({
           access_token: nextAccount.session.access_token,
           refresh_token: nextAccount.session.refresh_token,
         })
+        
         if (!error && data.session) {
           await new Promise(resolve => setTimeout(resolve, 800));
           window.location.href = '/feed'
           return
         }
-        // Next account token also expired — clean it too
+        
+        // If next account's token is also expired, clean it from localStorage too
         const cleaned = updatedList.filter((acc: any) => acc.profile.id !== nextAccount.profile.id)
         localStorage.setItem('havn_accounts', JSON.stringify(cleaned))
       }
 
+      // If no other account was saved or session switch failed, perform full signOut and go to login
+      await supabase.auth.signOut();
       await new Promise(resolve => setTimeout(resolve, 800));
       window.location.href = "/login";
     } catch {
