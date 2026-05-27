@@ -28,7 +28,7 @@ const KOKONUT_AVATARS: KokonutAvatar[] = [
           <rect fill="#ff005b" height="36" width="36" />
           <rect fill="#ffb238" height="36" rx="6" transform="translate(9 -5) rotate(219 18 18) scale(1)" width="36" x="0" y="0" />
           <g transform="translate(4.5 -4) rotate(9 18 18)">
-            <path d="M15 19c2 1 4 1 6 0" fill="none" stroke="#000000" stroke-linecap="round" />
+            <path d="M15 19c2 1 4 1 6 0" fill="none" stroke="#000000" strokeLinecap="round" />
             <rect fill="#000000" height="2" rx="1" stroke="none" width="1.5" x="10" y="14" />
             <rect fill="#000000" height="2" rx="1" stroke="none" width="1.5" x="24" y="14" />
           </g>
@@ -50,7 +50,7 @@ const KOKONUT_AVATARS: KokonutAvatar[] = [
           <rect fill="#ff7d10" height="36" width="36" />
           <rect fill="#0a0310" height="36" rx="6" transform="translate(5 -1) rotate(55 18 18) scale(1.1)" width="36" x="0" y="0" />
           <g transform="translate(7 -6) rotate(-5 18 18)">
-            <path d="M15 20c2 1 4 1 6 0" fill="none" stroke="#FFFFFF" stroke-linecap="round" />
+            <path d="M15 20c2 1 4 1 6 0" fill="none" stroke="#FFFFFF" strokeLinecap="round" />
             <rect fill="#FFFFFF" height="2" rx="1" stroke="none" width="1.5" x="14" y="14" />
             <rect fill="#FFFFFF" height="2" rx="1" stroke="none" width="1.5" x="20" y="14" />
           </g>
@@ -94,7 +94,7 @@ const KOKONUT_AVATARS: KokonutAvatar[] = [
           <rect fill="#d8fcb3" height="36" width="36" />
           <rect fill="#89fcb3" height="36" rx="6" transform="translate(9 -5) rotate(219 18 18) scale(1)" width="36" x="0" y="0" />
           <g transform="translate(4.5 -4) rotate(9 18 18)">
-            <path d="M15 19c2 1 4 1 6 0" fill="none" stroke="#000000" stroke-linecap="round" />
+            <path d="M15 19c2 1 4 1 6 0" fill="none" stroke="#000000" strokeLinecap="round" />
             <rect fill="#000000" height="2" rx="1" stroke="none" width="1.5" x="10" y="14" />
             <rect fill="#000000" height="2" rx="1" stroke="none" width="1.5" x="24" y="14" />
           </g>

@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles, Lightbulb, X } from "lucide-react";
+import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles, Lightbulb, X, Sun, Moon, Monitor, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "next-themes";
 import { HavnLogo } from "@/components/havn/HavnLogo";
-import { ThemeToggle } from "@/components/havn/ThemeToggle";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { getDisplayName, getFullName } from "@/lib/profile-display";
@@ -49,8 +49,30 @@ function Avatar({ username, avatarUrl, updatedAt }: { username: string; avatarUr
   );
 }
 
+interface SavedAccount {
+  session: {
+    access_token: string;
+    refresh_token: string;
+  };
+  profile: {
+    id: string;
+    username: string;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+    updated_at?: string | null;
+  };
+}
+
 interface SidebarProps {
-  currentUser?: (ProfileNameFields & { avatar_url: string | null; banner_url?: string | null; updated_at?: string | null; bio?: string | null }) | null;
+  currentUser?: (ProfileNameFields & { 
+    avatar_url: string | null; 
+    banner_url?: string | null; 
+    updated_at?: string | null; 
+    bio?: string | null;
+    is_gold?: boolean;
+    is_verified?: boolean;
+  }) | null;
   unreadCount?: number;
   unreadMessagesCount?: number;
   openSupportTickets?: number;
@@ -67,12 +89,45 @@ export function Sidebar({
   onExpand,
 }: SidebarProps) {
   const pathname = usePathname();
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const [accounts, setAccounts] = useState<SavedAccount[]>([]);
   const [showAccountsMenu, setShowAccountsMenu] = useState(false);
   const [showHoverCard, setShowHoverCard] = useState(false);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const supabase = createClient();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const t = setTimeout(() => setToastMessage(null), 4000);
+    return () => clearTimeout(t);
+  }, [toastMessage]);
+
+  const isTokenExpired = (token: string): boolean => {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return true;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(jsonPayload);
+      return payload.exp ? payload.exp * 1000 < Date.now() : true;
+    } catch {
+      return true;
+    }
+  };
 
   const [unreadNotifications, setUnreadNotifications] = useState(unreadCount);
   const [unreadDMs, setUnreadDMs] = useState(unreadMessagesCount);
@@ -246,11 +301,11 @@ export function Sidebar({
     const stored = localStorage.getItem("havn_accounts");
     if (stored) {
       try {
-        const list = JSON.parse(stored);
+        const list = JSON.parse(stored) as SavedAccount[];
         if (Array.isArray(list)) {
           // Deduplicate strictly by profile id. Discard legacy entries with no id.
-          const uniqueMap = new Map<string, any>()
-          list.forEach((acc: any) => {
+          const uniqueMap = new Map<string, SavedAccount>()
+          list.forEach((acc: SavedAccount) => {
             if (acc?.profile && acc.profile.id && acc.session?.access_token) {
               uniqueMap.set(acc.profile.id, acc)
             }
@@ -260,7 +315,7 @@ export function Sidebar({
           
           // Detect token pollution (token user ID does not match the profile ID)
           let hasPollution = false;
-          const verified = cleaned.filter((acc: any) => {
+          const verified = cleaned.filter((acc: SavedAccount) => {
             const tokenUserId = getUserIdFromToken(acc.session.access_token);
             if (tokenUserId && tokenUserId !== acc.profile.id) {
               hasPollution = true;
@@ -296,8 +351,8 @@ export function Sidebar({
           const stored = localStorage.getItem("havn_accounts");
           if (stored) {
             try {
-              const list = JSON.parse(stored);
-              const savedAcc = list.find((acc: any) => acc.profile.id === currentUser.id);
+              const list = JSON.parse(stored) as SavedAccount[];
+              const savedAcc = list.find((acc: SavedAccount) => acc.profile.id === currentUser.id);
               if (savedAcc && savedAcc.session?.access_token) {
                 await supabase.auth.setSession({
                   access_token: savedAcc.session.access_token,
@@ -316,23 +371,23 @@ export function Sidebar({
         if (!session || !session.user) return;
 
         const stored = localStorage.getItem("havn_accounts");
-        let list: any[] = [];
+        let list: SavedAccount[] = [];
         if (stored) {
           try {
-            list = JSON.parse(stored);
+            list = JSON.parse(stored) as SavedAccount[];
           } catch {
             list = [];
           }
         }
 
         const existingIdx = list.findIndex(acc => acc.profile.id === currentUser.id);
-        const currentAccount = {
+        const currentAccount: SavedAccount = {
           session: {
             access_token: session.access_token,
             refresh_token: session.refresh_token,
           },
           profile: {
-            id: currentUser.id,
+            id: currentUser.id!,
             username: currentUser.username,
             first_name: currentUser.first_name ?? null,
             last_name: currentUser.last_name ?? null,
@@ -361,8 +416,22 @@ export function Sidebar({
     syncAccount();
   }, [currentUser]);
 
-  const handleSwitchAccount = async (targetAccount: any) => {
+  const handleSwitchAccount = async (targetAccount: SavedAccount) => {
+    // Check if token is expired first on client-side to prevent server-side cookie corruption
+    if (isTokenExpired(targetAccount.session.access_token)) {
+      const stored = localStorage.getItem('havn_accounts');
+      let list: SavedAccount[] = [];
+      try { list = stored ? JSON.parse(stored) as SavedAccount[] : [] } catch { list = [] }
+      const cleaned = list.filter(acc => acc.profile.id !== targetAccount.profile.id);
+      localStorage.setItem('havn_accounts', JSON.stringify(cleaned));
+      setAccounts(cleaned);
+      setToastMessage(`@${targetAccount.profile.username} oturum süresi dolmuş. Lütfen tekrar giriş yapın.`);
+      return;
+    }
+
     try {
+      setIsLoggingOut(true); // Show premium loader overlay during switch
+      
       // First, set the session server-side to guarantee browser cookies are fully updated
       const res = await switchSession(
         targetAccount.session.access_token,
@@ -372,12 +441,13 @@ export function Sidebar({
       if (res.error) {
         // Token expired/invalid — remove it from the saved list
         const stored = localStorage.getItem('havn_accounts')
-        let list: any[] = []
-        try { list = stored ? JSON.parse(stored) : [] } catch { list = [] }
+        let list: SavedAccount[] = []
+        try { list = stored ? JSON.parse(stored) as SavedAccount[] : [] } catch { list = [] }
         const cleaned = list.filter(acc => acc.profile.id !== targetAccount.profile.id)
         localStorage.setItem('havn_accounts', JSON.stringify(cleaned))
         setAccounts(cleaned)
-        alert(`@${targetAccount.profile.username} oturumu süresi dolmuş. Lütfen tekrar giriş yapın.`)
+        setIsLoggingOut(false);
+        setToastMessage(`@${targetAccount.profile.username} oturumu geçersiz. Lütfen tekrar giriş yapın.`);
         return
       }
 
@@ -389,7 +459,7 @@ export function Sidebar({
 
       if (!error && data.session) {
         const stored = localStorage.getItem('havn_accounts')
-        let list: any[] = []
+        let list: SavedAccount[] = []
         try { list = stored ? JSON.parse(stored) : [] } catch { list = [] }
         const updatedList = list.map(acc => {
           if (acc.profile.id === targetAccount.profile.id) {
@@ -407,9 +477,11 @@ export function Sidebar({
       }
 
       // Redirect to feed after account switch so server components re-render with the new session
-      window.location.href = '/feed'
-    } catch (err: any) {
-      alert('Hesap geçişi başarısız: ' + err.message)
+      window.location.assign('/feed');
+    } catch (err) {
+      setIsLoggingOut(false);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setToastMessage('Hesap geçişi başarısız: ' + errMsg);
     }
   };
 
@@ -417,9 +489,9 @@ export function Sidebar({
     try {
       // Simply log out current session locally to clear session cookies
       await supabase.auth.signOut();
-      window.location.href = "/login";
+      window.location.assign('/login');
     } catch {
-      window.location.href = "/login";
+      window.location.assign('/login');
     }
   };
 
@@ -429,10 +501,10 @@ export function Sidebar({
       setIsLoggingOut(true);
 
       const stored = localStorage.getItem("havn_accounts");
-      let list: any[] = [];
+      let list: SavedAccount[] = [];
       if (stored) {
         try {
-          list = JSON.parse(stored);
+          list = JSON.parse(stored) as SavedAccount[];
         } catch {
           list = [];
         }
@@ -444,7 +516,7 @@ export function Sidebar({
 
       // Try switching to each of the other saved accounts one by one
       let switchSuccess = false;
-      let remainingAccounts = [...updatedList];
+      let remainingAccounts = [...updatedList] as SavedAccount[];
 
       while (remainingAccounts.length > 0) {
         const nextAccount = remainingAccounts[0];
@@ -491,20 +563,20 @@ export function Sidebar({
 
       if (switchSuccess) {
         await new Promise(resolve => setTimeout(resolve, 800));
-        window.location.href = '/feed';
+        window.location.assign('/feed');
         return;
       }
 
       // If no other accounts succeeded, perform full signOut and redirect to login
       await supabase.auth.signOut();
       await new Promise(resolve => setTimeout(resolve, 800));
-      window.location.href = "/login";
+      window.location.assign('/login');
     } catch {
-      window.location.href = "/login";
+      window.location.assign('/login');
     }
   };
 
-  const handleRemoveSavedAccount = async (targetAccount: any, e: React.MouseEvent) => {
+  const handleRemoveSavedAccount = async (targetAccount: SavedAccount, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       const isCurrentActive = targetAccount.profile.id === currentUser?.id;
@@ -512,10 +584,10 @@ export function Sidebar({
         await handleSignOut();
       } else {
         const stored = localStorage.getItem("havn_accounts");
-        let list: any[] = [];
+        let list: SavedAccount[] = [];
         if (stored) {
           try {
-            list = JSON.parse(stored);
+            list = JSON.parse(stored) as SavedAccount[];
           } catch {
             list = [];
           }
@@ -742,48 +814,10 @@ export function Sidebar({
         </motion.div>
       </Link>
 
-      {/* Bottom: Theme Toggle + Settings */}
-      <div className={cn(isCollapsed ? "flex flex-col gap-2 items-center w-full" : "grid grid-cols-2 gap-2 w-full")}>
-        <ThemeToggle variant={isCollapsed ? "compact" : "half"} onExpand={onExpand} />
-        <Link
-          href="/settings"
-          onClick={() => {
-            if (isCollapsed && onExpand) onExpand();
-          }}
-          title={isCollapsed ? "Ayarlar" : undefined}
-          className={cn(
-            "glass flex items-center transition-all duration-200 hover:border-primary/40 hover:shadow-sm active:scale-95",
-            isCollapsed
-              ? "w-10 h-10 justify-center p-0 rounded-xl mx-auto"
-              : "justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold w-full",
-            pathname === "/settings"
-              ? "text-primary-foreground"
-              : "text-foreground"
-          )}
-          style={
-            pathname === "/settings"
-              ? { background: "linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))" }
-              : {}
-          }
-        >
-          <Settings
-            size={15}
-            className={cn(
-              "flex-shrink-0",
-              pathname === "/settings" ? "text-primary-foreground" : "text-muted-foreground"
-            )}
-          />
-          {!isCollapsed && "Ayarlar"}
-        </Link>
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-border" />
-
-      {/* Multi-Account Profile switcher / Login buttons */}
+      {/* Bottom Profile Area (Kokonut UI Profile Dropdown) */}
       {currentUser ? (
-        <div className="relative w-full flex justify-center">
-          {/* Switcher Popover */}
+        <div className="relative w-full flex justify-center mt-auto">
+          {/* Dropdown Popover */}
           <AnimatePresence>
             {showAccountsMenu && (
               <>
@@ -795,117 +829,197 @@ export function Sidebar({
                   }}
                 />
                 <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
                   className={cn(
-                    "absolute z-30 bg-card border border-border rounded-2xl shadow-2xl p-2.5 flex flex-col gap-1",
+                    "absolute z-30 bg-card border border-border rounded-2xl shadow-2xl p-2.5 flex flex-col gap-1.5 w-64",
                     isCollapsed
-                      ? "bottom-0 left-full ml-3 w-56 mb-0"
-                      : "bottom-full left-0 w-full mb-3"
+                      ? "bottom-0 left-full ml-3"
+                      : "bottom-full left-0 mb-3"
                   )}
+                  style={{
+                    boxShadow: "0 10px 30px -10px color-mix(in oklch, var(--primary) 15%, transparent), 0 20px 40px rgba(0, 0, 0, 0.2)",
+                  }}
                 >
-                  <div className="text-[9px] font-black text-muted-foreground uppercase px-2 py-1 mb-1 tracking-wider">
-                    Hesap Değiştir
+                  {/* Header: Active Profile Info */}
+                  <div className="flex items-center gap-2.5 p-2 rounded-xl bg-accent/40 border border-border/30">
+                    <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 flex-shrink-0">
+                      <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} updatedAt={currentUser.updated_at} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <ProfileName profile={currentUser} layout="stacked" nameClassName="text-xs font-black" showHandle={true} />
+                    </div>
                   </div>
-                  
-                  {/* Account List */}
-                  <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto pr-0.5">
+
+                  {/* Actions List */}
+                  <div className="flex flex-col gap-0.5">
+                    {/* Profil Link */}
+                    <Link
+                      href="/profile"
+                      onClick={() => setShowAccountsMenu(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-foreground hover:bg-accent/70 transition-all text-left cursor-pointer w-full"
+                    >
+                      <User size={14} className="text-muted-foreground" />
+                      Profil
+                    </Link>
+
+                    {/* Ayarlar Link */}
+                    <Link
+                      href="/settings"
+                      onClick={() => setShowAccountsMenu(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-foreground hover:bg-accent/70 transition-all text-left cursor-pointer w-full"
+                    >
+                      <Settings size={14} className="text-muted-foreground" />
+                      Ayarlar
+                    </Link>
+
+                    {/* Tema Değiştirici (Inline Segmented) */}
+                    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-accent/40 transition-colors">
+                      <span className="flex items-center gap-2.5 text-xs font-bold text-foreground select-none">
+                        <Sun size={14} className="text-muted-foreground" />
+                        Renk Modu
+                      </span>
+                      {mounted && (
+                        <div className="flex bg-accent rounded-lg p-0.5 border border-border/40">
+                          {[
+                            { value: "light", icon: Sun, label: "Açık" },
+                            { value: "dark", icon: Moon, label: "Koyu" },
+                            { value: "system", icon: Monitor, label: "Sistem" }
+                          ].map((t) => (
+                            <button
+                              key={t.value}
+                              onClick={() => setTheme(t.value)}
+                              title={t.label}
+                              className={cn(
+                                "p-1 rounded-md transition-all text-muted-foreground hover:text-foreground cursor-pointer flex items-center justify-center",
+                                theme === t.value && "bg-card text-primary shadow-sm border border-border/10"
+                              )}
+                            >
+                              <t.icon size={11} />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rol Badge Row */}
                     {(() => {
-                      const sorted = [...accounts].sort((a, b) => {
-                        const aActive = a.profile.id === currentUser.id;
-                        const bActive = b.profile.id === currentUser.id;
-                        return aActive === bActive ? 0 : aActive ? -1 : 1;
-                      });
-                      return sorted.map((acc, index) => {
-                        const isActive = acc.profile.id === currentUser.id;
-                        const isConfirming = confirmRemoveId === acc.profile.id;
-                        return (
-                          <div key={acc.profile.id || acc.profile.username} className="flex flex-col">
-                            {index > 0 && <div className="border-t border-border/30 my-1 mx-2" />}
-                            {isConfirming ? (
-                              <div className="flex items-center justify-between gap-1 px-1.5 py-1 rounded-xl bg-destructive/15 border border-destructive/20 text-xs font-bold text-destructive animate-in fade-in slide-in-from-right-1 duration-200 w-full min-h-[38px]">
-                                <span className="truncate flex-1 text-[10px] leading-tight font-black select-none text-destructive">Oturum kapatılsın mı?</span>
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setConfirmRemoveId(null);
-                                    }}
-                                    className="px-2 py-0.5 rounded-lg bg-card border border-border hover:bg-accent text-foreground transition-all text-[9px] cursor-pointer font-black"
-                                  >
-                                    İptal
-                                  </button>
-                                  <button
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setConfirmRemoveId(null);
-                                      await handleRemoveSavedAccount(acc, e);
-                                    }}
-                                    className="px-2 py-0.5 rounded-lg bg-destructive text-white hover:bg-destructive/90 transition-all text-[9px] cursor-pointer font-black"
-                                  >
-                                    Evet
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1 w-full">
-                                <button
-                                  onClick={() => !isActive && handleSwitchAccount(acc)}
-                                  disabled={isActive}
-                                  className={cn(
-                                    "flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all flex-1 border text-xs font-bold min-w-0",
-                                    isActive
-                                      ? "bg-primary/10 border-primary/20 text-primary cursor-default"
-                                      : "hover:bg-accent/70 border-transparent cursor-pointer"
-                                  )}
-                                >
-                                  <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
-                                  <div className="flex-1 min-w-0">
-                                    <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-black" showHandle={true} />
-                                  </div>
-                                  {isActive && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0 mr-1" />
-                                  )}
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setConfirmRemoveId(acc.profile.id);
-                                  }}
-                                  title={isActive ? "Oturumu Kapat" : "Hesabı Kaldır"}
-                                  className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer flex-shrink-0"
-                                >
-                                  <LogOut size={13} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      });
+                      const isUserFounder = isFounder(currentUser);
+                      const isUserGold = currentUser.is_gold;
+                      const badgeText = isUserFounder ? "FOUNDER" : isUserGold ? "GOLD" : "ÜYE";
+                      const badgeClass = isUserFounder 
+                        ? "bg-amber-500/10 text-amber-500 border-amber-500/20" 
+                        : isUserGold 
+                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                        : "bg-primary/10 text-primary border-primary/20";
+                      
+                      return (
+                        <div className="flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-accent/40 transition-colors">
+                          <span className="flex items-center gap-2.5 text-xs font-bold text-foreground select-none">
+                            <Shield size={14} className="text-muted-foreground" />
+                            Rol
+                          </span>
+                          <span className={cn("px-1.5 py-0.5 text-[8px] font-black rounded border tracking-wider", badgeClass)}>
+                            {badgeText}
+                          </span>
+                        </div>
+                      );
                     })()}
                   </div>
 
-                  <div className="border-t border-border my-1.5" />
+                  {/* Accounts & Session Management */}
+                  {(() => {
+                    const otherAccounts = accounts.filter(acc => acc.profile.id !== currentUser.id);
+                    if (otherAccounts.length === 0 && accounts.length >= 4) return null;
 
-                  {/* Options */}
-                  {accounts.length >= 4 ? (
-                    <div className="px-2 py-2 text-[10px] font-semibold text-muted-foreground bg-accent/20 rounded-xl select-none leading-normal">
-                      Maksimum 4 hesaba izin verilmektedir. Yeni hesap için birinden çıkış yapmalısınız.
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleAddNewAccount}
-                      className="flex items-center gap-2.5 px-2 py-2.5 rounded-xl text-xs font-bold text-primary hover:bg-primary/10 transition-all text-left cursor-pointer w-full"
-                    >
-                      <span className="w-4 h-4 rounded-md bg-primary/10 flex items-center justify-center font-bold text-xs">+</span>
-                      Yeni Hesap Ekle
-                    </button>
-                  )}
+                    return (
+                      <>
+                        <div className="border-t border-border/50 my-1" />
+                        
+                        {otherAccounts.length > 0 && (
+                          <div className="flex flex-col gap-1 max-h-[140px] overflow-y-auto pr-0.5">
+                            <div className="text-[9px] font-black text-muted-foreground/80 uppercase px-2 py-0.5 tracking-wider select-none">
+                              Hesap Değiştir
+                            </div>
+                            {otherAccounts.map((acc) => {
+                              const isConfirming = confirmRemoveId === acc.profile.id;
+                              return (
+                                <div key={acc.profile.id} className="flex flex-col">
+                                  {isConfirming ? (
+                                    <div className="flex items-center justify-between gap-1 px-1.5 py-1 rounded-xl bg-destructive/15 border border-destructive/20 text-xs font-bold text-destructive animate-in fade-in slide-in-from-right-1 duration-200 w-full min-h-[36px]">
+                                      <span className="truncate flex-1 text-[9px] leading-tight font-black select-none text-destructive">Oturum kapatılsın mı?</span>
+                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setConfirmRemoveId(null);
+                                          }}
+                                          className="px-1.5 py-0.5 rounded-lg bg-card border border-border hover:bg-accent text-foreground transition-all text-[8px] cursor-pointer font-black"
+                                        >
+                                          İptal
+                                        </button>
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            setConfirmRemoveId(null);
+                                            await handleRemoveSavedAccount(acc, e);
+                                          }}
+                                          className="px-1.5 py-0.5 rounded-lg bg-destructive text-white hover:bg-destructive/90 transition-all text-[8px] cursor-pointer font-black"
+                                        >
+                                          Evet
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 w-full group/acc">
+                                      <button
+                                        onClick={() => handleSwitchAccount(acc)}
+                                        className="flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all flex-1 border border-transparent hover:bg-accent/60 cursor-pointer min-w-0"
+                                      >
+                                        <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
+                                        <div className="flex-1 min-w-0">
+                                          <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} />
+                                        </div>
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setConfirmRemoveId(acc.profile.id);
+                                        }}
+                                        title="Hesabı Kaldır"
+                                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer flex-shrink-0 opacity-0 group-hover/acc:opacity-100 focus/acc:opacity-100"
+                                      >
+                                        <X size={12} />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
 
+                        {accounts.length < 4 && (
+                          <button
+                            onClick={handleAddNewAccount}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold text-primary hover:bg-primary/5 transition-all text-left cursor-pointer w-full mt-0.5"
+                          >
+                            <span className="w-4 h-4 rounded-md bg-primary/10 flex items-center justify-center font-bold text-xs">+</span>
+                            Yeni Hesap Ekle
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+
+                  <div className="border-t border-border/50 my-1" />
+
+                  {/* Sign Out Button */}
                   <button
                     onClick={handleSignOut}
-                    className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-xs font-bold text-destructive hover:bg-destructive/10 transition-all text-left cursor-pointer w-full"
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-destructive hover:bg-destructive/10 transition-all text-left cursor-pointer w-full"
                   >
                     <LogOut size={13} className="text-destructive flex-shrink-0" />
                     Çıkış Yap
@@ -1011,29 +1125,30 @@ export function Sidebar({
               }
             }}
             className={cn(
-              "flex items-center transition-all duration-200 cursor-pointer text-left border border-transparent hover:border-border/30",
+              "flex items-center transition-all duration-300 cursor-pointer text-left border border-border/30 bg-accent/15 hover:bg-accent/40 shadow-sm hover:shadow active:scale-[0.98]",
               isCollapsed
-                ? "justify-center p-0 w-10 h-10 rounded-xl mx-auto"
-                : "gap-3 px-2 py-2.5 rounded-xl hover:bg-accent/60 w-full"
+                ? "justify-center p-0.5 w-11 h-11 rounded-full mx-auto"
+                : "gap-3 px-3 py-2.5 rounded-2xl w-full"
             )}
           >
-            <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} updatedAt={currentUser.updated_at} />
-            {!isCollapsed && (
+            {isCollapsed ? (
+              <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 flex-shrink-0">
+                <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} updatedAt={currentUser.updated_at} />
+              </div>
+            ) : (
               <>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pl-1">
                   <ProfileName profile={currentUser} layout="stacked" nameClassName="text-sm font-bold" showHandle={true} />
                 </div>
-                <div className="flex flex-col gap-0.5 opacity-60">
-                  <span className="w-1 h-1 rounded-full bg-foreground" />
-                  <span className="w-1 h-1 rounded-full bg-foreground" />
-                  <span className="w-1 h-1 rounded-full bg-foreground" />
+                <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 flex-shrink-0">
+                  <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} updatedAt={currentUser.updated_at} />
                 </div>
               </>
             )}
           </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-2 items-center w-full">
+        <div className="flex flex-col gap-2 items-center w-full mt-auto">
           <Link href="/login" title={isCollapsed ? "Giriş Yap" : undefined} className="w-full flex justify-center">
             <motion.div
               whileTap={{ scale: 0.97 }}
@@ -1181,12 +1296,106 @@ export function Sidebar({
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-card border border-border rounded-3xl p-6 shadow-2xl flex flex-col items-center gap-3 w-80 text-center"
             >
-              <Loader2 className="w-8 h-8 animate-spin text-primary flex-shrink-0" />
+              {/* Concentric Loader inspired by Kokonut UI (Orbital SVG design) */}
+              <div className="relative w-24 h-24 my-3 flex items-center justify-center flex-shrink-0">
+                {/* Ambient Glow */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary to-sky-500 opacity-25 blur-md animate-pulse" />
+                
+                {/* Ring 1: Outer track */}
+                <motion.svg
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="absolute w-full h-full text-primary"
+                  viewBox="0 0 100 100"
+                >
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="44"
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeDasharray="90 180"
+                    fill="transparent"
+                    className="opacity-90"
+                  />
+                </motion.svg>
+
+                {/* Ring 2: Reverse track */}
+                <motion.svg
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  className="absolute w-[82%] h-[82%] text-sky-500"
+                  viewBox="0 0 100 100"
+                >
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="70 160"
+                    fill="transparent"
+                    className="opacity-75"
+                  />
+                </motion.svg>
+
+                {/* Ring 3: Fast inner tracker */}
+                <motion.svg
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="absolute w-[64%] h-[64%] text-indigo-500"
+                  viewBox="0 0 100 100"
+                >
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeDasharray="30 200"
+                    fill="transparent"
+                    className="opacity-90"
+                  />
+                </motion.svg>
+
+                {/* Pulsing gradient core */}
+                <motion.div
+                  animate={{ scale: [0.9, 1.1, 0.9] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute w-6 h-6 rounded-full bg-gradient-to-tr from-primary to-indigo-500 shadow-md shadow-primary/30"
+                />
+              </div>
               <div className="text-sm font-bold text-foreground">Oturum Kapatılıyor...</div>
               <div className="text-xs text-muted-foreground leading-normal">
                 Diğer hesabınıza güvenli bir şekilde geçiş yapılıyor. Lütfen bekleyin.
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-5 right-5 z-[99999] bg-card border border-border/80 shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3 w-80 max-w-full"
+          >
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+            <div className="flex-1 text-xs font-black text-foreground">
+              {toastMessage}
+            </div>
+            <button 
+              onClick={() => setToastMessage(null)}
+              className="text-[10px] text-muted-foreground hover:text-foreground font-black cursor-pointer px-1.5 py-0.5 rounded-lg hover:bg-accent flex-shrink-0"
+            >
+              Kapat
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
