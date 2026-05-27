@@ -328,17 +328,15 @@ export function Sidebar({
           
           let cleaned = Array.from(uniqueMap.values())
           
-          // Detect token pollution or expired/mismatched tokens
+          // Only discard accounts where the token's user ID does NOT match the stored profile ID.
+          // DO NOT discard based on access_token expiry — the refresh_token remains valid for weeks
+          // and Supabase's setSession() will auto-refresh when we actually switch accounts.
           let hasPollution = false;
           const verified = cleaned.filter((acc: SavedAccount) => {
-            if (isTokenExpired(acc.session.access_token)) {
-              hasPollution = true;
-              return false; // Discard expired or mismatched tokens
-            }
             const tokenUserId = getUserIdFromToken(acc.session.access_token);
             if (tokenUserId && tokenUserId !== acc.profile.id) {
               hasPollution = true;
-              return false; // Discard polluted token account
+              return false; // Discard token that belongs to a different user
             }
             return true;
           });
@@ -500,17 +498,10 @@ export function Sidebar({
   }, [currentUser]);
 
   const handleSwitchAccount = async (targetAccount: SavedAccount) => {
-    // Check if token is expired first on client-side to prevent server-side cookie corruption
-    if (isTokenExpired(targetAccount.session.access_token)) {
-      const stored = localStorage.getItem('havn_accounts');
-      let list: SavedAccount[] = [];
-      try { list = stored ? JSON.parse(stored) as SavedAccount[] : [] } catch { list = [] }
-      const cleaned = list.filter(acc => acc.profile.id !== targetAccount.profile.id);
-      localStorage.setItem('havn_accounts', JSON.stringify(cleaned));
-      setAccounts(cleaned);
-      setToastMessage(`@${targetAccount.profile.username} oturum süresi dolmuş. Lütfen tekrar giriş yapın.`);
-      return;
-    }
+    // NOTE: We intentionally do NOT pre-check access_token expiry here.
+    // Access tokens expire in ~1 hour, but refresh tokens last weeks.
+    // supabase.auth.setSession() inside switchSession will auto-refresh
+    // using the refresh_token, so we always let the server decide.
 
     try {
       setIsLoggingOut(true); // Show premium loader overlay during switch
@@ -572,8 +563,9 @@ export function Sidebar({
         localStorage.setItem('havn_accounts', JSON.stringify(updatedList))
       }
 
-      // Redirect to feed after account switch so server components re-render with the new session
+      // Redirect to feed after account switch and force reload to clear layout state and reload the session
       window.location.assign('/feed');
+      window.location.reload();
     } catch (err) {
       setIsLoggingOut(false);
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -660,6 +652,7 @@ export function Sidebar({
       if (switchSuccess) {
         await new Promise(resolve => setTimeout(resolve, 800));
         window.location.assign('/feed');
+        window.location.reload();
         return;
       }
 
