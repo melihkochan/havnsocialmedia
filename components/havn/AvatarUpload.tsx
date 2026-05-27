@@ -1,24 +1,107 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Camera, ZoomIn, ZoomOut, RotateCcw, Check, Undo, RefreshCw } from 'lucide-react'
+import { Camera, ZoomIn, ZoomOut, RotateCcw, Check, Undo } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
-interface AvatarPreset {
+interface KokonutAvatar {
   id: number
   name: string
-  gradientStart: string
-  gradientEnd: string
-  textHex: string
+  rgb: string
+  svgString: string
+  element: React.ReactNode
 }
 
-const PRESETS: AvatarPreset[] = [
-  { id: 1, name: 'Sunset Glow', gradientStart: '#ff005b', gradientEnd: '#ffb238', textHex: '#ffffff' },
-  { id: 2, name: 'Ocean Breeze', gradientStart: '#00c6ff', gradientEnd: '#0072ff', textHex: '#ffffff' },
-  { id: 3, name: 'Deep Space', gradientStart: '#7f00ff', gradientEnd: '#e100ff', textHex: '#ffffff' },
-  { id: 4, name: 'Cyberpunk', gradientStart: '#f857a6', gradientEnd: '#ff5858', textHex: '#ffffff' },
-  { id: 5, name: 'Emerald Forest', gradientStart: '#11998e', gradientEnd: '#38ef7d', textHex: '#ffffff' },
-  { id: 6, name: 'Soft Orchid', gradientStart: '#a8c0ff', gradientEnd: '#3f2b96', textHex: '#ffffff' }
+const KOKONUT_AVATARS: KokonutAvatar[] = [
+  {
+    id: 1,
+    name: 'Avatar 1',
+    rgb: '255, 0, 91',
+    svgString: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none" width="36" height="36"><mask id="mask1" maskUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><rect fill="#FFFFFF" width="36" height="36" rx="72"/></mask><g mask="url(#mask1)"><rect fill="#ff005b" width="36" height="36"/><rect fill="#ffb238" width="36" height="36" rx="6" transform="translate(9 -5) rotate(219 18 18) scale(1)"/><g transform="translate(4.5 -4) rotate(9 18 18)"><path d="M15 19c2 1 4 1 6 0" fill="none" stroke="#000000" stroke-linecap="round"/><rect fill="#000000" width="1.5" height="2" rx="1" stroke="none" x="10" y="14"/><rect fill="#000000" width="1.5" height="2" rx="1" stroke="none" x="24" y="14"/></g></g></svg>`,
+    element: (
+      <svg fill="none" height="40" viewBox="0 0 36 36" width="40" xmlns="http://www.w3.org/2000/svg">
+        <mask height="36" id="m1" maskUnits="userSpaceOnUse" width="36" x="0" y="0">
+          <rect fill="#FFFFFF" height="36" rx="72" width="36" />
+        </mask>
+        <g mask="url(#m1)">
+          <rect fill="#ff005b" height="36" width="36" />
+          <rect fill="#ffb238" height="36" rx="6" transform="translate(9 -5) rotate(219 18 18) scale(1)" width="36" x="0" y="0" />
+          <g transform="translate(4.5 -4) rotate(9 18 18)">
+            <path d="M15 19c2 1 4 1 6 0" fill="none" stroke="#000000" stroke-linecap="round" />
+            <rect fill="#000000" height="2" rx="1" stroke="none" width="1.5" x="10" y="14" />
+            <rect fill="#000000" height="2" rx="1" stroke="none" width="1.5" x="24" y="14" />
+          </g>
+        </g>
+      </svg>
+    )
+  },
+  {
+    id: 2,
+    name: 'Avatar 2',
+    rgb: '255, 125, 16',
+    svgString: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none" width="36" height="36"><mask id="mask2" maskUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><rect fill="#FFFFFF" width="36" height="36" rx="72"/></mask><g mask="url(#mask2)"><rect fill="#ff7d10" width="36" height="36"/><rect fill="#0a0310" width="36" height="36" rx="6" transform="translate(5 -1) rotate(55 18 18) scale(1.1)"/><g transform="translate(7 -6) rotate(-5 18 18)"><path d="M15 20c2 1 4 1 6 0" fill="none" stroke="#FFFFFF" stroke-linecap="round"/><rect fill="#FFFFFF" width="1.5" height="2" rx="1" stroke="none" x="14" y="14"/><rect fill="#FFFFFF" width="1.5" height="2" rx="1" stroke="none" x="20" y="14"/></g></g></svg>`,
+    element: (
+      <svg fill="none" height="40" viewBox="0 0 36 36" width="40" xmlns="http://www.w3.org/2000/svg">
+        <mask height="36" id="m2" maskUnits="userSpaceOnUse" width="36" x="0" y="0">
+          <rect fill="#FFFFFF" height="36" rx="72" width="36" />
+        </mask>
+        <g mask="url(#m2)">
+          <rect fill="#ff7d10" height="36" width="36" />
+          <rect fill="#0a0310" height="36" rx="6" transform="translate(5 -1) rotate(55 18 18) scale(1.1)" width="36" x="0" y="0" />
+          <g transform="translate(7 -6) rotate(-5 18 18)">
+            <path d="M15 20c2 1 4 1 6 0" fill="none" stroke="#FFFFFF" stroke-linecap="round" />
+            <rect fill="#FFFFFF" height="2" rx="1" stroke="none" width="1.5" x="14" y="14" />
+            <rect fill="#FFFFFF" height="2" rx="1" stroke="none" width="1.5" x="20" y="14" />
+          </g>
+        </g>
+      </svg>
+    )
+  },
+  {
+    id: 3,
+    name: 'Avatar 3',
+    rgb: '139, 92, 246',
+    svgString: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none" width="36" height="36"><mask id="mask3" maskUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><rect fill="#FFFFFF" width="36" height="36" rx="72"/></mask><g mask="url(#mask3)"><rect fill="#0a0310" width="36" height="36"/><rect fill="#ff005b" width="36" height="36" rx="36" transform="translate(-3 7) rotate(227 18 18) scale(1.2)"/><g transform="translate(-3 3.5) rotate(7 18 18)"><path d="M13 21 a1 0.75 0 0 0 10 0" fill="#FFFFFF"/><rect fill="#FFFFFF" width="1.5" height="2" rx="1" stroke="none" x="12" y="14"/><rect fill="#FFFFFF" width="1.5" height="2" rx="1" stroke="none" x="22" y="14"/></g></g></svg>`,
+    element: (
+      <svg fill="none" height="40" viewBox="0 0 36 36" width="40" xmlns="http://www.w3.org/2000/svg">
+        <mask height="36" id="m3" maskUnits="userSpaceOnUse" width="36" x="0" y="0">
+          <rect fill="#FFFFFF" height="36" rx="72" width="36" />
+        </mask>
+        <g mask="url(#m3)">
+          <rect fill="#0a0310" height="36" width="36" />
+          <rect fill="#ff005b" height="36" rx="36" transform="translate(-3 7) rotate(227 18 18) scale(1.2)" width="36" x="0" y="0" />
+          <g transform="translate(-3 3.5) rotate(7 18 18)">
+            <path d="M13,21 a1,0.75 0 0,0 10,0" fill="#FFFFFF" />
+            <rect fill="#FFFFFF" height="2" rx="1" stroke="none" width="1.5" x="12" y="14" />
+            <rect fill="#FFFFFF" height="2" rx="1" stroke="none" width="1.5" x="22" y="14" />
+          </g>
+        </g>
+      </svg>
+    )
+  },
+  {
+    id: 4,
+    name: 'Avatar 4',
+    rgb: '137, 252, 179',
+    svgString: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none" width="36" height="36"><mask id="mask4" maskUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><rect fill="#FFFFFF" width="36" height="36" rx="72"/></mask><g mask="url(#mask4)"><rect fill="#d8fcb3" width="36" height="36"/><rect fill="#89fcb3" width="36" height="36" rx="6" transform="translate(9 -5) rotate(219 18 18) scale(1)"/><g transform="translate(4.5 -4) rotate(9 18 18)"><path d="M15 19c2 1 4 1 6 0" fill="none" stroke="#000000" stroke-linecap="round"/><rect fill="#000000" width="1.5" height="2" rx="1" stroke="none" x="10" y="14"/><rect fill="#000000" width="1.5" height="2" rx="1" stroke="none" x="24" y="14"/></g></g></svg>`,
+    element: (
+      <svg fill="none" height="40" viewBox="0 0 36 36" width="40" xmlns="http://www.w3.org/2000/svg">
+        <mask height="36" id="m4" maskUnits="userSpaceOnUse" width="36" x="0" y="0">
+          <rect fill="#FFFFFF" height="36" rx="72" width="36" />
+        </mask>
+        <g mask="url(#m4)">
+          <rect fill="#d8fcb3" height="36" width="36" />
+          <rect fill="#89fcb3" height="36" rx="6" transform="translate(9 -5) rotate(219 18 18) scale(1)" width="36" x="0" y="0" />
+          <g transform="translate(4.5 -4) rotate(9 18 18)">
+            <path d="M15 19c2 1 4 1 6 0" fill="none" stroke="#000000" stroke-linecap="round" />
+            <rect fill="#000000" height="2" rx="1" stroke="none" width="1.5" x="10" y="14" />
+            <rect fill="#000000" height="2" rx="1" stroke="none" width="1.5" x="24" y="14" />
+          </g>
+        </g>
+      </svg>
+    )
+  }
 ]
 
 interface AvatarUploadProps {
@@ -113,8 +196,11 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
     }, 'image/jpeg', 0.85)
   }, [onFileSelect])
 
-  // Generate and set preset blob
-  const handlePresetSelect = useCallback((preset: AvatarPreset) => {
+  // Generate preset SVG image and pass back to parent
+  const handlePresetSelect = useCallback((presetId: number) => {
+    const preset = KOKONUT_AVATARS.find(p => p.id === presetId)
+    if (!preset) return
+
     const canvas = canvasRef.current
     if (!canvas) return
     const size = 512
@@ -123,39 +209,27 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.clearRect(0, 0, size, size)
+    // Create image from SVG XML
+    const img = new Image()
+    const svgBlob = new Blob([preset.svgString], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(svgBlob)
 
-    // Clip to circle
-    ctx.beginPath()
-    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
-    ctx.closePath()
-    ctx.clip()
-
-    // Draw gradient background
-    const grad = ctx.createLinearGradient(0, 0, size, size)
-    grad.addColorStop(0, preset.gradientStart)
-    grad.addColorStop(1, preset.gradientEnd)
-    ctx.fillStyle = grad
-    ctx.fillRect(0, 0, size, size)
-
-    // Draw text (initials)
-    ctx.fillStyle = preset.textHex
-    ctx.font = '900 180px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(userInitials, size / 2, size / 2 + 10)
-
-    // Convert to file
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], `preset_${preset.id}.png`, { type: 'image/png' })
-        onFileSelect(file)
-        setSelectedPresetId(preset.id)
-        setImageSrc(null)
-        setIsDeleted(false)
-      }
-    }, 'image/png')
-  }, [userInitials, onFileSelect])
+    img.onload = () => {
+      ctx.clearRect(0, 0, size, size)
+      ctx.drawImage(img, 0, 0, size, size)
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `preset_${presetId}.png`, { type: 'image/png' })
+          onFileSelect(file)
+          setSelectedPresetId(presetId)
+          setImageSrc(null)
+          setIsDeleted(false)
+        }
+        URL.revokeObjectURL(url)
+      }, 'image/png')
+    }
+    img.src = url
+  }, [onFileSelect])
 
   // Drag handlers
   function handlePointerDown(e: React.PointerEvent) {
@@ -204,74 +278,104 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
     setIsDeleted(false)
   }
 
-  const selectedPreset = PRESETS.find(p => p.id === selectedPresetId)
+  const selectedPreset = KOKONUT_AVATARS.find(p => p.id === selectedPresetId)
+  const glowRgb = selectedPreset ? selectedPreset.rgb : 'var(--primary)'
 
   return (
     <div className="flex flex-col items-center gap-4">
       {/* Hidden input to pass delete status back via Form Data */}
       <input type="hidden" name="delete_avatar" value={isDeleted ? 'true' : 'false'} />
 
-      {/* Circular preview */}
-      <div
-        ref={previewRef}
-        className={cn(
-          'relative rounded-full overflow-hidden border-4 transition-all cursor-grab active:cursor-grabbing group shadow-md',
-          (imageSrc || selectedPreset) ? 'border-primary/40' : 'border-border',
-        )}
-        style={{ width: PREVIEW_SIZE, height: PREVIEW_SIZE }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onWheel={handleWheel}
-      >
-        {imageSrc && imgRef.current ? (
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `url(${imageSrc})`,
-              backgroundSize: `${(Math.max(PREVIEW_SIZE / (imgRef.current?.naturalWidth || 1), PREVIEW_SIZE / (imgRef.current?.naturalHeight || 1)) * zoom * (imgRef.current?.naturalWidth || 1))}px`,
-              backgroundPosition: `calc(50% + ${offset.x}px) calc(50% + ${offset.y}px)`,
-              backgroundRepeat: 'no-repeat',
-            }}
-          />
-        ) : selectedPreset ? (
-          <div
-            className="w-full h-full flex items-center justify-center text-4xl font-black tracking-tight"
-            style={{
-              background: `linear-gradient(135deg, ${selectedPreset.gradientStart}, ${selectedPreset.gradientEnd})`,
-              color: selectedPreset.textHex,
-            }}
-          >
-            {userInitials}
-          </div>
-        ) : (currentAvatarUrl && !isDeleted) ? (
-          <img
-            src={currentAvatarUrl}
-            alt={username}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div
-            className="w-full h-full flex items-center justify-center text-4xl font-black"
-            style={{
-              background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
-              color: 'var(--primary-foreground)',
-            }}
-          >
-            {userInitials}
-          </div>
-        )}
+      {/* Circular preview stage with animated glowing borders matching selected avatar */}
+      <div className="relative h-40 w-40 flex items-center justify-center">
+        {/* Glow effect */}
+        <motion.div
+          animate={{
+            boxShadow: `0 0 0 2px rgba(${glowRgb}, 0.55), 0 6px 24px rgba(${glowRgb}, 0.18)`,
+          }}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-full transition-all duration-300"
+        />
 
-        {/* Camera overlay */}
-        {!imageSrc && (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-          >
-            <Camera size={28} className="text-white" />
-          </button>
-        )}
+        {/* Circular preview */}
+        <div
+          ref={previewRef}
+          className={cn(
+            'relative h-[152px] w-[152px] rounded-full overflow-hidden border-2 transition-all cursor-grab active:cursor-grabbing group shadow-inner',
+            (imageSrc || selectedPreset) ? 'border-primary/20' : 'border-border',
+          )}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onWheel={handleWheel}
+        >
+          <AnimatePresence mode="wait">
+            {imageSrc && imgRef.current ? (
+              <motion.div
+                key="crop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `url(${imageSrc})`,
+                  backgroundSize: `${(Math.max(PREVIEW_SIZE / (imgRef.current?.naturalWidth || 1), PREVIEW_SIZE / (imgRef.current?.naturalHeight || 1)) * zoom * (imgRef.current?.naturalWidth || 1))}px`,
+                  backgroundPosition: `calc(50% + ${offset.x}px) calc(50% + ${offset.y}px)`,
+                  backgroundRepeat: 'no-repeat',
+                }}
+              />
+            ) : selectedPreset ? (
+              <motion.div
+                key={selectedPresetId}
+                initial={{ opacity: 0, rotate: -20 }}
+                animate={{ opacity: 1, rotate: 0 }}
+                exit={{ opacity: 0, rotate: 20 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                className="absolute inset-0 flex items-center justify-center overflow-hidden"
+              >
+                {/* Scale factor [3.8] to fill the circle completely */}
+                <div className="scale-[3.8] transform origin-center flex items-center justify-center">
+                  {selectedPreset.element}
+                </div>
+              </motion.div>
+            ) : (currentAvatarUrl && !isDeleted) ? (
+              <motion.img
+                key="url"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                src={currentAvatarUrl}
+                alt={username}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <motion.div
+                key="initials"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex items-center justify-center text-4xl font-black"
+                style={{
+                  background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
+                  color: 'var(--primary-foreground)',
+                }}
+              >
+                {userInitials}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Camera overlay */}
+          {!imageSrc && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+            >
+              <Camera size={28} className="text-white" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Action Buttons Row */}
@@ -309,7 +413,7 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
             <button
               type="button"
               onClick={handleReset}
-              className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-all flex items-center justify-center"
+              className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-all flex items-center justify-center cursor-pointer"
               title="Sıfırla"
             >
               <RotateCcw size={14} />
@@ -320,7 +424,7 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="text-xs font-semibold px-4 py-2.5 rounded-xl border border-border hover:border-primary/40 hover:bg-accent text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5 shadow-sm"
+              className="text-xs font-semibold px-4 py-2.5 rounded-xl border border-border hover:border-primary/40 hover:bg-accent text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <Camera size={13} />
               Fotoğraf Seç
@@ -331,7 +435,7 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
               <button
                 type="button"
                 onClick={handleUndo}
-                className="text-xs font-semibold px-4 py-2.5 rounded-xl border border-dashed border-primary/40 hover:bg-primary/5 text-primary transition-all flex items-center gap-1.5 shadow-sm"
+                className="text-xs font-semibold px-4 py-2.5 rounded-xl border border-dashed border-primary/40 hover:bg-primary/5 text-primary transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <Undo size={13} />
                 Geri Al
@@ -340,7 +444,7 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
               <button
                 type="button"
                 onClick={handleRemove}
-                className="text-xs font-semibold px-4 py-2.5 rounded-xl border border-border hover:border-destructive/40 hover:bg-destructive/5 text-muted-foreground hover:text-destructive transition-all flex items-center gap-1.5 shadow-sm"
+                className="text-xs font-semibold px-4 py-2.5 rounded-xl border border-border hover:border-destructive/40 hover:bg-destructive/5 text-muted-foreground hover:text-destructive transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
                 Fotoğrafı Kaldır
               </button>
@@ -353,37 +457,41 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
         {imageSrc ? 'Sürükle ve zum yaparak ayarla' : 'JPG, PNG — Maks 10MB'}
       </p>
 
-      {/* Preset Avatar Picker Grid */}
+      {/* Preset Avatar Picker Grid (Matching Kokonut UI style) */}
       {!imageSrc && (
         <div className="w-full max-w-[260px] border-t border-border/60 pt-3 mt-1">
-          <div className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase mb-2 text-center">
-            Hazır Şablonlar
+          <div className="text-[10px] font-semibold text-muted-foreground tracking-wider uppercase mb-2.5 text-center">
+            Avatarını Seç
           </div>
-          <div className="grid grid-cols-6 gap-2.5 justify-items-center">
-            {PRESETS.map((preset) => {
-              const isSelected = selectedPresetId === preset.id
+          <div className="grid grid-cols-4 gap-3 justify-items-center">
+            {KOKONUT_AVATARS.map((avatar) => {
+              const isSelected = selectedPresetId === avatar.id
               return (
-                <button
-                  key={preset.id}
+                <motion.button
+                  key={avatar.id}
                   type="button"
-                  onClick={() => handlePresetSelect(preset)}
+                  onClick={() => handlePresetSelect(avatar.id)}
                   className={cn(
-                    'h-8 w-8 rounded-full relative flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 border border-border/40 shadow-sm',
-                    isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
+                    'h-12 w-12 rounded-xl relative flex items-center justify-center cursor-pointer transition-all border shadow-sm bg-muted overflow-hidden',
+                    isSelected
+                      ? 'border-foreground/20 ring-2 ring-foreground/70 ring-offset-2 ring-offset-background opacity-100'
+                      : 'border-border opacity-60 hover:opacity-100'
                   )}
-                  style={{
-                    background: `linear-gradient(135deg, ${preset.gradientStart}, ${preset.gradientEnd})`
-                  }}
-                  title={preset.name}
+                  whileHover={{ scale: 1.06 }}
+                  whileTap={{ scale: 0.94 }}
+                  title={avatar.name}
                 >
-                  {isSelected ? (
-                    <Check size={13} className="text-white drop-shadow" />
-                  ) : (
-                    <span className="text-[9px] font-black text-white/80 select-none">
-                      {userInitials}
-                    </span>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="scale-[1.3] transform">
+                      {avatar.element}
+                    </div>
+                  </div>
+                  {isSelected && (
+                    <div className="absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-foreground">
+                      <Check className="h-2.5 w-2.5 text-background" />
+                    </div>
                   )}
-                </button>
+                </motion.button>
               )
             })}
           </div>
