@@ -18,16 +18,15 @@ export default async function SupportPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  const [profileResult, initialTickets] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    getSupportTickets()
+  ])
 
+  const profile = profileResult.data
   if (!profile) redirect('/login')
 
   const isFounder = checkIsFounder(profile)
-  const initialTickets = await getSupportTickets()
 
   const { data: userProfiles } = isFounder
     ? await supabase

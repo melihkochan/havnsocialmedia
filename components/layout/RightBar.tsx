@@ -155,8 +155,8 @@ function GlobalRightBar() {
         setCommunities(withCounts.slice(0, 5))
         setTotalMembers(withCounts.reduce((s, c) => s + c.memberCount, 0))
         setSuggested(suggestedUsersList as SuggestedUser[])
-      } catch (e) {
-        console.error('GlobalRightBar load error:', e)
+      } catch {
+        // silent
       } finally {
         setLoading(false)
       }
@@ -392,8 +392,8 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
       }
       setStats(statsResult)
       setMemberCount(countResult.count ?? 0)
-    } catch (err) {
-      console.error("RightBar load error:", err)
+    } catch {
+      // silent
     } finally {
       setLoading(false)
     }

@@ -18,16 +18,15 @@ export default async function SuggestionsPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  const [profileResult, initialSuggestions] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    getSuggestions('all', 'votes')
+  ])
 
+  const profile = profileResult.data
   if (!profile) redirect('/login')
 
   const isAdmin = profile.is_gold || checkIsFounder(profile)
-  const initialSuggestions = await getSuggestions('all', 'votes')
 
   return (
     <MainLayout currentUser={profile}>

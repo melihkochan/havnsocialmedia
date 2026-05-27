@@ -16,47 +16,32 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const profile = user
-    ? (await supabase.from('profiles').select('*').eq('id', user.id).single()).data
-    : null
+  const [profileResult, postResult, comments, postViews] = await Promise.all([
+    user ? supabase.from('profiles').select('*').eq('id', user.id).single() : Promise.resolve({ data: null }),
+    supabase.from('posts').select(`*, profiles(*), likes(user_id), bookmarks(user_id), comments(id), communities(name, slug)`).eq('id', id).single(),
+    getComments(id),
+    getPostViewCount(id)
+  ])
 
-  // Fetch post with joins
-  const { data: post, error } = await supabase
-    .from('posts')
-    .select(`*, profiles(*), likes(user_id), bookmarks(user_id), comments(id), communities(name, slug)`)
-    .eq('id', id)
-    .single()
+  const profile = profileResult?.data || null
+  const post = postResult.data
+  const error = postResult.error
 
   if (error || !post) notFound()
 
-  // Get author's role in community
+  // Get roles in community in parallel if community exists
   let role: 'owner' | 'moderator' | 'member' = 'member'
-  if (post.community_id) {
-    const { data: member } = await supabase
-      .from('community_members')
-      .select('role')
-      .eq('community_id', post.community_id)
-      .eq('user_id', post.user_id)
-      .single()
-    if (member) role = member.role
-  }
-
-  // Get viewer's role in community
   let viewerRole: 'owner' | 'moderator' | 'member' = 'member'
-  if (user && post.community_id) {
-    const { data: member } = await supabase
-      .from('community_members')
-      .select('role')
-      .eq('community_id', post.community_id)
-      .eq('user_id', user.id)
-      .single()
-    if (member) viewerRole = member.role
+
+  if (post.community_id) {
+    const [authorMemberResult, viewerMemberResult] = await Promise.all([
+      supabase.from('community_members').select('role').eq('community_id', post.community_id).eq('user_id', post.user_id).single(),
+      user ? supabase.from('community_members').select('role').eq('community_id', post.community_id).eq('user_id', user.id).single() : Promise.resolve({ data: null })
+    ])
+    if (authorMemberResult.data) role = authorMemberResult.data.role
+    if (viewerMemberResult?.data) viewerRole = viewerMemberResult.data.role
   }
 
-  const [comments, postViews] = await Promise.all([
-    getComments(id),
-    getPostViewCount(id),
-  ])
   const username = post.profiles?.username ?? 'anonim'
 
   return (

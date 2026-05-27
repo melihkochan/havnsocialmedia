@@ -260,8 +260,8 @@ export function MessagesClient({
 
     async function loadMessages() {
       // Reopen conversation asynchronously so it's unhidden in database
-      reopenConversation(activeUserId).catch(err => {
-        console.error('reopenConversation error:', err)
+      reopenConversation(activeUserId).catch(() => {
+        // silent
       })
 
       const { data, error } = await supabase
@@ -569,8 +569,8 @@ export function MessagesClient({
         if (!error && data) {
           setSearchResults(data)
         }
-      } catch (err) {
-        console.error('Search profiles error:', err)
+      } catch {
+        // silent
       } finally {
         setSearchLoading(false)
       }
@@ -711,7 +711,6 @@ export function MessagesClient({
     startSendTransition(async () => {
       const res = await sendDirectMessage(activeChatUser.id, content)
       if (res.error) {
-        console.error(res.error)
         setInputText(content) // Restore text on failure
       } else if (res.message) {
         const sentMsg = res.message as Message

@@ -270,8 +270,8 @@ export function QuickChat({ currentUser }: QuickChatProps) {
       const activeUserId = activeChatUser!.id
 
       // Reopen conversation asynchronously so it's unhidden in database
-      reopenConversation(activeUserId).catch(err => {
-        console.error('reopenConversation error:', err)
+      reopenConversation(activeUserId).catch(() => {
+        // silent
       })
 
       const msgs = await getMessagesWithUser(activeUserId)
@@ -536,7 +536,6 @@ export function QuickChat({ currentUser }: QuickChatProps) {
     startSendTransition(async () => {
       const res = await sendDirectMessage(activeChatUser.id, content)
       if (res.error) {
-        console.error(res.error)
         setInputText(content)
       } else if (res.message) {
         const sentMsg = res.message as Message
