@@ -327,8 +327,6 @@ export async function getSuggestedUsers() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  const supabaseAdmin = await createServiceClient()
-
   // Get current followings to exclude them
   const { data: followsData } = await supabase
     .from('follows')

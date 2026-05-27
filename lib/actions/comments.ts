@@ -21,6 +21,12 @@ export async function createComment(postId: string, content: string, parentComme
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  // NSFW check
+  const { containsNsfw } = await import('@/lib/nsfw-filter')
+  if (containsNsfw(content)) {
+    return { error: 'Yorumunuz NSFW/uygunsuz içerik tespiti nedeniyle engellenmiştir.' }
+  }
+
   const { data: comment, error } = await supabase
     .from('comments')
     .insert({
@@ -67,13 +73,35 @@ export async function deleteComment(commentId: string, postId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
-  const { error } = await supabase
-    .from('comments')
-    .delete()
-    .eq('id', commentId)
-    .eq('user_id', user.id)
+  // Check global admin/founder status
+  const { data: currentUserProfile } = await supabase
+    .from('profiles')
+    .select('id, username, is_gold')
+    .eq('id', user.id)
+    .single()
 
-  if (error) return { error: error.message }
+  const { isFounder: checkIsFounder } = await import('@/lib/founder')
+  const isGlobalAdmin = currentUserProfile && (currentUserProfile.is_gold || checkIsFounder(currentUserProfile))
+
+  if (isGlobalAdmin) {
+    const { createServiceClient } = await import('@/lib/supabase/server')
+    const supabaseAdmin = await createServiceClient()
+    const { error } = await supabaseAdmin
+      .from('comments')
+      .delete()
+      .eq('id', commentId)
+
+    if (error) return { error: error.message }
+  } else {
+    const { error } = await supabase
+      .from('comments')
+      .delete()
+      .eq('id', commentId)
+      .eq('user_id', user.id)
+
+    if (error) return { error: error.message }
+  }
+
   revalidatePath(`/post/${postId}`)
   return { success: true }
 }

@@ -54,6 +54,18 @@ export async function updateProfile(formData: FormData) {
   const firstName = (formData.get('first_name') as string | null)?.trim() || null
   const lastName = (formData.get('last_name') as string | null)?.trim() || null
   const bio = formData.get('bio') as string | null
+
+  // NSFW check
+  const { containsNsfw } = await import('@/lib/nsfw-filter')
+  if (
+    containsNsfw(username || '') ||
+    containsNsfw(firstName || '') ||
+    containsNsfw(lastName || '') ||
+    containsNsfw(bio || '')
+  ) {
+    return { error: 'Profil bilgileri uygunsuz içerik tespiti nedeniyle güncellenemedi.' }
+  }
+
   const avatarFile = formData.get('avatar') as File | null
   const bannerFile = formData.get('banner') as File | null
 

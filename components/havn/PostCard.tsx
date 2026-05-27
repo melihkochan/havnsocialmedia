@@ -141,6 +141,47 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleted, setDeleted] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false)
+
+  useEffect(() => {
+    if (!currentUserId) return
+
+    // Check hardcoded founder ID
+    if (currentUserId === 'ea58c495-0c6c-49a7-bfc6-30ae3ed253a9') {
+      setCurrentUserIsAdmin(true)
+      return
+    }
+
+    const cacheKey = `havn_is_admin_${currentUserId}`
+    const cached = localStorage.getItem(cacheKey)
+    if (cached === 'true') {
+      setCurrentUserIsAdmin(true)
+      return
+    } else if (cached === 'false') {
+      setCurrentUserIsAdmin(false)
+      return
+    }
+
+    async function checkAdmin() {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase
+          .from('profiles')
+          .select('username, is_gold')
+          .eq('id', currentUserId)
+          .single()
+        
+        if (data) {
+          const isAdmin = data.is_gold || data.username === 'melih'
+          setCurrentUserIsAdmin(isAdmin)
+          localStorage.setItem(cacheKey, isAdmin ? 'true' : 'false')
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    checkAdmin()
+  }, [currentUserId])
 
   // Editing state variables
   const [isEditing, setIsEditing] = useState(false)
@@ -257,8 +298,8 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   const canModerate =
     !!post.community_id &&
     (viewerRole === 'owner' || viewerRole === 'moderator')
-  const canDelete = isOwn || canModerate
-  const isModRemoval = canModerate && !isOwn
+  const canDelete = isOwn || canModerate || currentUserIsAdmin
+  const isModRemoval = (canModerate || currentUserIsAdmin) && !isOwn
   const isPinned = !!post.is_pinned
   const canPin =
     !hasParentId &&
@@ -321,10 +362,10 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       open={showDeleteDialog}
       onClose={() => !isPending && setShowDeleteDialog(false)}
       onConfirm={executeDelete}
-      title={isModRemoval ? 'Gönderiyi kaldır' : 'Gönderiyi sil'}
+      title={isModRemoval ? (currentUserIsAdmin ? 'Gönderiyi kaldır (Admin)' : 'Gönderiyi kaldır') : 'Gönderiyi sil'}
       description={
         isModRemoval
-          ? 'Bu gönderi topluluk yöneticisi olarak kaldırılacak. Gönderi sahibine bildirim gidecek.'
+          ? 'Bu gönderi topluluk veya sistem yöneticisi olarak kaldırılacak. Gönderi sahibine bildirim gidecek.'
           : 'Bu işlem geri alınamaz. Gönderin kalıcı olarak silinecek.'
       }
       confirmLabel={isModRemoval ? 'Kaldır' : 'Sil'}
@@ -475,7 +516,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-accent transition-colors text-left cursor-pointer"
                       style={{ color: 'var(--destructive)' }}
                     >
-                      <Trash2 size={13} /> {canModerate && !isOwn ? 'Kaldır (Mod)' : 'Kaldır'}
+                      <Trash2 size={13} /> {isModRemoval ? (currentUserIsAdmin ? 'Kaldır (Admin)' : 'Kaldır (Mod)') : 'Kaldır'}
                     </button>
                   </div>
               )}
@@ -686,7 +727,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-accent transition-colors text-left cursor-pointer"
                     style={{ color: 'var(--destructive)' }}
                   >
-                    <Trash2 size={13} /> {canModerate && !isOwn ? 'Kaldır (Mod)' : 'Sil'}
+                    <Trash2 size={13} /> {isModRemoval ? (currentUserIsAdmin ? 'Sil (Admin)' : 'Kaldır (Mod)') : 'Sil'}
                   </button>
                 )}
               </div>

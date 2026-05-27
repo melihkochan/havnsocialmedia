@@ -104,12 +104,22 @@ export async function createPost(formData: FormData) {
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
   const content = formData.get('content') as string
+  
+  // NSFW keyword check
+  const { containsNsfw } = await import('@/lib/nsfw-filter')
+  if (containsNsfw(content)) {
+    return { error: 'Paylaşımınız NSFW/uygunsuz içerik tespiti nedeniyle engellenmiştir.' }
+  }
+
   const communityId = formData.get('communityId') as string | null
   let imageUrl: string | null = null
 
   // Handle image upload if present
   const imageFile = formData.get('image') as File | null
   if (imageFile && imageFile.size > 0) {
+    if (imageFile.name && containsNsfw(imageFile.name)) {
+      return { error: 'Görsel ismi NSFW/uygunsuz kelimeler içerdiği için engellenmiştir.' }
+    }
     const ext = imageFile.name.split('.').pop()
     const path = `${user.id}/${Date.now()}.${ext}`
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -157,7 +167,17 @@ export async function deletePost(postId: string, reason?: string | null) {
 
   if (fetchError || !post) return { error: 'Gönderi bulunamadı.' }
 
-  let canDelete = post.user_id === user.id
+  // Check global admin/founder status
+  const { data: currentUserProfile } = await supabase
+    .from('profiles')
+    .select('id, username, is_gold')
+    .eq('id', user.id)
+    .single()
+
+  const { isFounder: checkIsFounder } = await import('@/lib/founder')
+  const isGlobalAdmin = currentUserProfile && (currentUserProfile.is_gold || checkIsFounder(currentUserProfile))
+
+  let canDelete = post.user_id === user.id || !!isGlobalAdmin
 
   if (!canDelete && post.community_id) {
     const { data: membership } = await supabase
@@ -173,7 +193,7 @@ export async function deletePost(postId: string, reason?: string | null) {
 
   if (!canDelete) return { error: 'Bu gönderiyi silme yetkiniz yok.' }
 
-  const isModeratorRemoval = post.user_id !== user.id && !!post.community_id
+  const isModeratorRemoval = post.user_id !== user.id
   const trimmedReason = reason?.trim() || null
   const postPreview = post.content
     ? (post.content.length > 120 ? `${post.content.slice(0, 120)}…` : post.content)
@@ -188,14 +208,17 @@ export async function deletePost(postId: string, reason?: string | null) {
       postId,
       null,
       {
-        message: trimmedReason,
+        message: trimmedReason || (isGlobalAdmin ? 'Topluluk kurallarına aykırı içerik veya NSFW tespiti.' : null),
         communityId: post.community_id,
         postPreview,
       }
     )
   }
 
-  const { error } = await supabase.from('posts').delete().eq('id', postId)
+  // Use service client to bypass RLS for moderator/admin deletion
+  const { createServiceClient } = await import('@/lib/supabase/server')
+  const supabaseAdmin = await createServiceClient()
+  const { error } = await supabaseAdmin.from('posts').delete().eq('id', postId)
 
   if (error) return { error: error.message }
 
@@ -512,6 +535,12 @@ export async function editPost(postId: string, content: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  // NSFW check
+  const { containsNsfw } = await import('@/lib/nsfw-filter')
+  if (containsNsfw(content)) {
+    return { error: 'Paylaşımınız NSFW/uygunsuz içerik tespiti nedeniyle engellenmiştir.' }
+  }
 
   const { error } = await supabase
     .from('posts')

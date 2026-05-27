@@ -60,6 +60,46 @@ interface CommentSectionProps {
 
 export function CommentSection({ postId, initialComments, currentUser }: CommentSectionProps) {
   const [comments, setComments] = useState<CommentItem[]>(initialComments)
+  const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false)
+
+  useEffect(() => {
+    if (!currentUser) return
+    const userId = currentUser.id
+    if (userId === 'ea58c495-0c6c-49a7-bfc6-30ae3ed253a9') {
+      setCurrentUserIsAdmin(true)
+      return
+    }
+
+    const cacheKey = `havn_is_admin_${userId}`
+    const cached = localStorage.getItem(cacheKey)
+    if (cached === 'true') {
+      setCurrentUserIsAdmin(true)
+      return
+    } else if (cached === 'false') {
+      setCurrentUserIsAdmin(false)
+      return
+    }
+
+    async function checkAdmin() {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase
+          .from('profiles')
+          .select('username, is_gold')
+          .eq('id', userId)
+          .single()
+        
+        if (data) {
+          const isAdmin = data.is_gold || data.username === 'melih'
+          setCurrentUserIsAdmin(isAdmin)
+          localStorage.setItem(cacheKey, isAdmin ? 'true' : 'false')
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    checkAdmin()
+  }, [currentUser])
 
   useEffect(() => {
     const supabase = createClient()
@@ -301,13 +341,13 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
               )}
 
               {/* Delete Button */}
-              {isOwn && (
+              {(isOwn || currentUserIsAdmin) && (
                 <button
                   onClick={() => handleDelete(comment.id)}
                   className="text-[11px] font-medium text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors cursor-pointer ml-auto opacity-0 group-hover:opacity-100"
                 >
                   <Trash2 size={11} />
-                  <span>Sil</span>
+                  <span>{currentUserIsAdmin && !isOwn ? 'Sil (Admin)' : 'Sil'}</span>
                 </button>
               )}
             </div>
