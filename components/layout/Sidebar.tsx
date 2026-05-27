@@ -766,7 +766,7 @@ export function Sidebar({
                           <div key={acc.profile.id || acc.profile.username} className="flex flex-col">
                             {index > 0 && <div className="border-t border-border/30 my-1 mx-2" />}
                             {isConfirming ? (
-                              <div className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-xl bg-destructive/15 border border-destructive/20 text-xs font-bold text-destructive animate-in fade-in slide-in-from-right-1 duration-200 w-full min-h-[38px]">
+                              <div className="flex items-center justify-between gap-1 px-1.5 py-1 rounded-xl bg-destructive/15 border border-destructive/20 text-xs font-bold text-destructive animate-in fade-in slide-in-from-right-1 duration-200 w-full min-h-[38px]">
                                 <span className="truncate flex-1 text-[10px] leading-tight font-black select-none text-destructive">Oturum kapatılsın mı?</span>
                                 <div className="flex items-center gap-1 flex-shrink-0">
                                   <button
@@ -784,7 +784,7 @@ export function Sidebar({
                                       setConfirmRemoveId(null);
                                       await handleRemoveSavedAccount(acc, e);
                                     }}
-                                    className="px-2 py-0.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all text-[9px] cursor-pointer font-black"
+                                    className="px-2 py-0.5 rounded-lg bg-destructive text-white hover:bg-destructive/90 transition-all text-[9px] cursor-pointer font-black"
                                   >
                                     Evet
                                   </button>
