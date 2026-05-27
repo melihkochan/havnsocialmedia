@@ -738,7 +738,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
 
       {isEditing ? (
         <div className="flex flex-col gap-2.5 mb-4">
-          <div className="w-full bg-accent/20 border border-border rounded-2xl p-3.5 text-foreground">
+          <div className="w-full bg-accent/30 dark:bg-accent/15 border border-border/80 rounded-xl p-3 text-foreground transition-all duration-200 cursor-text focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10 focus-within:shadow-inner focus-within:bg-card">
             <RichTextEditor
               value={editContent}
               onChange={setEditContent}

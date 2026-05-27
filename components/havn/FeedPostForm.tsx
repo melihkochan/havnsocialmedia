@@ -187,7 +187,10 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
               if (formRef.current?.contains(e.relatedTarget as Node)) return
               setFocused(false)
             }}
-            className="min-h-[44px] py-1 text-foreground"
+            className={cn(
+              "min-h-[90px] w-full bg-accent/30 dark:bg-accent/15 border border-border/80 rounded-xl p-3 text-foreground transition-all duration-200 cursor-text",
+              focused && "border-primary/50 ring-2 ring-primary/10 shadow-inner bg-card"
+            )}
           >
             <RichTextEditor
               editorRef={editorRef}
