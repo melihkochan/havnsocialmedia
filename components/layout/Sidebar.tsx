@@ -1413,10 +1413,10 @@ export function Sidebar({
       <AnimatePresence>
         {toastMessage && (
           <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            initial={{ opacity: 0, y: -50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-5 right-5 z-[99999] bg-card border border-border/80 shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3 w-80 max-w-full"
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-5 right-5 z-[99999] bg-card border border-border/80 shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3 w-80 max-w-full"
           >
             <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
             <div className="flex-1 text-xs font-black text-foreground">
