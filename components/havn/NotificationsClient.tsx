@@ -912,7 +912,11 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       href={`/post/${notif.post_id}`}
                       className="block mt-2 text-xs text-foreground bg-accent/40 border border-border/50 rounded-lg p-2 max-w-full font-medium line-clamp-2 hover:bg-accent/60 transition-colors"
                     >
-                      <FormattedMessage text={displayPreview.length > 80 ? `${displayPreview.slice(0, 80)}…` : displayPreview} />
+                      {(() => {
+                        const stripped = displayPreview.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+                        const snippet = stripped.length > 80 ? `${stripped.slice(0, 80)}...` : stripped
+                        return <FormattedMessage text={snippet} />
+                      })()}
                     </Link>
                   )}
 
