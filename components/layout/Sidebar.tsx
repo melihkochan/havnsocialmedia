@@ -123,7 +123,22 @@ export function Sidebar({
           .join('')
       );
       const payload = JSON.parse(jsonPayload);
-      return payload.exp ? payload.exp * 1000 < Date.now() : true;
+      
+      // Check expiration
+      const expired = payload.exp ? payload.exp * 1000 < Date.now() : true;
+      if (expired) return true;
+
+      // Check issuer mismatch (e.g. localhost vs Vercel production)
+      const currentSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (currentSupabaseUrl && payload.iss) {
+        const expectedIssuer = `${currentSupabaseUrl.replace(/\/$/, '')}/auth/v1`;
+        const actualIssuer = payload.iss.replace(/\/$/, '');
+        if (actualIssuer !== expectedIssuer) {
+          return true; // Treat issuer mismatch as expired/invalid
+        }
+      }
+
+      return false;
     } catch {
       return true;
     }
@@ -313,9 +328,13 @@ export function Sidebar({
           
           let cleaned = Array.from(uniqueMap.values())
           
-          // Detect token pollution (token user ID does not match the profile ID)
+          // Detect token pollution or expired/mismatched tokens
           let hasPollution = false;
           const verified = cleaned.filter((acc: SavedAccount) => {
+            if (isTokenExpired(acc.session.access_token)) {
+              hasPollution = true;
+              return false; // Discard expired or mismatched tokens
+            }
             const tokenUserId = getUserIdFromToken(acc.session.access_token);
             if (tokenUserId && tokenUserId !== acc.profile.id) {
               hasPollution = true;
@@ -432,6 +451,9 @@ export function Sidebar({
     try {
       setIsLoggingOut(true); // Show premium loader overlay during switch
       
+      // Save current active session in memory in case we need to restore it
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+
       // First, set the session server-side to guarantee browser cookies are fully updated
       const res = await switchSession(
         targetAccount.session.access_token,
@@ -446,6 +468,16 @@ export function Sidebar({
         const cleaned = list.filter(acc => acc.profile.id !== targetAccount.profile.id)
         localStorage.setItem('havn_accounts', JSON.stringify(cleaned))
         setAccounts(cleaned)
+
+        // Restore original session if it existed
+        if (currentSession) {
+          await switchSession(currentSession.access_token, currentSession.refresh_token);
+          await supabase.auth.setSession({
+            access_token: currentSession.access_token,
+            refresh_token: currentSession.refresh_token,
+          });
+        }
+
         setIsLoggingOut(false);
         setToastMessage(`@${targetAccount.profile.username} oturumu geçersiz. Lütfen tekrar giriş yapın.`);
         return
