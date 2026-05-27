@@ -342,6 +342,10 @@ export function Sidebar({
         if (existingIdx > -1) {
           list[existingIdx] = currentAccount;
         } else {
+          // Limit to max 4 accounts. If we exceed, drop the oldest one.
+          if (list.length >= 4) {
+            list = list.slice(list.length - 3);
+          }
           list.push(currentAccount);
         }
 
@@ -766,13 +770,19 @@ export function Sidebar({
                   <div className="border-t border-border my-1.5" />
 
                   {/* Options */}
-                  <button
-                    onClick={handleAddNewAccount}
-                    className="flex items-center gap-2.5 px-2 py-2.5 rounded-xl text-xs font-bold text-primary hover:bg-primary/10 transition-all text-left cursor-pointer w-full"
-                  >
-                    <span className="w-4 h-4 rounded-md bg-primary/10 flex items-center justify-center font-bold text-xs">+</span>
-                    Yeni Hesap Ekle
-                  </button>
+                  {accounts.length >= 4 ? (
+                    <div className="px-2 py-2 text-[10px] font-semibold text-muted-foreground bg-accent/20 rounded-xl select-none leading-normal">
+                      Maksimum 4 hesaba izin verilmektedir. Yeni hesap için birinden çıkış yapmalısınız.
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleAddNewAccount}
+                      className="flex items-center gap-2.5 px-2 py-2.5 rounded-xl text-xs font-bold text-primary hover:bg-primary/10 transition-all text-left cursor-pointer w-full"
+                    >
+                      <span className="w-4 h-4 rounded-md bg-primary/10 flex items-center justify-center font-bold text-xs">+</span>
+                      Yeni Hesap Ekle
+                    </button>
+                  )}
 
                   <button
                     onClick={handleSignOut}
