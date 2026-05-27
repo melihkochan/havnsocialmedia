@@ -91,7 +91,28 @@ export function Sidebar({
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [accounts, setAccounts] = useState<SavedAccount[]>([]);
+  const [accounts, setAccounts] = useState<SavedAccount[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("havn_accounts");
+      if (stored) {
+        try {
+          const list = JSON.parse(stored) as SavedAccount[];
+          if (Array.isArray(list)) {
+            const uniqueMap = new Map<string, SavedAccount>();
+            list.forEach((acc: SavedAccount) => {
+              if (acc?.profile?.id && acc.session?.access_token) {
+                uniqueMap.set(acc.profile.id, acc);
+              }
+            });
+            return Array.from(uniqueMap.values());
+          }
+        } catch {
+          return [];
+        }
+      }
+    }
+    return [];
+  });
   const [showAccountsMenu, setShowAccountsMenu] = useState(false);
   const [showHoverCard, setShowHoverCard] = useState(false);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
