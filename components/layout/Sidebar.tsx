@@ -382,10 +382,29 @@ export function Sidebar({
       }
 
       // Sync the client-side browser client state immediately
-      await supabase.auth.setSession({
+      const { data, error } = await supabase.auth.setSession({
         access_token: targetAccount.session.access_token,
         refresh_token: targetAccount.session.refresh_token,
       })
+
+      if (!error && data.session) {
+        const stored = localStorage.getItem('havn_accounts')
+        let list: any[] = []
+        try { list = stored ? JSON.parse(stored) : [] } catch { list = [] }
+        const updatedList = list.map(acc => {
+          if (acc.profile.id === targetAccount.profile.id) {
+            return {
+              ...acc,
+              session: {
+                access_token: data.session!.access_token,
+                refresh_token: data.session!.refresh_token,
+              }
+            }
+          }
+          return acc
+        })
+        localStorage.setItem('havn_accounts', JSON.stringify(updatedList))
+      }
 
       // Redirect to feed after account switch so server components re-render with the new session
       window.location.href = '/feed'
@@ -423,34 +442,60 @@ export function Sidebar({
       const updatedList = list.filter(acc => acc.profile.id !== currentUser.id);
       localStorage.setItem("havn_accounts", JSON.stringify(updatedList));
 
-      // If we have another account, switch to it immediately without signing out first!
-      if (updatedList.length > 0) {
-        const nextAccount = updatedList[0]
-        
-        // Sync server-side session first
-        await switchSession(
-          nextAccount.session.access_token,
-          nextAccount.session.refresh_token
-        )
+      // Try switching to each of the other saved accounts one by one
+      let switchSuccess = false;
+      let remainingAccounts = [...updatedList];
 
-        // Set the session client-side
-        const { data, error } = await supabase.auth.setSession({
-          access_token: nextAccount.session.access_token,
-          refresh_token: nextAccount.session.refresh_token,
-        })
+      while (remainingAccounts.length > 0) {
+        const nextAccount = remainingAccounts[0];
         
-        if (!error && data.session) {
-          await new Promise(resolve => setTimeout(resolve, 800));
-          window.location.href = '/feed'
-          return
+        try {
+          // Sync server-side session first
+          const res = await switchSession(
+            nextAccount.session.access_token,
+            nextAccount.session.refresh_token
+          );
+          
+          if (!res.error) {
+            // Set the session client-side
+            const { data, error } = await supabase.auth.setSession({
+              access_token: nextAccount.session.access_token,
+              refresh_token: nextAccount.session.refresh_token,
+            });
+            
+            if (!error && data.session) {
+              // Successfully switched! Save the updated session tokens to localStorage
+              const updatedAccount = {
+                ...nextAccount,
+                session: {
+                  access_token: data.session.access_token,
+                  refresh_token: data.session.refresh_token,
+                }
+              };
+              const newList = remainingAccounts.map(acc => 
+                acc.profile.id === nextAccount.profile.id ? updatedAccount : acc
+              );
+              localStorage.setItem("havn_accounts", JSON.stringify(newList));
+              switchSuccess = true;
+              break;
+            }
+          }
+        } catch (err) {
+          console.error("Failed to switch session to account:", nextAccount.profile.username, err);
         }
         
-        // If next account's token is also expired, clean it from localStorage too
-        const cleaned = updatedList.filter((acc: any) => acc.profile.id !== nextAccount.profile.id)
-        localStorage.setItem('havn_accounts', JSON.stringify(cleaned))
+        // Switch failed — remove this account from the saved list and try the next one
+        remainingAccounts = remainingAccounts.filter(acc => acc.profile.id !== nextAccount.profile.id);
+        localStorage.setItem("havn_accounts", JSON.stringify(remainingAccounts));
       }
 
-      // If no other account was saved or session switch failed, perform full signOut and go to login
+      if (switchSuccess) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        window.location.href = '/feed';
+        return;
+      }
+
+      // If no other accounts succeeded, perform full signOut and redirect to login
       await supabase.auth.signOut();
       await new Promise(resolve => setTimeout(resolve, 800));
       window.location.href = "/login";

@@ -947,7 +947,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       ) : (
                         <button
                           onClick={() => handleFollowBack(notif.actor_id)}
-                          disabled={actionActorId !== notif.actor_id}
+                          disabled={actionActorId !== null}
                           className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:opacity-90 active:scale-95 text-primary-foreground text-xs font-bold transition-all cursor-pointer shadow-sm disabled:opacity-50"
                           style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                         >
