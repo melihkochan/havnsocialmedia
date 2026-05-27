@@ -859,14 +859,14 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
               )}
             </AnimatePresence>
 
-            <div className="flex items-center">
+            <div className={cn(
+              'flex items-center rounded-lg transition-all',
+              liked ? 'text-rose-500 bg-rose-500/10' : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10'
+            )}>
               <motion.button
                 whileTap={{ scale: 0.85 }}
                 onClick={handleLike}
-                className={cn(
-                  'flex items-center gap-1.5 pl-2.5 pr-1 py-1.5 rounded-l-lg text-xs font-medium transition-all cursor-pointer relative',
-                  liked ? 'text-rose-500 bg-rose-500/10' : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10'
-                )}
+                className="flex items-center justify-center pl-2.5 pr-1 py-1.5 text-xs font-medium cursor-pointer relative select-none bg-transparent border-0 outline-none"
               >
                 {/* Particle Burst Animation */}
                 <AnimatePresence>
@@ -909,10 +909,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                     openLikersModal()
                   }
                 }}
-                className={cn(
-                  'pr-2.5 pl-1 py-1.5 rounded-r-lg text-xs font-bold transition-all cursor-pointer hover:underline',
-                  liked ? 'text-rose-500 bg-rose-500/10' : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10'
-                )}
+                className="pr-2.5 pl-1 py-1.5 text-xs font-bold cursor-pointer hover:underline select-none bg-transparent border-0 outline-none"
                 title="Beğenenleri Gör"
               >
                 {likeCount}
