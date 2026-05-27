@@ -70,6 +70,7 @@ export function Sidebar({
   const [accounts, setAccounts] = useState<any[]>([]);
   const [showAccountsMenu, setShowAccountsMenu] = useState(false);
   const [showHoverCard, setShowHoverCard] = useState(false);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const supabase = createClient();
 
   const [unreadNotifications, setUnreadNotifications] = useState(unreadCount);
@@ -730,7 +731,10 @@ export function Sidebar({
               <>
                 <div
                   className="fixed inset-0 z-20"
-                  onClick={() => setShowAccountsMenu(false)}
+                  onClick={() => {
+                    setShowAccountsMenu(false);
+                    setConfirmRemoveId(null);
+                  }}
                 />
                 <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -757,36 +761,67 @@ export function Sidebar({
                       });
                       return sorted.map((acc, index) => {
                         const isActive = acc.profile.id === currentUser.id;
+                        const isConfirming = confirmRemoveId === acc.profile.id;
                         return (
                           <div key={acc.profile.id || acc.profile.username} className="flex flex-col">
                             {index > 0 && <div className="border-t border-border/30 my-1 mx-2" />}
-                            <div className="flex items-center gap-1 w-full">
-                              <button
-                                onClick={() => !isActive && handleSwitchAccount(acc)}
-                                disabled={isActive}
-                                className={cn(
-                                  "flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all flex-1 border text-xs font-bold min-w-0",
-                                  isActive
-                                    ? "bg-primary/10 border-primary/20 text-primary cursor-default"
-                                    : "hover:bg-accent/70 border-transparent cursor-pointer"
-                                )}
-                              >
-                                <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
-                                <div className="flex-1 min-w-0">
-                                  <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-black" showHandle={true} />
+                            {isConfirming ? (
+                              <div className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-xl bg-destructive/15 border border-destructive/20 text-xs font-bold text-destructive animate-in fade-in slide-in-from-right-1 duration-200 w-full min-h-[38px]">
+                                <span className="truncate flex-1 text-[10px] leading-tight font-black select-none text-destructive">Oturum kapatılsın mı?</span>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setConfirmRemoveId(null);
+                                    }}
+                                    className="px-2 py-0.5 rounded-lg bg-card border border-border hover:bg-accent text-foreground transition-all text-[9px] cursor-pointer font-black"
+                                  >
+                                    İptal
+                                  </button>
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setConfirmRemoveId(null);
+                                      await handleRemoveSavedAccount(acc, e);
+                                    }}
+                                    className="px-2 py-0.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all text-[9px] cursor-pointer font-black"
+                                  >
+                                    Evet
+                                  </button>
                                 </div>
-                                {isActive && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0 mr-1" />
-                                )}
-                              </button>
-                              <button
-                                onClick={(e) => handleRemoveSavedAccount(acc, e)}
-                                title={isActive ? "Oturumu Kapat" : "Hesabı Kaldır"}
-                                className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer flex-shrink-0"
-                              >
-                                <X size={13} />
-                              </button>
-                            </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 w-full">
+                                <button
+                                  onClick={() => !isActive && handleSwitchAccount(acc)}
+                                  disabled={isActive}
+                                  className={cn(
+                                    "flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all flex-1 border text-xs font-bold min-w-0",
+                                    isActive
+                                      ? "bg-primary/10 border-primary/20 text-primary cursor-default"
+                                      : "hover:bg-accent/70 border-transparent cursor-pointer"
+                                  )}
+                                >
+                                  <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
+                                  <div className="flex-1 min-w-0">
+                                    <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-black" showHandle={true} />
+                                  </div>
+                                  {isActive && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0 mr-1" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmRemoveId(acc.profile.id);
+                                  }}
+                                  title={isActive ? "Oturumu Kapat" : "Hesabı Kaldır"}
+                                  className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer flex-shrink-0"
+                                >
+                                  <LogOut size={13} />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         );
                       });
