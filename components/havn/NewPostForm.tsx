@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Send, ImagePlus, X, Loader2 } from 'lucide-react'
 import { ImageUpload } from '@/components/havn/ImageUpload'
 import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
-import { insertIntoField } from '@/lib/insert-text'
+import { RichTextEditor } from '@/components/havn/RichTextEditor'
 import { createPost } from '@/lib/actions/posts'
 import { cn } from '@/lib/utils'
 
@@ -47,15 +47,20 @@ export function NewPostForm({ communityId, currentUser }: NewPostFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editorRef = useRef<any>(null)
 
   function insertEmoji(emoji: string) {
-    insertIntoField(content, setContent, textareaRef.current, emoji)
+    if (editorRef.current) {
+      editorRef.current.chain().focus().insertContent(emoji).run()
+    } else {
+      setContent(prev => prev + emoji)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!content.trim() && !imageFile) return
+    const hasText = !!content.replace(/<[^>]*>/g, '').trim()
+    if (!hasText && !imageFile) return
     setLoading(true)
     setError(null)
 
@@ -91,21 +96,22 @@ export function NewPostForm({ communityId, currentUser }: NewPostFormProps) {
       <div className="flex gap-3">
         <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} />
         <form ref={formRef} onSubmit={handleSubmit} className="flex-1 flex flex-col gap-3">
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={e => setContent(e.target.value)}
+          <div 
             onFocus={() => setFocused(true)}
             onBlur={(e) => {
-              // Don't collapse if clicking within the form
               if (formRef.current?.contains(e.relatedTarget as Node)) return
               setFocused(false)
             }}
-            placeholder="Topluluğunla bir şeyler paylaş..."
-            rows={isActive ? 3 : 1}
-            maxLength={500}
-            className="w-full bg-transparent text-foreground placeholder:text-muted-foreground text-sm leading-relaxed resize-none outline-none transition-all duration-300"
-          />
+            className="min-h-[44px] py-1 text-foreground"
+          >
+            <RichTextEditor
+              editorRef={editorRef}
+              value={content}
+              onChange={setContent}
+              placeholder="Topluluğunla bir şeyler paylaş... (Komutlar için / yazın...)"
+              maxLength={500}
+            />
+          </div>
 
           {/* Image upload area */}
           <AnimatePresence>
@@ -153,20 +159,20 @@ export function NewPostForm({ communityId, currentUser }: NewPostFormProps) {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{content.length}/500</span>
+                    <span className="text-[10px] font-bold text-muted-foreground">{content.replace(/<[^>]*>/g, '').length}/500</span>
                     <motion.button
                       type="submit"
-                      disabled={loading || (!content.trim() && !imageFile)}
+                      disabled={loading || (!content.replace(/<[^>]*>/g, '').trim() && !imageFile)}
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
                       className={cn(
                         'flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all',
-                        content.trim() || imageFile
+                        content.replace(/<[^>]*>/g, '').trim() || imageFile
                           ? 'shadow-sm hover:opacity-90'
                           : 'bg-muted text-muted-foreground cursor-not-allowed'
                       )}
                       style={
-                        content.trim() || imageFile
+                        content.replace(/<[^>]*>/g, '').trim() || imageFile
                           ? {
                               background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
                               color: 'var(--primary-foreground)',

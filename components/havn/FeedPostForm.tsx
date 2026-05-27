@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, ImagePlus, X, Loader2, ChevronDown, Users, User, Film } from 'lucide-react'
 import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
-import { insertIntoField } from '@/lib/insert-text'
+import { RichTextEditor } from '@/components/havn/RichTextEditor'
 import { ImageUpload } from '@/components/havn/ImageUpload'
 import { createPost } from '@/lib/actions/posts'
 import { cn } from '@/lib/utils'
@@ -60,10 +60,14 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editorRef = useRef<any>(null)
 
   function insertEmoji(emoji: string) {
-    insertIntoField(content, setContent, textareaRef.current, emoji)
+    if (editorRef.current) {
+      editorRef.current.chain().focus().insertContent(emoji).run()
+    } else {
+      setContent(prev => prev + emoji)
+    }
   }
 
   const selectedCommunity = target !== 'personal' ? communities.find(c => c.id === target) : null
@@ -72,7 +76,8 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!content.trim() && !imageFile) return
+    const hasText = !!content.replace(/<[^>]*>/g, '').trim()
+    if (!hasText && !imageFile) return
     setLoading(true)
     setError(null)
 
@@ -176,20 +181,22 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
             </AnimatePresence>
           </div>
 
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={e => setContent(e.target.value)}
+          <div 
             onFocus={() => setFocused(true)}
             onBlur={(e) => {
               if (formRef.current?.contains(e.relatedTarget as Node)) return
               setFocused(false)
             }}
-            placeholder={target === 'personal' ? 'Ne düşünüyorsun?' : `${selectedCommunity?.name ?? 'Topluluk'} ile paylaş...`}
-            rows={isActive ? 3 : 1}
-            maxLength={500}
-            className="w-full bg-transparent text-foreground placeholder:text-muted-foreground text-sm leading-relaxed resize-none outline-none transition-all duration-300"
-          />
+            className="min-h-[44px] py-1 text-foreground"
+          >
+            <RichTextEditor
+              editorRef={editorRef}
+              value={content}
+              onChange={setContent}
+              placeholder={target === 'personal' ? 'Ne düşünüyorsun? (Komutlar için / yazın...)' : `${selectedCommunity?.name ?? 'Topluluk'} ile paylaş... (Komutlar için / yazın...)`}
+              maxLength={500}
+            />
+          </div>
 
           {/* Image upload */}
           <AnimatePresence>
@@ -223,20 +230,20 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{content.length}/500</span>
+                    <span className="text-[10px] font-bold text-muted-foreground">{content.replace(/<[^>]*>/g, '').length}/500</span>
                     <motion.button
                       type="submit"
-                      disabled={loading || (!content.trim() && !imageFile)}
+                      disabled={loading || (!content.replace(/<[^>]*>/g, '').trim() && !imageFile)}
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
                       className={cn(
                         'flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all',
-                        content.trim() || imageFile
+                        content.replace(/<[^>]*>/g, '').trim() || imageFile
                           ? 'shadow-sm hover:opacity-90'
                           : 'bg-muted text-muted-foreground cursor-not-allowed'
                       )}
                       style={
-                        content.trim() || imageFile
+                        content.replace(/<[^>]*>/g, '').trim() || imageFile
                           ? {
                               background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
                               color: 'var(--primary-foreground)',

@@ -13,6 +13,7 @@ import { ProfileName } from '@/components/havn/ProfileName'
 import { ConfirmDialog } from '@/components/havn/ConfirmDialog'
 import { getDisplayName } from '@/lib/profile-display'
 import { FormattedMessage } from '@/components/havn/FormattedMessage'
+import { RichTextEditor } from '@/components/havn/RichTextEditor'
 import { toggleLike, deletePost, repostPost, toggleBookmark, editPost, togglePinPost } from '@/lib/actions/posts'
 import type { UserRole } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
@@ -592,7 +593,8 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   }
 
   async function handleSaveEdit() {
-    if (!editContent.trim()) return
+    const hasText = !!editContent.replace(/<[^>]*>/g, '').trim()
+    if (!hasText) return
     setEditLoading(true)
     const isAnlar = displayPost.content?.includes('\u200B[anlar]')
     const isKadraj = displayPost.content?.includes('\u200B[kadraj]')
@@ -734,19 +736,19 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
         </div>
       </div>
 
-      {/* Content */}
       {isEditing ? (
         <div className="flex flex-col gap-2.5 mb-4">
-          <textarea
-            value={editContent}
-            onChange={e => setEditContent(e.target.value)}
-            className="w-full bg-accent/30 border border-border rounded-xl p-3 text-sm leading-relaxed resize-none outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/40 transition-all duration-205 text-foreground placeholder:text-muted-foreground"
-            rows={3}
-            maxLength={500}
-            autoFocus
-          />
+          <div className="w-full bg-accent/20 border border-border rounded-2xl p-3.5 text-foreground">
+            <RichTextEditor
+              value={editContent}
+              onChange={setEditContent}
+              placeholder="Düzenle..."
+              maxLength={500}
+              autoFocus
+            />
+          </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] text-muted-foreground">{editContent.length}/500</span>
+            <span className="text-[10px] font-bold text-muted-foreground">{editContent.replace(/<[^>]*>/g, '').length}/500</span>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setIsEditing(false)}
@@ -756,7 +758,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
               </button>
               <button
                 onClick={handleSaveEdit}
-                disabled={editLoading || !editContent.trim()}
+                disabled={editLoading || !editContent.replace(/<[^>]*>/g, '').trim()}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-primary-foreground bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {editLoading && <Loader2 size={12} className="animate-spin" />}
