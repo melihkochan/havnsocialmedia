@@ -104,11 +104,16 @@ export async function updateProfile(formData: FormData) {
     }
   }
 
-  let avatarUrl: string | undefined
-  let bannerUrl: string | undefined
+  const deleteAvatar = formData.get('delete_avatar') === 'true'
+  const deleteBanner = formData.get('delete_banner') === 'true'
 
-  // Upload avatar if provided
-  if (avatarFile && avatarFile.size > 0) {
+  let avatarUrl: string | null | undefined = undefined
+  let bannerUrl: string | null | undefined = undefined
+
+  // Upload or delete avatar
+  if (deleteAvatar) {
+    avatarUrl = null
+  } else if (avatarFile && avatarFile.size > 0) {
     const ext = avatarFile.name.split('.').pop()
     const path = `${user.id}/avatar.${ext}`
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -123,8 +128,10 @@ export async function updateProfile(formData: FormData) {
     avatarUrl = publicUrl
   }
 
-  // Upload banner if provided
-  if (bannerFile && bannerFile.size > 0) {
+  // Upload or delete banner
+  if (deleteBanner) {
+    bannerUrl = null
+  } else if (bannerFile && bannerFile.size > 0) {
     const ext = bannerFile.name.split('.').pop() || 'png'
     const path = `${user.id}/banner.${ext}`
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -142,8 +149,8 @@ export async function updateProfile(formData: FormData) {
   // Build updates — only include fields that exist
   const updates: Record<string, string | null> = { updated_at: new Date().toISOString() }
   if (username) updates.username = username
-  if (avatarUrl) updates.avatar_url = avatarUrl
-  if (bannerUrl) updates.banner_url = bannerUrl
+  if (avatarUrl !== undefined) updates.avatar_url = avatarUrl
+  if (bannerUrl !== undefined) updates.banner_url = bannerUrl
   updates.first_name = firstName
   updates.last_name = lastName
 

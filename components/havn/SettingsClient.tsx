@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Lock, Palette, Loader2, Check, AlertCircle, Camera, LogOut, ArrowLeft, HelpCircle, Send, Bell, Volume2, VolumeX } from 'lucide-react'
+import { User, Lock, Palette, Loader2, Check, AlertCircle, Camera, LogOut, ArrowLeft, HelpCircle, Send, Bell, Volume2, VolumeX, Undo } from 'lucide-react'
 import { updateProfile, changePassword, updateAccentTheme } from '@/lib/actions/profile'
 import { signOut } from '@/lib/actions/auth'
 import { ThemeToggle } from '@/components/havn/ThemeToggle'
@@ -231,6 +231,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [bannerFile, setBannerFile] = useState<File | null>(null)
   const [bannerPreview, setBannerPreview] = useState<string | null>(profile.banner_url)
+  const [isBannerDeleted, setIsBannerDeleted] = useState(false)
   const bannerInputRef = useRef<HTMLInputElement>(null)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -246,6 +247,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
     }
     setAvatarFile(null)
     setBannerFile(null)
+    setIsBannerDeleted(false)
   }, [profile.updated_at, profile.banner_url])
 
   async function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -255,6 +257,23 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
     const compressed = await compressImage(file, 1200, 0.8)
     setBannerFile(compressed)
     setBannerPreview(URL.createObjectURL(compressed))
+    setIsBannerDeleted(false)
+  }
+
+  function handleRemoveBanner() {
+    setBannerFile(null)
+    setBannerPreview(null)
+    setIsBannerDeleted(true)
+    if (bannerInputRef.current) bannerInputRef.current.value = ''
+  }
+
+  function handleUndoBanner() {
+    setIsBannerDeleted(false)
+    if (profile.banner_url) {
+      setBannerPreview(`${profile.banner_url}?t=${new Date(profile.updated_at).getTime()}`)
+    } else {
+      setBannerPreview(null)
+    }
   }
 
   async function handleProfileSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -262,6 +281,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
     const fd = new FormData(e.currentTarget)
     if (avatarFile) fd.set('avatar', avatarFile)
     if (bannerFile) fd.set('banner', bannerFile)
+    fd.set('delete_banner', isBannerDeleted.toString())
     fd.set('is_private', isPrivate.toString())
     fd.set('show_status', showStatus.toString())
     fd.set('twitter', twitter)
@@ -350,40 +370,70 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                 transition={{ duration: 0.15 }}
               >
                 <Section title="Profil Bilgileri" icon={User}>
-                  <form onSubmit={handleProfileSubmit} className="space-y-5">
-                    {/* Banner */}
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground block mb-2">Kapak Görseli (Banner)</label>
-                      <div
-                        className="relative h-32 rounded-xl overflow-hidden border border-border group bg-muted/30 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-accent/40"
-                        onClick={() => bannerInputRef.current?.click()}
-                      >
-                        {bannerPreview ? (
-                          <img src={bannerPreview} alt="Kapak Görseli" className="w-full h-full object-cover" />
-                        ) : (
-                          <div
-                            className="w-full h-full opacity-70"
-                            style={{
-                              background: 'linear-gradient(135deg, var(--havn-gradient-start) 0%, var(--havn-gradient-end) 100%)',
-                            }}
-                          />
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-[1px]">
-                          <Camera size={20} />
-                          <span>Kapak Resmi Seç</span>
+                  <div className="relative">
+                    {profilePending && (
+                      <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center rounded-2xl gap-3">
+                        <div className="flex items-center gap-2 bg-card border border-border/80 px-4 py-3 rounded-2xl shadow-lg">
+                          <Loader2 size={16} className="animate-spin text-primary" />
+                          <span className="text-xs font-bold text-foreground">Değişiklikler Kaydediliyor...</span>
                         </div>
                       </div>
-                      <input
-                        ref={bannerInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleBannerChange}
-                      />
-                      <p className="text-[10px] text-muted-foreground mt-1.5">
-                        JPG, PNG — En iyi görünüm için 3:1 veya 16:9 genişlik oranı tavsiye edilir.
-                      </p>
-                    </div>
+                    )}
+                    <form onSubmit={handleProfileSubmit} className="space-y-5">
+                      {/* Banner */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-xs font-semibold text-muted-foreground block">Kapak Görseli (Banner)</label>
+                          {isBannerDeleted ? (
+                            <button
+                              type="button"
+                              onClick={handleUndoBanner}
+                              className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <Undo size={11} />
+                              Geri Al
+                            </button>
+                          ) : (bannerPreview || bannerFile) ? (
+                            <button
+                              type="button"
+                              onClick={handleRemoveBanner}
+                              className="text-[10px] font-semibold text-muted-foreground hover:text-destructive transition-all cursor-pointer"
+                            >
+                              Kapağı Kaldır
+                            </button>
+                          ) : null}
+                        </div>
+                        <input type="hidden" name="delete_banner" value={isBannerDeleted ? 'true' : 'false'} />
+                        <div
+                          className="relative h-32 rounded-xl overflow-hidden border border-border group bg-muted/30 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-accent/40"
+                          onClick={() => bannerInputRef.current?.click()}
+                        >
+                          {bannerPreview ? (
+                            <img src={bannerPreview} alt="Kapak Görseli" className="w-full h-full object-cover" />
+                          ) : (
+                            <div
+                              className="w-full h-full opacity-70"
+                              style={{
+                                background: 'linear-gradient(135deg, var(--havn-gradient-start) 0%, var(--havn-gradient-end) 100%)',
+                              }}
+                            />
+                          )}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-[1px]">
+                            <Camera size={20} />
+                            <span>Kapak Resmi Seç</span>
+                          </div>
+                        </div>
+                        <input
+                          ref={bannerInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleBannerChange}
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-1.5">
+                          JPG, PNG — En iyi görünüm için 3:1 veya 16:9 genişlik oranı tavsiye edilir.
+                        </p>
+                      </div>
 
                     {/* Avatar */}
                     <div>
@@ -532,7 +582,8 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                       Kaydet
                     </motion.button>
                   </form>
-                </Section>
+                </div>
+              </Section>
               </motion.div>
             )}
 
