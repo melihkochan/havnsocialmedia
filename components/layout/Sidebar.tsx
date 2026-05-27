@@ -96,6 +96,8 @@ export function Sidebar({
   const [showHoverCard, setShowHoverCard] = useState(false);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  // true = showing switch loader, false = showing sign-out loader
+  const [isSwitchingAccount, setIsSwitchingAccount] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const supabase = createClient();
 
@@ -365,25 +367,47 @@ export function Sidebar({
         
         // AUTO-HEAL CLIENT SESSION: If client session doesn't match server currentUser, align them using saved tokens!
         const sessionUser = session?.user;
-        if (sessionUser && sessionUser.id !== currentUser.id) {
-          const stored = localStorage.getItem("havn_accounts");
-          if (stored) {
-            try {
-              const list = JSON.parse(stored) as SavedAccount[];
-              const savedAcc = list.find((acc: SavedAccount) => acc.profile.id === currentUser.id);
-              if (savedAcc && savedAcc.session?.access_token) {
-                await supabase.auth.setSession({
-                  access_token: savedAcc.session.access_token,
-                  refresh_token: savedAcc.session.refresh_token,
-                });
-                window.location.reload();
-                return;
+        const mismatch = !sessionUser || sessionUser.id !== currentUser.id;
+        if (mismatch) {
+          const reloadCountKey = `havn_heal_reload_${currentUser.id}`;
+          const reloadCount = parseInt(sessionStorage.getItem(reloadCountKey) || '0', 10);
+          if (reloadCount < 3) {
+            const stored = localStorage.getItem("havn_accounts");
+            if (stored) {
+              try {
+                const list = JSON.parse(stored) as SavedAccount[];
+                const savedAcc = list.find((acc: SavedAccount) => acc.profile.id === currentUser.id);
+                if (savedAcc && savedAcc.session?.access_token) {
+                  sessionStorage.setItem(reloadCountKey, (reloadCount + 1).toString());
+                  const { error } = await supabase.auth.setSession({
+                    access_token: savedAcc.session.access_token,
+                    refresh_token: savedAcc.session.refresh_token,
+                  });
+                  if (!error) {
+                    window.location.reload();
+                    return;
+                  }
+                }
+              } catch {
+                // silent
               }
-            } catch {
-              // silent
             }
+          } else {
+            console.warn("Auto-heal failed after 3 attempts. Clearing saved account to prevent infinite loop.");
+            const stored = localStorage.getItem("havn_accounts");
+            if (stored) {
+              try {
+                const list = JSON.parse(stored) as SavedAccount[];
+                const filtered = list.filter(acc => acc.profile.id !== currentUser.id);
+                localStorage.setItem("havn_accounts", JSON.stringify(filtered));
+                setAccounts(filtered);
+              } catch {}
+            }
+            sessionStorage.removeItem(reloadCountKey);
           }
           return;
+        } else {
+          sessionStorage.removeItem(`havn_heal_reload_${currentUser.id}`);
         }
 
         if (!session || !session.user) return;
@@ -443,7 +467,7 @@ export function Sidebar({
 
     // 2. Listen to token refreshes / rotations in the background
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session && session.user && session.user.id === currentUser.id) {
+      if (session && session.user) {
         const stored = localStorage.getItem("havn_accounts");
         let list: SavedAccount[] = [];
         if (stored) {
@@ -454,19 +478,19 @@ export function Sidebar({
           }
         }
 
-        const existingIdx = list.findIndex(acc => acc.profile.id === currentUser.id);
+        const existingIdx = list.findIndex(acc => acc.profile.id === session.user.id);
         const currentAccount: SavedAccount = {
           session: {
             access_token: session.access_token,
             refresh_token: session.refresh_token,
           },
           profile: {
-            id: currentUser.id!,
-            username: currentUser.username,
-            first_name: currentUser.first_name ?? null,
-            last_name: currentUser.last_name ?? null,
-            avatar_url: currentUser.avatar_url,
-            updated_at: currentUser.updated_at,
+            id: session.user.id,
+            username: (session.user.user_metadata?.username as string) || (session.user.id === currentUser.id ? currentUser.username : ''),
+            first_name: (session.user.user_metadata?.first_name as string) || (session.user.id === currentUser.id ? (currentUser.first_name ?? null) : null),
+            last_name: (session.user.user_metadata?.last_name as string) || (session.user.id === currentUser.id ? (currentUser.last_name ?? null) : null),
+            avatar_url: (session.user.user_metadata?.avatar_url as string) || (session.user.id === currentUser.id ? currentUser.avatar_url : null),
+            updated_at: session.user.updated_at || null,
           }
         };
 
@@ -474,10 +498,21 @@ export function Sidebar({
         if (existingIdx > -1) {
           const prev = list[existingIdx];
           if (prev.session.access_token !== session.access_token || prev.session.refresh_token !== session.refresh_token) {
-            list[existingIdx] = currentAccount;
+            list[existingIdx] = {
+              ...prev,
+              session: currentAccount.session,
+              profile: {
+                ...prev.profile,
+                username: currentAccount.profile.username || prev.profile.username,
+                first_name: currentAccount.profile.first_name || prev.profile.first_name,
+                last_name: currentAccount.profile.last_name || prev.profile.last_name,
+                avatar_url: currentAccount.profile.avatar_url || prev.profile.avatar_url,
+                updated_at: currentAccount.profile.updated_at || prev.profile.updated_at,
+              }
+            };
             updated = true;
           }
-        } else {
+        } else if (session.user.id === currentUser.id) {
           if (list.length >= 4) {
             list = list.slice(list.length - 3);
           }
@@ -504,8 +539,10 @@ export function Sidebar({
     // using the refresh_token, so we always let the server decide.
 
     try {
+      setIsSwitchingAccount(true);
       setIsLoggingOut(true); // Show premium loader overlay during switch
-      
+      setShowAccountsMenu(false); // Close the account dropdown
+
       // Save current active session in memory in case we need to restore it
       const { data: { session: currentSession } } = await supabase.auth.getSession();
 
@@ -524,27 +561,39 @@ export function Sidebar({
         localStorage.setItem('havn_accounts', JSON.stringify(cleaned))
         setAccounts(cleaned)
 
-        // IMPORTANT: Do NOT call switchSession() again for restore.
-        // switchSession (server action) uses the refresh_token which causes Supabase to ROTATE it.
-        // Calling setSession() with the old token after rotation marks it as "reused" and
-        // Supabase revokes ALL sessions for that user → full logout.
-        //
-        // Since switchSession() failed (returned error), it returned BEFORE modifying last_session_id,
-        // and a failed setSession() with invalid tokens does NOT change the server-side cookie.
-        // Therefore the server-side session is still intact — no restore needed.
-        //
-        // We only restore client-side state in case supabase client cleared it locally:
+        // Restore client-side state in case supabase client cleared it locally:
         if (currentSession) {
           await supabase.auth.setSession({
             access_token: currentSession.access_token,
             refresh_token: currentSession.refresh_token,
-          }).catch(() => { /* ignore — current session is still valid server-side */ });
+          }).catch(() => { /* ignore */ });
         }
 
         setIsLoggingOut(false);
+        setIsSwitchingAccount(false);
         setToastMessage(`@${targetAccount.profile.username} oturumu geçersiz. Lütfen tekrar giriş yapın.`);
         return
       }
+
+      // UPDATE havn_accounts IMMEDIATELY with the fresh tokens returned by switchSession!
+      // This is crucial because if setSession client-side fails or triggers events, we already have the fresh tokens saved.
+      const stored = localStorage.getItem('havn_accounts')
+      let list: SavedAccount[] = []
+      try { list = stored ? JSON.parse(stored) as SavedAccount[] : [] } catch { list = [] }
+      const updatedList = list.map(acc => {
+        if (acc.profile.id === targetAccount.profile.id) {
+          return {
+            ...acc,
+            session: {
+              access_token: res.session!.access_token,
+              refresh_token: res.session!.refresh_token,
+            }
+          }
+        }
+        return acc
+      })
+      localStorage.setItem('havn_accounts', JSON.stringify(updatedList))
+      setAccounts(updatedList)
 
       // Sync the client-side browser client state immediately with fresh tokens returned by the server
       const { data, error } = await supabase.auth.setSession({
@@ -552,11 +601,12 @@ export function Sidebar({
         refresh_token: res.session.refresh_token,
       })
 
+      // Double check client-side update of localStorage if setSession succeeded
       if (!error && data.session) {
-        const stored = localStorage.getItem('havn_accounts')
-        let list: SavedAccount[] = []
-        try { list = stored ? JSON.parse(stored) as SavedAccount[] : [] } catch { list = [] }
-        const updatedList = list.map(acc => {
+        const stored2 = localStorage.getItem('havn_accounts')
+        let list2: SavedAccount[] = []
+        try { list2 = stored2 ? JSON.parse(stored2) as SavedAccount[] : [] } catch { list2 = [] }
+        const finalList = list2.map(acc => {
           if (acc.profile.id === targetAccount.profile.id) {
             return {
               ...acc,
@@ -568,14 +618,14 @@ export function Sidebar({
           }
           return acc
         })
-        localStorage.setItem('havn_accounts', JSON.stringify(updatedList))
+        localStorage.setItem('havn_accounts', JSON.stringify(finalList))
       }
 
-      // Redirect to feed after account switch and force reload to clear layout state and reload the session
+      // Navigate to feed after successful switch.
       window.location.assign('/feed');
-      window.location.reload();
     } catch (err) {
       setIsLoggingOut(false);
+      setIsSwitchingAccount(false);
       const errMsg = err instanceof Error ? err.message : String(err);
       setToastMessage('Hesap geçişi başarısız: ' + errMsg);
     }
@@ -1468,9 +1518,13 @@ export function Sidebar({
                   className="absolute w-6 h-6 rounded-full bg-gradient-to-tr from-primary to-indigo-500 shadow-md shadow-primary/30"
                 />
               </div>
-              <div className="text-sm font-bold text-foreground">Oturum Kapatılıyor...</div>
+              <div className="text-sm font-bold text-foreground">
+                {isSwitchingAccount ? 'Hesap Değiştiriliyor...' : 'Oturum Kapatılıyor...'}
+              </div>
               <div className="text-xs text-muted-foreground leading-normal">
-                Diğer hesabınıza güvenli bir şekilde geçiş yapılıyor. Lütfen bekleyin.
+                {isSwitchingAccount
+                  ? 'Diğer hesabınıza güvenli geçiş yapılıyor. Lütfen bekleyin.'
+                  : 'Oturumunuz güvenli şekilde kapatılıyor. Lütfen bekleyin.'}
               </div>
             </motion.div>
           </motion.div>

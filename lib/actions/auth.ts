@@ -136,7 +136,8 @@ export async function getUser() {
       enriched.last_session_id = currentSessionId
     } else if (enriched.last_session_id !== currentSessionId) {
       console.warn(`Session mismatch detected for user ${enriched.username}. Booting...`)
-      await supabase.auth.signOut()
+      // Use 'local' scope to avoid revoking tokens stored in the multi-account localStorage list.
+      await supabase.auth.signOut({ scope: 'local' })
       redirect('/login?reason=multi_session')
     }
   }
@@ -144,11 +145,69 @@ export async function getUser() {
   return enriched
 }
 
+/**
+ * Switches the server-side session to the given account's tokens.
+ *
+ * IMPORTANT: We NEVER call supabase.auth.setSession() with potentially invalid tokens directly.
+ * When setSession() fails server-side, the Supabase SSR package calls _removeSession() which
+ * DELETES the auth cookie, logging the user out completely.
+ *
+ * Instead, we pre-validate the refresh_token via a direct REST API call (which does NOT touch
+ * session cookies). Only after confirming the token is valid do we call setSession().
+ */
 export async function switchSession(accessToken: string, refreshToken: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+  // STEP 1: Check if the access token is expired (decode JWT on server)
+  let accessExpired = true
+  try {
+    // Server-side JWT decode using Buffer (no window.atob needed)
+    const base64 = accessToken.split('.')[1]
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+    const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'))
+    accessExpired = !payload.exp || Math.floor(Date.now() / 1000) >= payload.exp
+  } catch {
+    accessExpired = true
+  }
+
+  let freshAccessToken = accessToken
+  let freshRefreshToken = refreshToken
+
+  if (accessExpired) {
+    // STEP 2: Pre-validate via Supabase REST API — does NOT touch session cookies on failure.
+    // If we called setSession() with a dead refresh_token, Supabase would clear the cookie
+    // and log the current user out. By using the REST endpoint first, we avoid that.
+    let res: Response
+    try {
+      res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      })
+    } catch {
+      return { error: 'Ağ hatası. Lütfen tekrar deneyin.' }
+    }
+
+    if (!res.ok) {
+      // Token is dead — current session cookie is UNTOUCHED, user stays logged in
+      return { error: 'Oturum süresi dolmuş veya geçersiz. Lütfen tekrar giriş yapın.' }
+    }
+
+    const freshSession = await res.json()
+    freshAccessToken = freshSession.access_token
+    freshRefreshToken = freshSession.refresh_token
+  }
+
+  // STEP 3: Tokens are known-valid. Now safely set the server-side session cookie.
   const supabase = await createClient()
   const { data, error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
+    access_token: freshAccessToken,
+    refresh_token: freshRefreshToken,
   })
 
   if (error) {
@@ -165,7 +224,7 @@ export async function switchSession(accessToken: string, refreshToken: string) {
     }
   }
 
-  return { 
+  return {
     success: true,
     session: data.session ? {
       access_token: data.session.access_token,
