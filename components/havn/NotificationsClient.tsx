@@ -372,9 +372,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
           setNotifications(prev => prev.filter(n => n.id !== deletedNotifId))
         }
       )
-      .subscribe((status, err) => {
-        console.log(`[Realtime-Notifications] Subscription status: ${status}`, err || '')
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)

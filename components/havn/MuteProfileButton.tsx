@@ -19,8 +19,8 @@ export function MuteProfileButton({ username }: MuteProfileButtonProps) {
         if (Array.isArray(list)) {
           setIsMuted(list.includes(cleanUsername))
         }
-      } catch (e) {
-        console.error(e)
+      } catch {
+        // silent
       }
     }
   }, [cleanUsername])
@@ -31,8 +31,8 @@ export function MuteProfileButton({ username }: MuteProfileButtonProps) {
     if (savedMuted) {
       try {
         list = JSON.parse(savedMuted)
-      } catch (e) {
-        console.error(e)
+      } catch {
+        // silent
       }
     }
     

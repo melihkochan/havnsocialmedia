@@ -268,7 +268,6 @@ export function Sidebar({
           });
           
           if (hasPollution) {
-            console.warn("Session token pollution detected in localStorage havn_accounts. Purged polluted accounts.");
             cleaned = verified;
           }
 
@@ -292,14 +291,12 @@ export function Sidebar({
         // AUTO-HEAL CLIENT SESSION: If client session doesn't match server currentUser, align them using saved tokens!
         const sessionUser = session?.user;
         if (sessionUser && sessionUser.id !== currentUser.id) {
-          console.warn("Active session ID mismatch on mount. Checking saved accounts...");
           const stored = localStorage.getItem("havn_accounts");
           if (stored) {
             try {
               const list = JSON.parse(stored);
               const savedAcc = list.find((acc: any) => acc.profile.id === currentUser.id);
               if (savedAcc && savedAcc.session?.access_token) {
-                console.log("Found correct tokens for current user. Setting client session...");
                 await supabase.auth.setSession({
                   access_token: savedAcc.session.access_token,
                   refresh_token: savedAcc.session.refresh_token,
@@ -307,11 +304,10 @@ export function Sidebar({
                 window.location.reload();
                 return;
               }
-            } catch (e) {
-              console.error("Failed to auto-heal client session:", e);
+            } catch {
+              // silent
             }
           }
-          console.warn("Active session ID does not match currentUser ID. Skipping sync to prevent token pollution.");
           return;
         }
 
@@ -351,8 +347,8 @@ export function Sidebar({
 
         localStorage.setItem("havn_accounts", JSON.stringify(list));
         setAccounts(list);
-      } catch (err) {
-        console.error("Sync account error:", err);
+      } catch {
+        // silent
       }
     };
 

@@ -360,43 +360,51 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
     })
   }
 
-  const filteredTickets = tickets.filter(t => {
-    if (targetTicketId && t.id === targetTicketId) return true
-    const isInitiatedByAdmin = t.message?.trim().startsWith('[Kurucu - Yanıt') || t.message?.trim().startsWith('[Yönetici - Yanıt')
-    
-    // For admins:
-    if (isFounder) {
-      if (activeTab === 'admin-create') {
-        // Under "Kullanıcıya Yaz" tab, show only admin-initiated tickets
-        if (!isInitiatedByAdmin) return false
-        if (filter === 'all') return true
-        if (filter === 'open') return t.status === 'replied' || t.status === 'open' // Show both admin sent and user replied under 'Açık'
-        if (filter === 'closed') return t.status === 'closed'
-        return true
-      } else {
-        // Under "Gelen Talepler" tab, show only user-initiated tickets
-        if (isInitiatedByAdmin) return false
-        if (filter === 'all') return true
-        return t.status === filter
+  const filteredTickets = tickets
+    .filter(t => {
+      if (targetTicketId && t.id === targetTicketId) return true
+      const isInitiatedByAdmin = t.message?.trim().startsWith('[Kurucu - Yanıt') || t.message?.trim().startsWith('[Yönetici - Yanıt')
+      
+      // For admins:
+      if (isFounder) {
+        if (activeTab === 'admin-create') {
+          // Under "Kullanıcıya Yaz" tab, show only admin-initiated tickets
+          if (!isInitiatedByAdmin) return false
+          if (filter === 'all') return true
+          if (filter === 'open') return t.status === 'replied' || t.status === 'open' // Show both admin sent and user replied under 'Açık'
+          if (filter === 'closed') return t.status === 'closed'
+          return true
+        } else {
+          // Under "Gelen Talepler" tab, show only user-initiated tickets
+          if (isInitiatedByAdmin) return false
+          if (filter === 'all') return true
+          return t.status === filter
+        }
       }
-    }
-    
-    // For users:
-    if (filter === 'all') return true
-    if (filter === 'admin') return isInitiatedByAdmin && t.status !== 'closed'
-    if (filter === 'open') {
-      // Show user-initiated open tickets + admin-initiated active tickets
-      return t.status === 'open' || (isInitiatedByAdmin && t.status === 'replied')
-    }
-    if (filter === 'replied') {
-      // Only show user-initiated replied tickets
-      return t.status === 'replied' && !isInitiatedByAdmin
-    }
-    if (filter === 'closed') {
-      return t.status === 'closed'
-    }
-    return true
-  })
+      
+      // For users:
+      if (filter === 'all') return true
+      if (filter === 'admin') return isInitiatedByAdmin && t.status !== 'closed'
+      if (filter === 'open') {
+        // Show user-initiated open tickets + admin-initiated active tickets
+        return t.status === 'open' || (isInitiatedByAdmin && t.status === 'replied')
+      }
+      if (filter === 'replied') {
+        // Only show user-initiated replied tickets
+        return t.status === 'replied' && !isInitiatedByAdmin
+      }
+      if (filter === 'closed') {
+        return t.status === 'closed'
+      }
+      return true
+    })
+    .sort((a, b) => {
+      if (targetTicketId) {
+        if (a.id === targetTicketId) return -1
+        if (b.id === targetTicketId) return 1
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
 
   return (
     <div className="flex flex-col gap-6 w-full px-1">
@@ -729,13 +737,13 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                       key={ticket.id}
                       id={`ticket-${ticket.id}`}
                       className={cn(
-                        "bg-card border rounded-2xl overflow-hidden transition-all duration-200",
+                        "bg-card border rounded-2xl overflow-hidden transition-all duration-300",
                         isFocusedTicket
-                          ? "border-primary/50 ring-2 ring-primary/15 shadow-[0_0_30px_color-mix(in_oklch,var(--primary)_15%,transparent)]"
+                          ? "border-primary/60 ring-2 ring-primary/20 shadow-[0_0_40px_color-mix(in_oklch,var(--primary)_25%,transparent)] bg-gradient-to-br from-card to-primary/[0.04]"
                           : isExpanded ? "border-primary/40 shadow-sm" : "border-border hover:border-border/120"
                       )}
                     >
-                      {isFocusedTicket && !isFounder && (
+                      {isFocusedTicket && (
                         <div className="flex items-center gap-2 px-5 py-2.5 border-b border-primary/20 bg-primary/5 select-none">
                           <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                           <span className="text-[10px] font-black text-primary tracking-wider uppercase">Odaklanılan Talep</span>

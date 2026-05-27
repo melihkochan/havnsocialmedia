@@ -76,8 +76,8 @@ export function PostPreviewBubble({ postId, isOwn }: PostPreviewBubbleProps) {
             comments: [{ count: commentsCount }]
           } as any)
         }
-      } catch (err) {
-        console.error('Error fetching post preview in DM:', err)
+      } catch {
+        // silent
       } finally {
         setLoading(false)
       }

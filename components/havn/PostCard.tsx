@@ -171,8 +171,8 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
           reaction: l.user_id === currentUserId ? activeReaction || '❤️' : getReactionForUser(l.user_id, displayPost.id)
         })))
       }
-    } catch (e) {
-      console.error('Error fetching likers:', e)
+    } catch {
+      // silent
     } finally {
       setLoadingLikers(false)
     }
@@ -408,8 +408,8 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
         if (!error && data) {
           setFollowedUsers((data as any[]).map(f => f.following).filter(Boolean))
         }
-      } catch (err) {
-        console.error('loadFollowed error:', err)
+      } catch {
+        // silent
       } finally {
         setShareLoading(false)
       }

@@ -115,8 +115,8 @@ export function CommunityChat({
         }
 
         setTimeout(() => scrollToBottom('auto'), 50)
-      } catch (err) {
-        console.error('Initialize chat error:', err)
+      } catch {
+        // silent
       } finally {
         setLoading(false)
       }
@@ -189,7 +189,6 @@ export function CommunityChat({
     startSendTransition(async () => {
       const res = await sendCommunityMessage(communityId, content, type)
       if (res.error) {
-        console.error(res.error)
         setInputText(content) // Restore text on failure
       } else if (res.message) {
         const sentMsg = res.message as CommunityMessage

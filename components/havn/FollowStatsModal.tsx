@@ -84,8 +84,8 @@ export function FollowStatsModal({
         ])
         setUsersList(users as any as Profile[])
         setMyFollowingIds((myFollowing as any as Profile[]).map(u => u.id))
-      } catch (err) {
-        console.error('Error loading follow list:', err)
+      } catch {
+        // silent
       } finally {
         setLoading(false)
       }
@@ -122,8 +122,8 @@ export function FollowStatsModal({
           }
         }
       }
-    } catch (err) {
-      console.error('Follow action error:', err)
+    } catch {
+      // silent
     } finally {
       setActionPendingId(null)
     }
