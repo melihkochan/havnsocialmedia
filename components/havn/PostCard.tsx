@@ -696,14 +696,14 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
               <div className="absolute right-0 top-8 z-[60] glass rounded-xl shadow-xl overflow-hidden w-44 border border-border">
                 <Link
                   href={`/post/${displayPost.id}`}
-                  className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-accent transition-colors"
+                  className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150"
                 >
                   <ExternalLink size={13} /> Gönderiyi Aç
                 </Link>
                 {isOwnOriginal && !isEditing && (
                   <button
                     onClick={() => { setIsEditing(true); setShowMenu(false); setEditContent(postContent); }}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-accent transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150 text-left cursor-pointer"
                   >
                     <Pencil size={13} /> Düzenle
                   </button>
@@ -713,7 +713,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                     type="button"
                     onClick={handleTogglePin}
                     disabled={isPending}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-accent transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150 text-left cursor-pointer"
                   >
                     <Pin size={13} className={cn(isPinned && 'fill-primary text-primary')} />
                     {isPinned ? 'Sabitlemeyi Kaldır' : 'Sabitle'}
@@ -724,8 +724,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                     type="button"
                     onClick={openDeleteDialog}
                     disabled={isPending}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-accent transition-colors text-left cursor-pointer"
-                    style={{ color: 'var(--destructive)' }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-destructive/10 hover:text-destructive transition-all duration-150 text-left cursor-pointer"
                   >
                     <Trash2 size={13} /> {isModRemoval ? (currentUserIsAdmin ? 'Sil (Admin)' : 'Kaldır (Mod)') : 'Sil'}
                   </button>
@@ -960,8 +959,8 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                       onClick={handleRepost}
                       disabled={isPending}
                       className={cn(
-                        "flex items-center gap-2 px-3 py-2.5 text-xs transition-colors text-left w-full cursor-pointer",
-                        reposted ? "text-emerald-500 hover:bg-accent" : "text-foreground hover:bg-accent"
+                        "flex items-center gap-2 px-3 py-2.5 text-xs transition-all duration-150 text-left w-full cursor-pointer",
+                        reposted ? "text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-600" : "text-foreground hover:bg-primary/8 hover:text-primary"
                       )}
                     >
                       <Repeat size={13} />
@@ -970,7 +969,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                   )}
                   <button
                     onClick={handleCopyLink}
-                    className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-accent transition-colors text-left w-full cursor-pointer"
+                    className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150 text-left w-full cursor-pointer"
                   >
                     <ExternalLink size={13} />
                     {shared ? "Kopyalandı!" : "Bağlantıyı Kopyala"}
@@ -981,7 +980,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                         setShowShareMenu(false)
                         setShowDMShareModal(true)
                       }}
-                      className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-accent transition-colors text-left w-full cursor-pointer border-t border-border/40"
+                      className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150 text-left w-full cursor-pointer border-t border-border/40"
                     >
                       <Send size={13} />
                       Mesajla Paylaş

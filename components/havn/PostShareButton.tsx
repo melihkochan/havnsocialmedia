@@ -52,7 +52,7 @@ export function PostShareButton({ postId, communityId, className }: PostShareBut
             <button
               type="button"
               onClick={copyLink}
-              className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-accent transition-colors text-left w-full cursor-pointer"
+              className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150 text-left w-full cursor-pointer"
             >
               <ExternalLink size={13} />
               {copied ? 'Kopyalandı!' : 'Bağlantıyı Kopyala'}
