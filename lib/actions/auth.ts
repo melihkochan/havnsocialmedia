@@ -152,6 +152,16 @@ export async function switchSession(accessToken: string, refreshToken: string) {
     return { error: error.message }
   }
 
+  // After switching, update last_session_id for the new user so that
+  // getUser() does NOT detect a "session mismatch" and sign them out.
+  if (data.session) {
+    const newSessionId = getSessionId(data.session.access_token)
+    if (newSessionId && data.session.user?.id) {
+      const { saveProfileMetadata } = await import('@/lib/actions/profile-db')
+      await saveProfileMetadata(data.session.user.id, { last_session_id: newSessionId })
+    }
+  }
+
   return { 
     success: true,
     session: data.session ? {
