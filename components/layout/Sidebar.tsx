@@ -71,6 +71,7 @@ export function Sidebar({
   const [showAccountsMenu, setShowAccountsMenu] = useState(false);
   const [showHoverCard, setShowHoverCard] = useState(false);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const supabase = createClient();
 
   const [unreadNotifications, setUnreadNotifications] = useState(unreadCount);
@@ -406,6 +407,7 @@ export function Sidebar({
   const handleSignOut = async () => {
     try {
       if (!currentUser) return;
+      setIsLoggingOut(true);
 
       const stored = localStorage.getItem("havn_accounts");
       let list: any[] = [];
@@ -432,6 +434,7 @@ export function Sidebar({
           refresh_token: nextAccount.session.refresh_token,
         })
         if (!error && data.session) {
+          await new Promise(resolve => setTimeout(resolve, 800));
           window.location.href = '/feed'
           return
         }
@@ -440,6 +443,7 @@ export function Sidebar({
         localStorage.setItem('havn_accounts', JSON.stringify(cleaned))
       }
 
+      await new Promise(resolve => setTimeout(resolve, 800));
       window.location.href = "/login";
     } catch {
       window.location.href = "/login";
@@ -1105,6 +1109,31 @@ export function Sidebar({
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Oturum Kapatılıyor Loader */}
+      <AnimatePresence>
+        {isLoggingOut && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/85 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card border border-border rounded-3xl p-6 shadow-2xl flex flex-col items-center gap-3 w-80 text-center"
+            >
+              <Loader2 className="w-8 h-8 animate-spin text-primary flex-shrink-0" />
+              <div className="text-sm font-bold text-foreground">Oturum Kapatılıyor...</div>
+              <div className="text-xs text-muted-foreground leading-normal">
+                Diğer hesabınıza güvenli bir şekilde geçiş yapılıyor. Lütfen bekleyin.
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </aside>
