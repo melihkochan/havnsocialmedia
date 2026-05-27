@@ -524,13 +524,21 @@ export function Sidebar({
         localStorage.setItem('havn_accounts', JSON.stringify(cleaned))
         setAccounts(cleaned)
 
-        // Restore original session if it existed
+        // IMPORTANT: Do NOT call switchSession() again for restore.
+        // switchSession (server action) uses the refresh_token which causes Supabase to ROTATE it.
+        // Calling setSession() with the old token after rotation marks it as "reused" and
+        // Supabase revokes ALL sessions for that user → full logout.
+        //
+        // Since switchSession() failed (returned error), it returned BEFORE modifying last_session_id,
+        // and a failed setSession() with invalid tokens does NOT change the server-side cookie.
+        // Therefore the server-side session is still intact — no restore needed.
+        //
+        // We only restore client-side state in case supabase client cleared it locally:
         if (currentSession) {
-          await switchSession(currentSession.access_token, currentSession.refresh_token);
           await supabase.auth.setSession({
             access_token: currentSession.access_token,
             refresh_token: currentSession.refresh_token,
-          });
+          }).catch(() => { /* ignore — current session is still valid server-side */ });
         }
 
         setIsLoggingOut(false);
