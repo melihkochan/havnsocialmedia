@@ -10,6 +10,7 @@ import { Compass, Users, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { FeedTypeSwitcher } from '@/components/havn/FeedTypeSwitcher'
 import { enrichProfile } from '@/lib/profile-enrich'
+import { ProfileName } from '@/components/havn/ProfileName'
 
 export const metadata = {
   title: 'Anasayfa — HAVN',
@@ -237,12 +238,12 @@ export default async function FeedPage({ searchParams }: PageProps) {
                               {sUser.username.slice(0, 2).toUpperCase()}
                             </div>
                           )}
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-xs font-bold text-foreground truncate">
-                              {sUser.first_name || sUser.last_name ? `${sUser.first_name ?? ''} ${sUser.last_name ?? ''}`.trim() : sUser.username}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground truncate">@{sUser.username}</span>
-                          </div>
+                          <ProfileName
+                            profile={sUser}
+                            layout="stacked"
+                            nameClassName="text-xs font-bold"
+                            showHandle={true}
+                          />
                         </Link>
 
                         <FollowButton targetUserId={sUser.id} initialIsFollowing={false} className="py-1 px-3.5 text-[10px]" />
