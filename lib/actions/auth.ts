@@ -36,6 +36,7 @@ export async function signUp(formData: FormData) {
   const username = formData.get('username') as string
   const firstName = (formData.get('first_name') as string || '').trim()
   const lastName = (formData.get('last_name') as string || '').trim()
+  const avatarFile = formData.get('avatar') as File | null
 
   // Check username uniqueness
   const { data: existing } = await supabase
@@ -67,12 +68,31 @@ export async function signUp(formData: FormData) {
   // Create or update profile using service client to bypass RLS when user is not yet logged in (e.g. pending email confirmation)
   if (data.user) {
     const supabaseAdmin = await createServiceClient()
+    let avatarUrl: string | null = null
+
+    if (avatarFile && avatarFile.size > 0) {
+      const ext = avatarFile.name.split('.').pop() || 'png'
+      const path = `${data.user.id}/avatar.${ext}`
+      const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+        .from('avatars')
+        .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type })
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabaseAdmin.storage
+          .from('avatars')
+          .getPublicUrl(uploadData.path)
+        avatarUrl = publicUrl
+      } else {
+        console.error('Failed to upload avatar during signUp:', uploadError.message)
+      }
+    }
+
     const { error: upsertError } = await supabaseAdmin.from('profiles').upsert({
       id: data.user.id,
       username,
       first_name: firstName || null,
       last_name: lastName || null,
-      avatar_url: null,
+      avatar_url: avatarUrl,
     })
 
     if (upsertError) {

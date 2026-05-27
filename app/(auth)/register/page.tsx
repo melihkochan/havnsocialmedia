@@ -5,12 +5,15 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, Check } from 'lucide-react'
 import { signUp } from '@/lib/actions/auth'
+import { AvatarUpload } from '@/components/havn/AvatarUpload'
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [password, setPassword] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [usernameInput, setUsernameInput] = useState('')
 
   const strength = [
     password.length >= 8,
@@ -25,6 +28,7 @@ export default function RegisterPage() {
     setError(null)
     setLoading(true)
     const formData = new FormData(e.currentTarget)
+    if (avatarFile) formData.set('avatar', avatarFile)
     const result = await signUp(formData)
     if (result?.error) {
       setError(result.error)
@@ -44,6 +48,15 @@ export default function RegisterPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Avatar Picker */}
+        <div className="flex flex-col items-center justify-center pb-2">
+          <AvatarUpload
+            currentAvatarUrl={null}
+            username={usernameInput || 'HV'}
+            onFileSelect={setAvatarFile}
+          />
+        </div>
+
         {/* Ad & Soyad */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
@@ -89,6 +102,8 @@ export default function RegisterPage() {
               maxLength={30}
               pattern="[a-zA-Z0-9_]+"
               placeholder="kullanici_adi"
+              value={usernameInput}
+              onChange={e => setUsernameInput(e.target.value)}
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
