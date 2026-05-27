@@ -22,10 +22,10 @@ function Spoiler({ children }: { children: React.ReactNode }) {
         setRevealed(prev => !prev)
       }}
       className={cn(
-        "relative inline-block rounded cursor-pointer transition-all duration-300 mx-0.5 select-none overflow-hidden align-[-2px]",
+        "relative inline-block rounded cursor-pointer transition-all duration-300 mx-0.5 select-none overflow-hidden align-[-2px] text-center",
         revealed 
-          ? "bg-muted/30 border border-border/40 text-foreground px-1.5 py-0.5 select-text" 
-          : "bg-zinc-950 dark:bg-zinc-900 border border-zinc-800/80 text-transparent px-2.5 py-0.5"
+          ? "bg-muted/30 border border-border/40 text-foreground px-1.5 py-0.5 select-text min-w-0" 
+          : "bg-zinc-950 dark:bg-zinc-900 border border-zinc-800/80 text-transparent px-2.5 py-0.5 min-w-[76px]"
       )}
       title={revealed ? "Gizlemek için tıklayın" : "Gösterisi için tıklayın (Spoiler)"}
     >
