@@ -105,7 +105,10 @@ export async function signUp(formData: FormData) {
 
 export async function signOut() {
   const supabase = await createClient()
-  await supabase.auth.signOut()
+  // Use 'local' scope to only clear this browser session.
+  // 'global' (the default) would revoke ALL refresh tokens for this user on Supabase's server,
+  // which would invalidate tokens stored in other browsers / the multi-account localStorage list.
+  await supabase.auth.signOut({ scope: 'local' })
   redirect('/login')
 }
 

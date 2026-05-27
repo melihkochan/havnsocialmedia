@@ -657,7 +657,10 @@ export function Sidebar({
       }
 
       // If no other accounts succeeded, perform full signOut and redirect to login
-      await supabase.auth.signOut();
+      // Use 'local' scope so we only clear this browser session.
+      // 'global' would revoke ALL refresh_tokens for this user on Supabase's server,
+      // breaking multi-account switching for any other saved account.
+      await supabase.auth.signOut({ scope: 'local' });
       await new Promise(resolve => setTimeout(resolve, 800));
       window.location.assign('/login');
     } catch {
