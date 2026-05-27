@@ -519,8 +519,8 @@ export function Sidebar({
 
   const handleAddNewAccount = async () => {
     try {
-      // Simply log out current session locally to clear session cookies
-      await supabase.auth.signOut();
+      // Simply log out current session locally to clear session cookies without revoking the token on the server
+      await supabase.auth.signOut({ scope: 'local' });
       window.location.assign('/login');
     } catch {
       window.location.assign('/login');
