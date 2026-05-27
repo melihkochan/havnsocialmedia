@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles, Lightbulb } from "lucide-react";
+import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles, Lightbulb, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HavnLogo } from "@/components/havn/HavnLogo";
 import { ThemeToggle } from "@/components/havn/ThemeToggle";
@@ -445,6 +445,31 @@ export function Sidebar({
     }
   };
 
+  const handleRemoveSavedAccount = async (targetAccount: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const isCurrentActive = targetAccount.profile.id === currentUser?.id;
+      if (isCurrentActive) {
+        await handleSignOut();
+      } else {
+        const stored = localStorage.getItem("havn_accounts");
+        let list: any[] = [];
+        if (stored) {
+          try {
+            list = JSON.parse(stored);
+          } catch {
+            list = [];
+          }
+        }
+        const updatedList = list.filter(acc => acc.profile.id !== targetAccount.profile.id);
+        localStorage.setItem("havn_accounts", JSON.stringify(updatedList));
+        setAccounts(updatedList);
+      }
+    } catch {
+      // silent
+    }
+  };
+
   return (
     <aside className={cn(
       "h-full flex flex-col gap-4 py-6 relative transition-all duration-300",
@@ -735,32 +760,33 @@ export function Sidebar({
                         return (
                           <div key={acc.profile.id || acc.profile.username} className="flex flex-col">
                             {index > 0 && <div className="border-t border-border/30 my-1 mx-2" />}
-                            <button
-                              onClick={() => !isActive && handleSwitchAccount(acc)}
-                              disabled={isActive}
-                              className={cn(
-                                "flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all w-full border text-xs font-bold",
-                                isActive
-                                  ? "bg-primary/10 border-primary/20 text-primary cursor-default"
-                                  : "hover:bg-accent/70 border-transparent cursor-pointer"
-                              )}
-                            >
-                              <div className={cn(
-                                "flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-black flex-shrink-0 transition-all shadow-sm",
-                                isActive
-                                  ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground"
-                                  : "bg-muted text-muted-foreground"
-                              )}>
-                                {index + 1}
-                              </div>
-                              <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
-                              <div className="flex-1 min-w-0">
-                                <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-black" showHandle={true} />
-                              </div>
-                              {isActive && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0 mr-1" />
-                              )}
-                            </button>
+                            <div className="flex items-center gap-1 w-full">
+                              <button
+                                onClick={() => !isActive && handleSwitchAccount(acc)}
+                                disabled={isActive}
+                                className={cn(
+                                  "flex items-center gap-2 px-2 py-1.5 rounded-xl text-left transition-all flex-1 border text-xs font-bold min-w-0",
+                                  isActive
+                                    ? "bg-primary/10 border-primary/20 text-primary cursor-default"
+                                    : "hover:bg-accent/70 border-transparent cursor-pointer"
+                                )}
+                              >
+                                <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
+                                <div className="flex-1 min-w-0">
+                                  <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-black" showHandle={true} />
+                                </div>
+                                {isActive && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0 mr-1" />
+                                )}
+                              </button>
+                              <button
+                                onClick={(e) => handleRemoveSavedAccount(acc, e)}
+                                title={isActive ? "Oturumu Kapat" : "Hesabı Kaldır"}
+                                className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer flex-shrink-0"
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
                           </div>
                         );
                       });
