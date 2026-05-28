@@ -15,6 +15,7 @@ import { ProfileName } from "@/components/havn/ProfileName";
 import { isFounder } from "@/lib/founder";
 import { cleanBio } from "@/lib/profile-enrich";
 import { switchSession } from "@/lib/actions/auth";
+import { useGlobalStore } from "@/lib/store/useGlobalStore";
 
 const navItems = [
   { href: "/feed", label: "Anasayfa", icon: Compass },
@@ -81,16 +82,29 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  currentUser,
+  currentUser: currentUserProp,
   unreadCount = 0,
   unreadMessagesCount = 0,
   openSupportTickets: openSupportTicketsProp = 0,
   isCollapsed = false,
   onExpand,
 }: SidebarProps) {
+  const [mounted, setMounted] = useState(false);
+
+  const storeCurrentUser = useGlobalStore((state) => state.currentUser);
+  const unreadNotifications = useGlobalStore((state) => state.unreadNotificationsCount);
+  const unreadDMs = useGlobalStore((state) => state.unreadDMsCount);
+  const openSupportTicketsStore = useGlobalStore((state) => state.openSupportTicketsCount);
+
+  const currentUser = storeCurrentUser || currentUserProp;
+
+  // Hydration & SSR-safe layout metrics:
+  const activeUnreadNotifications = mounted ? unreadNotifications : unreadCount;
+  const activeUnreadDMs = mounted ? unreadDMs : unreadMessagesCount;
+  const openSupportTickets = mounted ? openSupportTicketsStore : openSupportTicketsProp;
+
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [accounts, setAccounts] = useState<SavedAccount[]>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("havn_accounts");
@@ -167,10 +181,6 @@ export function Sidebar({
     }
   };
 
-  const [unreadNotifications, setUnreadNotifications] = useState(unreadCount);
-  const [unreadDMs, setUnreadDMs] = useState(unreadMessagesCount);
-  const [openSupportTickets, setOpenSupportTickets] = useState(openSupportTicketsProp);
-
   // Search modal states
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -203,123 +213,6 @@ export function Sidebar({
     }, 300);
     return () => clearTimeout(delayDebounce);
   }, [searchQuery, showSearchModal]);
-
-  useEffect(() => {
-    setUnreadNotifications(unreadCount);
-  }, [unreadCount]);
-
-  useEffect(() => {
-    setUnreadDMs(unreadMessagesCount);
-  }, [unreadMessagesCount]);
-
-  useEffect(() => {
-    setOpenSupportTickets(openSupportTicketsProp);
-  }, [openSupportTicketsProp]);
-
-  const fetchUnreadDMs = async () => {
-    if (!currentUser?.id) return;
-    const { count } = await supabase
-      .from('direct_messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('receiver_id', currentUser.id)
-      .eq('is_read', false);
-    if (count !== null) setUnreadDMs(count);
-  };
-
-  const fetchUnreadNotifications = async () => {
-    if (!currentUser?.id) return;
-    const { count } = await supabase
-      .from('notifications')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', currentUser.id)
-      .eq('is_read', false);
-    if (count !== null) setUnreadNotifications(count);
-  };
-
-  const fetchOpenSupportTickets = async () => {
-    if (!currentUser?.id) return;
-    const isUserFounder = isFounder(currentUser);
-    let query = supabase
-      .from('support_tickets')
-      .select('id', { count: 'exact', head: true });
-
-    if (isUserFounder) {
-      query = query.eq('status', 'open');
-    } else {
-      query = query.eq('user_id', currentUser.id).eq('status', 'replied');
-    }
-
-    const { count } = await query;
-    if (count !== null) setOpenSupportTickets(count);
-  };
-
-  useEffect(() => {
-    if (!currentUser?.id) return;
-
-    fetchUnreadDMs();
-    fetchUnreadNotifications();
-    fetchOpenSupportTickets();
-
-    const channelToken = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-    // Listen to direct messages changes to sync unread DMs
-    const dmChannel = supabase.channel(`sidebar_dms_${currentUser.id}_${channelToken}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'direct_messages',
-        },
-        (payload) => {
-          const newMsg = payload.new as any;
-          const oldMsg = payload.old as any;
-          if (newMsg?.receiver_id === currentUser.id || oldMsg?.receiver_id === currentUser.id) {
-            fetchUnreadDMs();
-          }
-        }
-      )
-      .subscribe();
-
-    // Listen to notifications changes to sync unread notifications
-    const notifChannel = supabase.channel(`sidebar_notifs_${currentUser.id}_${channelToken}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-        },
-        (payload) => {
-          const newNotif = payload.new as any;
-          const oldNotif = payload.old as any;
-          if (newNotif?.user_id === currentUser.id || oldNotif?.user_id === currentUser.id) {
-            fetchUnreadNotifications();
-          }
-        }
-      )
-      .subscribe();
-
-    const supportChannel = supabase.channel(`sidebar_support_tickets_${channelToken}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'support_tickets',
-        },
-        () => {
-          fetchOpenSupportTickets();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(dmChannel);
-      supabase.removeChannel(notifChannel);
-      supabase.removeChannel(supportChannel);
-    };
-  }, [currentUser?.id]);
 
   // Load account list on mount and self-heal any polluted/duplicate tokens
   useEffect(() => {
@@ -822,8 +715,8 @@ export function Sidebar({
             (href !== "/feed" && pathname.startsWith(href));
 
           let count = 0;
-          if (href === "/notifications") count = unreadNotifications;
-          if (href === "/messages") count = unreadDMs;
+          if (href === "/notifications") count = activeUnreadNotifications;
+          if (href === "/messages") count = activeUnreadDMs;
 
           return (
             <Link key={href} href={href} title={isCollapsed ? label : undefined}>

@@ -9,19 +9,19 @@ export const dynamic = 'force-dynamic'
 export default async function CommunitiesPage() {
   const supabase = await createClient()
 
-  // Parallel: auth + communities list
-  const [{ data: { user } }, communities] = await Promise.all([
-    supabase.auth.getUser(),
-    getCommunities(),
-  ])
+  // Step 1: auth
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // Parallel: profile + memberships
-  const [profileResult, membershipsResult] = user
-    ? await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('community_members').select('community_id, role, status').eq('user_id', user.id),
-      ])
-    : [{ data: null }, { data: [] }]
+  // Step 2: Parallel: communities list + profile + memberships
+  const [communities, profileResult, membershipsResult] = await Promise.all([
+    getCommunities(),
+    user
+      ? supabase.from('profiles').select('id, username, first_name, last_name, avatar_url, is_verified, is_gold, updated_at').eq('id', user.id).single()
+      : Promise.resolve({ data: null }),
+    user
+      ? supabase.from('community_members').select('community_id, role, status').eq('user_id', user.id)
+      : Promise.resolve({ data: [] }),
+  ])
 
   const profile = profileResult.data
   const memberships = membershipsResult.data ?? []

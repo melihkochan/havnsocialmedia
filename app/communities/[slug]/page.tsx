@@ -43,9 +43,9 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
 
   // Parallel: profile + membership status/role + member count + community posts
   const [profileResult, membershipResult, { count: memberCount }, posts] = await Promise.all([
-    user ? supabase.from('profiles').select('*').eq('id', user.id).single() : Promise.resolve({ data: null }),
+    user ? supabase.from('profiles').select('id, username, first_name, last_name, avatar_url, is_verified, is_gold, xp, updated_at').eq('id', user.id).single() : Promise.resolve({ data: null }),
     user ? supabase.from('community_members').select('status, role').eq('community_id', community.id).eq('user_id', user.id).single() : Promise.resolve({ data: null }),
-    supabase.from('community_members').select('*', { count: 'exact', head: true }).eq('community_id', community.id).eq('status', 'approved'),
+    supabase.from('community_members').select('id', { count: 'exact', head: true }).eq('community_id', community.id).eq('status', 'approved'),
     getPosts(community.id, activeSort),
   ])
 

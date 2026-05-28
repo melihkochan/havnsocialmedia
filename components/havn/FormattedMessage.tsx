@@ -5,6 +5,7 @@ import { splitMessageParts, getFlagImageUrl } from '@/lib/flags'
 import { cn } from '@/lib/utils'
 import { Play, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { getDisplayName } from '@/lib/profile-display'
 
 interface FormattedMessageProps {
   text: string
@@ -168,7 +169,8 @@ function HavnPostEmbed({ postId, url }: { postId: string; url: string }) {
             profiles (
               username,
               avatar_url,
-              display_name
+              first_name,
+              last_name
             )
           `)
           .eq('id', postId)
@@ -221,7 +223,7 @@ function HavnPostEmbed({ postId, url }: { postId: string; url: string }) {
 
   const profile = postData.profiles
   const textContent = (postData.content || '').replace(/<[^>]*>/g, '')
-  const displayName = profile?.display_name || profile?.username || 'Kullanıcı'
+  const displayName = profile ? getDisplayName(profile) : 'Kullanıcı'
 
   return (
     <a
@@ -247,9 +249,9 @@ function HavnPostEmbed({ postId, url }: { postId: string; url: string }) {
           Havn Gönderisi
         </span>
       </div>
-      <p className="text-xs text-foreground/90 leading-relaxed truncate max-w-full font-medium">
+      <div className="text-xs text-foreground/90 leading-relaxed truncate max-w-full font-medium">
         {textContent || "Görsel gönderi"}
-      </p>
+      </div>
       {postData.image_url && (
         <div className="mt-3 rounded-lg overflow-hidden border border-border/60 max-h-32 relative aspect-[3/1] w-full">
           <img src={postData.image_url} alt="Havn post preview" className="w-full h-full object-cover" />
@@ -289,14 +291,17 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
     setMounted(true)
   }, [])
 
+  // Detect HTML
+  const isHtml = text.trim().startsWith('<') && text.trim().endsWith('>')
+
   if (!mounted) {
     // SSR / First-load plain text fallback
     const stripped = text.replace(/<[^>]*>/g, '')
+    if (isHtml) {
+      return <div className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlags(stripped)}</div>
+    }
     return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlags(stripped)}</span>
   }
-
-  // Detect HTML
-  const isHtml = text.trim().startsWith('<') && text.trim().endsWith('>')
 
   if (!isHtml) {
     return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlags(text)}</span>
@@ -320,7 +325,7 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
 
         switch (tagName) {
           case 'p':
-            return <p key={index} className="mb-2.5 last:mb-0 leading-relaxed break-words">{children}</p>
+            return <div key={index} className="mb-2.5 last:mb-0 leading-relaxed break-words">{children}</div>
           case 'h1':
             return <h1 key={index} className="text-xl sm:text-2xl font-black text-foreground mt-4 mb-2 leading-snug">{children}</h1>
           case 'h2':
@@ -410,7 +415,7 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
     }
 
     const reactElements = Array.from(doc.body.childNodes).map((node, i) => convertNode(node, i))
-    return <span className={className}>{reactElements}</span>
+    return <div className={className}>{reactElements}</div>
   } catch (err) {
     // fallback
     return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlags(text)}</span>

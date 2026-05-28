@@ -32,13 +32,22 @@ export default async function FeedPage({ searchParams }: PageProps) {
   // Step 1: auth
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Step 2: Parallel fetch user data (profile & approved community memberships)
-  const [profileResult, membershipsResult] = user
+  // Step 2: Parallel fetch user data (profile, community memberships joined with community details, and suggested users)
+  const [profileResult, membershipsResult, suggestedUsers] = user
     ? await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('community_members').select('community_id, role').eq('user_id', user.id).eq('status', 'approved'),
+        supabase
+          .from('profiles')
+          .select('id, username, first_name, last_name, avatar_url, banner_url, bio, updated_at, is_verified, is_gold, default_feed_type, xp')
+          .eq('id', user.id)
+          .single(),
+        supabase
+          .from('community_members')
+          .select('community_id, role, communities(id, name)')
+          .eq('user_id', user.id)
+          .eq('status', 'approved'),
+        getSuggestedUsers(),
       ])
-    : [{ data: null }, { data: [] }]
+    : [{ data: null }, { data: [] }, []]
 
   const profileRaw = profileResult.data
   const profile = enrichProfile(profileRaw)
@@ -51,27 +60,22 @@ export default async function FeedPage({ searchParams }: PageProps) {
   }
 
   const memberships = membershipsResult.data ?? []
-  const memberCommunityIds = memberships.map((m: { community_id: string }) => m.community_id)
   const rolesByCommunityId = Object.fromEntries(
-    memberships.map((m: { community_id: string; role: 'owner' | 'moderator' | 'member' }) => [m.community_id, m.role])
+    memberships.map((m: any) => [m.community_id, m.role])
   ) as Record<string, 'owner' | 'moderator' | 'member'>
 
-  // Step 3: Fetch posts (personalized, community-based, or all), user's communities, and suggested users in parallel
-  const [posts, communitiesResult, suggestedUsers] = await Promise.all([
-    communityId
-      ? getPosts(communityId, activeSort)
-      : (user && activeFeedType === 'following'
-          ? getFollowingFeedPosts(user.id, activeSort)
-          : getFeedPosts(undefined, activeSort)),
-    user && memberCommunityIds.length > 0
-      ? supabase.from('communities').select('id, name').in('id', memberCommunityIds)
-      : Promise.resolve({ data: [] }),
-    user
-      ? getSuggestedUsers()
-      : Promise.resolve([])
-  ])
+  // Extract user's joined communities directly from the memberships query
+  const userCommunities = memberships
+    .map((m: any) => m.communities)
+    .filter(Boolean) as { id: string; name: string }[]
 
-  const userCommunities = (communitiesResult.data ?? []) as { id: string; name: string }[]
+  // Step 3: Fetch posts (personalized, community-based, or all)
+  const posts = communityId
+    ? await getPosts(communityId, activeSort)
+    : (user && activeFeedType === 'following'
+        ? await getFollowingFeedPosts(user.id, activeSort)
+        : await getFeedPosts(undefined, activeSort))
+
 
   return (
     <MainLayout currentUser={profile}>

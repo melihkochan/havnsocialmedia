@@ -23,7 +23,7 @@ export default async function BookmarksPage() {
 
   if (user) {
     const [profileResult, postsResult] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase.from('profiles').select('id, username, first_name, last_name, avatar_url, is_verified, is_gold, updated_at').eq('id', user.id).single(),
       getBookmarkedPosts()
     ])
     profile = profileResult.data

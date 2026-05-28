@@ -768,12 +768,21 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
           </div>
         </div>
       ) : (
-        <Link href={`/post/${displayPost.id}`}>
+        <div
+          onClick={(e) => {
+            const target = e.target as HTMLElement
+            if (target.closest('a, button, select, input, textarea, [role="button"]')) {
+              return
+            }
+            router.push(`/post/${displayPost.id}`)
+          }}
+          className="cursor-pointer"
+        >
           <FormattedMessage
             text={postContent}
             className="text-sm text-foreground leading-relaxed mb-4 block hover:opacity-90 transition-opacity"
           />
-        </Link>
+        </div>
       )}
 
       {/* Image or Video */}

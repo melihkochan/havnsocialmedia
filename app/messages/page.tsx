@@ -18,35 +18,27 @@ export default async function MessagesPage({ searchParams }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Step 1: Parallel fetch profile, conversations, and target profile (if u is present)
+  const [profileResult, initialConversations, targetProfileResult] = await Promise.all([
+    supabase.from('profiles').select('id, username, first_name, last_name, avatar_url, is_verified, is_gold, updated_at').eq('id', user.id).single(),
+    getConversations(),
+    u ? supabase.from('profiles').select('id, username, first_name, last_name, avatar_url, is_verified, is_gold, updated_at').eq('username', u).single() : Promise.resolve({ data: null })
+  ])
 
+  const profile = profileResult.data
   if (!profile) redirect('/login')
 
   const enrichedProfile = enrichProfile(profile)
   if (!enrichedProfile) redirect('/login')
 
-  // Get conversation list
-  const initialConversations = await getConversations()
-
   // Get active chat user if `u` is provided
   let activeChatUser = null
   let initialMessages: any[] = []
 
-  if (u) {
-    const { data: targetProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('username', u)
-      .single()
-
-    if (targetProfile && targetProfile.id !== user.id) {
-      activeChatUser = targetProfile
-      initialMessages = await getMessagesWithUser(targetProfile.id)
-    }
+  const targetProfile = targetProfileResult?.data
+  if (targetProfile && targetProfile.id !== user.id) {
+    activeChatUser = targetProfile
+    initialMessages = await getMessagesWithUser(targetProfile.id)
   }
 
   return (

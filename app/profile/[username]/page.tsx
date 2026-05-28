@@ -92,7 +92,11 @@ export default async function ProfilePage({
   // Step 1: auth + target profile (parallel)
   const [{ data: { user } }, { data: profileResultRow, error }] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.from('profiles').select('*').eq('username', username).single(),
+    supabase
+      .from('profiles')
+      .select('id, username, first_name, last_name, avatar_url, banner_url, bio, updated_at, is_verified, is_gold, xp, show_status, last_seen_at, social_links, follow_requests, is_private')
+      .eq('username', username)
+      .single(),
   ])
 
   if (error || !profileResultRow) {
@@ -115,7 +119,11 @@ export default async function ProfilePage({
     suggestionsResultRow,
   ] = await Promise.all([
     user
-      ? supabase.from('profiles').select('*').eq('id', user.id).single()
+      ? supabase
+          .from('profiles')
+          .select('id, username, first_name, last_name, avatar_url, banner_url, bio, updated_at, is_verified, is_gold')
+          .eq('id', user.id)
+          .single()
       : Promise.resolve({ data: null }),
     // Posts inline — NO separate createClient (limit to first 20 for performance)
     supabase
@@ -125,25 +133,25 @@ export default async function ProfilePage({
       .is('community_id', null)
       .order('created_at', { ascending: false })
       .range(0, 19),
-    // Memberships
+    // Memberships joined with communities directly to avoid waterfall
     supabase
       .from('community_members')
-      .select('community_id, role, status')
+      .select('community_id, role, status, communities(id, name, slug)')
       .eq('user_id', profile.id)
       .eq('status', 'approved'),
     // View count inline — NO separate createClient
     supabase
       .from('profile_views')
-      .select('*', { count: 'exact', head: true }).eq('profile_id', profile.id),
+      .select('id', { count: 'exact', head: true }).eq('profile_id', profile.id),
     // Followers count inline
     supabase
       .from('follows')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('following_id', profile.id),
     // Following count inline
     supabase
       .from('follows')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('follower_id', profile.id),
     user ? supabase.from('follows').select('created_at').eq('follower_id', user.id).eq('following_id', profile.id).maybeSingle() : Promise.resolve({ data: null }),
     user ? supabase.from('follows').select('created_at').eq('follower_id', profile.id).eq('following_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
@@ -205,17 +213,14 @@ export default async function ProfilePage({
     return { ...p, parent_post }
   })
 
-  // Step 3: community names (only if has memberships)
-  const communityIds = (rawMemberships ?? []).map((m: { community_id: string }) => m.community_id)
-  const { data: comms } = communityIds.length > 0
-    ? await supabase.from('communities').select('id, name, slug').in('id', communityIds)
-    : { data: [] as { id: string; name: string; slug: string }[] }
-
-  const commMap = new Map((comms ?? []).map((c: { id: string; name: string; slug: string }) => [c.id, c]))
-  const memberships = (rawMemberships ?? []).map((m: { community_id: string; role: string }) => ({
-    ...m,
-    community: commMap.get(m.community_id) ?? null,
+  // Extract memberships and communities from joined query
+  const memberships = (rawMemberships ?? []).map((m: any) => ({
+    community_id: m.community_id,
+    role: m.role,
+    status: m.status,
+    community: m.communities ?? null
   }))
+  const comms = memberships.map((m: any) => m.community).filter(Boolean) as { id: string; name: string; slug: string }[]
 
   const sortedPosts = isLocked ? [] : sortPostsWithPinned(allPosts.filter((p: any) => !p.content?.includes('\u200B[anlar]') && !p.content?.includes('\u200B[kadraj]')))
   const postCount = sortedPosts.length

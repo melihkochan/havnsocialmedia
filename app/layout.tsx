@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Suspense } from "react";
 import { TopProgressBar } from "@/components/layout/TopProgressBar";
+import { GlobalStoreProvider } from "@/components/providers/GlobalStoreProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -52,7 +53,9 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <TopProgressBar />
           </Suspense>
-          {children}
+          <GlobalStoreProvider>
+            {children}
+          </GlobalStoreProvider>
         </ThemeProvider>
       </body>
     </html>

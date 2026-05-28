@@ -66,9 +66,8 @@ export function PostPreviewBubble({ postId, isOwn }: PostPreviewBubbleProps) {
           .single()
 
         if (!error && data) {
-          // Normalize likes/comments counts since count might come as array
-          const likesCount = (data.likes as any)?.[0]?.count ?? 0
-          const commentsCount = (data.comments as any)?.[0]?.count ?? 0
+          const likesCount = (data as any).likes?.[0]?.count ?? 0
+          const commentsCount = (data as any).comments?.[0]?.count ?? 0
           
           setPost({
             ...data,

@@ -1,0 +1,121 @@
+'use client'
+
+import { useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useGlobalStore } from '@/lib/store/useGlobalStore'
+
+export function GlobalStoreProvider({ children }: { children: React.ReactNode }) {
+  const fetchGlobalData = useGlobalStore((state) => state.fetchGlobalData)
+  const currentUser = useGlobalStore((state) => state.currentUser)
+  const setUnreadNotificationsCount = useGlobalStore((state) => state.setUnreadNotificationsCount)
+  const setUnreadDMsCount = useGlobalStore((state) => state.setUnreadDMsCount)
+  const setOpenSupportTicketsCount = useGlobalStore((state) => state.setOpenSupportTicketsCount)
+
+  // Fetch initial data on mount
+  useEffect(() => {
+    fetchGlobalData()
+  }, [fetchGlobalData])
+
+  // Real-time Postgres subscriptions
+  useEffect(() => {
+    if (!currentUser?.id) return
+
+    const supabase = createClient()
+    const channelToken = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+
+    const fetchCounts = async () => {
+      const [notifs, dms] = await Promise.all([
+        supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id)
+          .eq('is_read', false),
+        supabase
+          .from('direct_messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('receiver_id', currentUser.id)
+          .eq('is_read', false)
+      ])
+      
+      setUnreadNotificationsCount(notifs.count ?? 0)
+      setUnreadDMsCount(dms.count ?? 0)
+    }
+
+    const fetchTicketsCount = async () => {
+      const { isFounder: checkIsFounder } = await import('@/lib/founder')
+      const isUserFounder = checkIsFounder(currentUser)
+      
+      let query = supabase
+        .from('support_tickets')
+        .select('id', { count: 'exact', head: true })
+      
+      if (isUserFounder) {
+        query = query.eq('status', 'open')
+      } else {
+        query = query.eq('user_id', currentUser.id).eq('status', 'replied')
+      }
+      
+      const { count } = await query
+      setOpenSupportTicketsCount(count ?? 0)
+    }
+
+    // Subscribe to DMs
+    const dmChannel = supabase.channel(`global_dms_${currentUser.id}_${channelToken}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'direct_messages' },
+        (payload) => {
+          const newMsg = payload.new as any
+          const oldMsg = payload.old as any
+          if (newMsg?.receiver_id === currentUser.id || oldMsg?.receiver_id === currentUser.id) {
+            fetchCounts()
+          }
+        }
+      )
+      .subscribe()
+
+    // Subscribe to notifications
+    const notifChannel = supabase.channel(`global_notifs_${currentUser.id}_${channelToken}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        (payload) => {
+          const newNotif = payload.new as any
+          const oldNotif = payload.old as any
+          if (newNotif?.user_id === currentUser.id || oldNotif?.user_id === currentUser.id) {
+            fetchCounts()
+          }
+        }
+      )
+      .subscribe()
+
+    // Subscribe to support tickets
+    const supportChannel = supabase.channel(`global_support_tickets_${channelToken}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'support_tickets' },
+        () => {
+          fetchTicketsCount()
+        }
+      )
+      .subscribe()
+
+    // Listen for auth state changes to re-fetch if user changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        fetchGlobalData()
+      } else if (event === 'SIGNED_OUT') {
+        useGlobalStore.getState().resetStore()
+      }
+    })
+
+    return () => {
+      supabase.removeChannel(dmChannel)
+      supabase.removeChannel(notifChannel)
+      supabase.removeChannel(supportChannel)
+      subscription.unsubscribe()
+    }
+  }, [currentUser?.id, fetchGlobalData, setUnreadNotificationsCount, setUnreadDMsCount, setOpenSupportTicketsCount])
+
+  return <>{children}</>
+}
