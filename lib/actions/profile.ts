@@ -487,6 +487,7 @@ export async function completeProfileSetup(formData: FormData) {
   const firstName = (formData.get('first_name') as string | null)?.trim() || null
   const lastName = (formData.get('last_name') as string | null)?.trim() || null
   const googleAvatarUrl = formData.get('google_avatar_url') as string | null
+  const password = (formData.get('password') as string | null)?.trim() || null
 
   if (!username) {
     return { error: 'Kullanıcı adı zorunludur.' }
@@ -496,6 +497,11 @@ export async function completeProfileSetup(formData: FormData) {
   const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/
   if (!usernameRegex.test(username)) {
     return { error: 'Kullanıcı adı 3-30 karakter olmalı, sadece harf, rakam ve alt çizgi (_) içermelidir.' }
+  }
+
+  // Optional password validation
+  if (password !== null && password.length < 8) {
+    return { error: 'Şifre en az 8 karakter olmalıdır.' }
   }
 
   // NSFW validation
@@ -558,6 +564,13 @@ export async function completeProfileSetup(formData: FormData) {
 
   if (updateErr) return { error: updateErr.message }
 
+  // If user set a password, update their Supabase Auth password
+  // This enables them to login later with email + password instead of only OAuth
+  if (password) {
+    const { error: pwErr } = await supabase.auth.updateUser({ password })
+    if (pwErr) return { error: 'Şifre ayarlanamadı: ' + pwErr.message }
+  }
+
   // Set setup status to completed
   const metaRes = await saveProfileMetadata(user.id, { is_setup_completed: true })
   if (metaRes.error) return { error: metaRes.error }
@@ -569,3 +582,4 @@ export async function completeProfileSetup(formData: FormData) {
 
   return { success: true }
 }
+

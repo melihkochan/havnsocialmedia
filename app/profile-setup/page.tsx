@@ -30,6 +30,9 @@ export default async function ProfileSetupPage() {
     redirect('/feed')
   }
 
+  // Detect if user signed up via OAuth (Google/Apple) — no password set
+  const isOAuthUser = !!(user.app_metadata?.provider && user.app_metadata.provider !== 'email')
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
@@ -38,8 +41,13 @@ export default async function ProfileSetupPage() {
           className="absolute -right-16 -top-16 w-44 h-44 rounded-full opacity-[0.03] blur-3xl pointer-events-none"
           style={{ background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)' }}
         />
-        <ProfileSetupClient profile={profile as any} />
+        <ProfileSetupClient
+          profile={profile as any}
+          userEmail={user.email || null}
+          isOAuthUser={isOAuthUser}
+        />
       </div>
     </div>
   )
 }
+

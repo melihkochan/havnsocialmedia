@@ -22,7 +22,7 @@ export async function GET(request: Request) {
           .single()
 
         if (!profile) {
-          // Generate a unique username from email
+          // Brand new OAuth signup — create temporary profile and redirect to setup wizard
           const baseUsername = user.email?.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') || 'user'
           const uniqueSuffix = Math.floor(1000 + Math.random() * 9000)
           const username = `${baseUsername}${uniqueSuffix}`
@@ -44,7 +44,24 @@ export async function GET(request: Request) {
           return NextResponse.redirect(`${origin}/profile-setup`)
         } else {
           const enriched = enrichProfile(profile)
+
+          // If setup is explicitly marked as incomplete, redirect to wizard
           if (enriched && enriched.is_setup_completed === false) {
+            return NextResponse.redirect(`${origin}/profile-setup`)
+          }
+
+          // If the profile bio has NO metadata at all (bio is null or empty, no JSON suffix)
+          // AND there's no first_name set — treat this as an incomplete OAuth signup
+          const hasMetadata = profile.bio && profile.bio.includes('\u200B')
+          const hasName = !!(profile.first_name && profile.first_name.trim())
+
+          if (!hasMetadata && !hasName) {
+            // Mark profile as needing setup
+            await supabase
+              .from('profiles')
+              .update({ bio: `\u200B${JSON.stringify({ is_setup_completed: false })}` })
+              .eq('id', user.id)
+
             return NextResponse.redirect(`${origin}/profile-setup`)
           }
         }
@@ -55,3 +72,4 @@ export async function GET(request: Request) {
 
   return NextResponse.redirect(`${origin}/login?error=OAuth exchange failed`)
 }
+
