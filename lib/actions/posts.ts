@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { sortPostsWithPinned } from '@/lib/sort-posts'
 import { enrichProfile } from '@/lib/profile-enrich'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 export type FeedContext =
   | { type: 'feed'; sortBy?: 'new' | 'popular' }
@@ -31,7 +31,7 @@ export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 
     `)
     .eq('community_id', communityId)
     .order(orderCol, { ascending: false })
-    .limit(PAGE_SIZE)
+    .range(0, 9)
 
   if (error) {
     console.error('getPosts error:', error)
@@ -79,7 +79,7 @@ export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 
     .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
     .is('community_id', null)
     .order(orderCol, { ascending: false })
-    .limit(PAGE_SIZE)
+    .range(0, 9)
 
   if (error) {
     console.error('getFeedPosts error:', error)
@@ -579,7 +579,7 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
     .in('user_id', targetUserIds)
     .is('community_id', null)
     .order(orderCol, { ascending: false })
-    .limit(PAGE_SIZE)
+    .range(0, 9)
 
   if (error) {
     console.error('getFollowingFeedPosts error:', error)

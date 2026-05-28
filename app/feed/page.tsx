@@ -207,7 +207,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
                 ? ({ type: 'following', userId: user.id, sortBy: activeSort } satisfies FeedContext)
                 : ({ type: 'feed', sortBy: activeSort } satisfies FeedContext)
             }
-            initialHasMore={posts.length >= 20}
+            initialHasMore={posts.length >= 10}
           />
         ) : (
           <>

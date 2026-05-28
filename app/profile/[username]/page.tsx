@@ -132,7 +132,7 @@ export default async function ProfilePage({
       .eq('user_id', profile.id)
       .is('community_id', null)
       .order('created_at', { ascending: false })
-      .range(0, 19),
+      .range(0, 9),
     // Memberships joined with communities directly to avoid waterfall
     supabase
       .from('community_members')
@@ -590,7 +590,7 @@ export default async function ProfilePage({
               pinContext={isOwnProfile ? 'profile' : undefined}
               profileUserId={profile.id}
               feedContext={{ type: 'profile', profileUserId: profile.id } satisfies FeedContext}
-              initialHasMore={(posts?.length ?? 0) >= 20}
+              initialHasMore={(posts?.length ?? 0) >= 10}
             />
           </div>
         ) : null}
