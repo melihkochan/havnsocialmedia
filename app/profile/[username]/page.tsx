@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { MainLayout } from '@/components/layout/MainLayout'
+import Image from 'next/image'
 import Link from 'next/link'
 import { PostFeed } from '@/components/havn/PostFeed'
 import type { FeedContext } from '@/lib/actions/posts'
@@ -256,16 +257,24 @@ export default async function ProfilePage({
       <ProfileViewTracker profileId={profile.id} />
       <div className="flex flex-col gap-6 w-full">
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div
-            className="h-32 relative"
-            style={{
-              backgroundImage: profile.banner_url
-                ? `url(${profile.banner_url}?t=${new Date(profile.updated_at).getTime()})`
-                : `linear-gradient(135deg, var(--havn-gradient-start) 0%, var(--havn-gradient-end) 100%)`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          >
+          <div className="h-32 relative">
+            {profile.banner_url ? (
+              <Image
+                src={`${profile.banner_url}?t=${new Date(profile.updated_at).getTime()}`}
+                alt="Kapak Görseli"
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                priority
+                className="object-cover"
+              />
+            ) : (
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `linear-gradient(135deg, var(--havn-gradient-start) 0%, var(--havn-gradient-end) 100%)`,
+                }}
+              />
+            )}
             {!profile.banner_url && (
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `radial-gradient(circle, white 1px, transparent 1px)`, backgroundSize: '24px 24px' }} />
             )}

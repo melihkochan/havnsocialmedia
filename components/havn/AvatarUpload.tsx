@@ -190,10 +190,10 @@ export function AvatarUpload({ currentAvatarUrl, username, onFileSelect }: Avata
     // Convert to file
     canvas.toBlob((blob) => {
       if (blob) {
-        const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+        const file = new File([blob], 'avatar.webp', { type: 'image/webp' })
         onFileSelect(file)
       }
-    }, 'image/jpeg', 0.85)
+    }, 'image/webp', 0.8)
   }, [onFileSelect])
 
   // Generate preset SVG image and pass back to parent
