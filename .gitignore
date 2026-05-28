@@ -46,3 +46,7 @@ next-env.d.ts
 /check-*.js
 /task.md
 /walkthrough.md
+
+# Apple OAuth — private keys & secret generator (never commit these!)
+*.p8
+/generate_apple_secret.js
