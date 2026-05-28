@@ -477,3 +477,95 @@ export async function updateAccentTheme(themeName: string) {
   revalidatePath('/', 'layout')
   return { success: true }
 }
+
+export async function completeProfileSetup(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  const username = (formData.get('username') as string | null)?.trim()
+  const firstName = (formData.get('first_name') as string | null)?.trim() || null
+  const lastName = (formData.get('last_name') as string | null)?.trim() || null
+  const googleAvatarUrl = formData.get('google_avatar_url') as string | null
+
+  if (!username) {
+    return { error: 'Kullanıcı adı zorunludur.' }
+  }
+
+  // Regex validation: 3-30 chars, alphanumeric + underscore
+  const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/
+  if (!usernameRegex.test(username)) {
+    return { error: 'Kullanıcı adı 3-30 karakter olmalı, sadece harf, rakam ve alt çizgi (_) içermelidir.' }
+  }
+
+  // NSFW validation
+  const { containsNsfw } = await import('@/lib/nsfw-filter')
+  if (
+    containsNsfw(username) ||
+    containsNsfw(firstName || '') ||
+    containsNsfw(lastName || '')
+  ) {
+    return { error: 'Seçtiğiniz bilgiler uygunsuz içerik filtrelerimize takıldı.' }
+  }
+
+  // Check username uniqueness
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', username)
+    .neq('id', user.id)
+    .maybeSingle()
+
+  if (existing) {
+    return { error: 'Bu kullanıcı adı zaten alınmış.' }
+  }
+
+  const avatarFile = formData.get('avatar') as File | null
+  let avatarUrl: string | null | undefined = undefined
+
+  if (avatarFile && avatarFile.size > 0) {
+    const ext = avatarFile.name.split('.').pop() || 'webp'
+    const path = `${user.id}/avatar.${ext}`
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type })
+
+    if (uploadError) return { error: 'Profil resmi yüklenemedi: ' + uploadError.message }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(uploadData.path)
+    avatarUrl = publicUrl
+  } else if (googleAvatarUrl) {
+    avatarUrl = googleAvatarUrl
+  }
+
+  const updates: Record<string, any> = {
+    username,
+    first_name: firstName,
+    last_name: lastName,
+    updated_at: new Date().toISOString()
+  }
+
+  if (avatarUrl !== undefined) {
+    updates.avatar_url = avatarUrl
+  }
+
+  const { error: updateErr } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', user.id)
+
+  if (updateErr) return { error: updateErr.message }
+
+  // Set setup status to completed
+  const metaRes = await saveProfileMetadata(user.id, { is_setup_completed: true })
+  if (metaRes.error) return { error: metaRes.error }
+
+  revalidatePath('/profile')
+  revalidatePath('/settings')
+  revalidatePath(`/profile/${username}`)
+  revalidatePath('/', 'layout')
+
+  return { success: true }
+}

@@ -23,6 +23,7 @@ export interface EnrichedProfile {
   is_gold?: boolean
   accent_theme?: string
   last_session_id?: string
+  is_setup_completed?: boolean
 }
 
 export function cleanBio(bio: string | null): string {
@@ -46,6 +47,7 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
   let is_gold = profile.is_gold !== undefined ? !!profile.is_gold : false
   let accent_theme = 'purple'
   let last_session_id = undefined
+  let is_setup_completed = true
   
   let cleanBioText = cleanBio(bio)
 
@@ -66,6 +68,7 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
       if (profile.is_gold === undefined) is_gold = !!meta.is_gold
       if (meta.accent_theme !== undefined) accent_theme = meta.accent_theme
       if (meta.last_session_id !== undefined) last_session_id = meta.last_session_id
+      if (meta.is_setup_completed !== undefined) is_setup_completed = !!meta.is_setup_completed
     } catch (e) {
       // ignore
     }
@@ -85,5 +88,6 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
     is_gold,
     accent_theme,
     last_session_id,
+    is_setup_completed,
   }
 }

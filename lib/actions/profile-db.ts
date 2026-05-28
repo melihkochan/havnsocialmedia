@@ -44,6 +44,7 @@ interface ProfileUpdateMeta {
   is_gold?: boolean
   accent_theme?: string
   last_session_id?: string | null
+  is_setup_completed?: boolean
 }
 
 // Update profile metadata columns in database if they exist, or fallback to bio
@@ -103,15 +104,17 @@ export async function saveProfileMetadata(userId: string, newMeta: ProfileUpdate
       if (newMeta.is_gold !== undefined) updates.is_gold = newMeta.is_gold
     }
 
-    // Keep accent_theme and last_session_id in the bio suffix since there are no native columns for them
+    // Keep accent_theme, last_session_id and is_setup_completed in the bio suffix since there are no native columns for them
     const customMeta: any = {}
     if (newMeta.accent_theme !== undefined) customMeta.accent_theme = newMeta.accent_theme
     if (newMeta.last_session_id !== undefined) customMeta.last_session_id = newMeta.last_session_id
+    if (newMeta.is_setup_completed !== undefined) customMeta.is_setup_completed = newMeta.is_setup_completed
 
-    if (Object.keys(customMeta).length > 0 || (existingMeta && (existingMeta.accent_theme !== undefined || existingMeta.last_session_id !== undefined))) {
+    if (Object.keys(customMeta).length > 0 || (existingMeta && (existingMeta.accent_theme !== undefined || existingMeta.last_session_id !== undefined || existingMeta.is_setup_completed !== undefined))) {
       const mergedCustomMeta: any = {
         accent_theme: customMeta.accent_theme !== undefined ? customMeta.accent_theme : existingMeta.accent_theme,
-        last_session_id: customMeta.last_session_id !== undefined ? customMeta.last_session_id : existingMeta.last_session_id
+        last_session_id: customMeta.last_session_id !== undefined ? customMeta.last_session_id : existingMeta.last_session_id,
+        is_setup_completed: customMeta.is_setup_completed !== undefined ? customMeta.is_setup_completed : existingMeta.is_setup_completed
       }
       
       // If last_session_id is explicitly set to null, delete it

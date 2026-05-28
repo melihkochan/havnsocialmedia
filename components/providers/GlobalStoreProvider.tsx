@@ -16,6 +16,15 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
     fetchGlobalData()
   }, [fetchGlobalData])
 
+  // Redirect users with incomplete setup to the profile setup wizard
+  useEffect(() => {
+    if (currentUser && currentUser.is_setup_completed === false) {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/profile-setup') {
+        window.location.replace('/profile-setup')
+      }
+    }
+  }, [currentUser])
+
   // Real-time Postgres subscriptions
   useEffect(() => {
     if (!currentUser?.id) return

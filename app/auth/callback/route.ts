@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { enrichProfile } from '@/lib/profile-enrich'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
         // Check if user has a profile already
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id')
+          .select('*')
           .eq('id', user.id)
           .single()
 
@@ -37,7 +38,15 @@ export async function GET(request: Request) {
             first_name: firstName || null,
             last_name: lastName || null,
             avatar_url: user.user_metadata?.avatar_url || null,
+            bio: `\u200B${JSON.stringify({ is_setup_completed: false })}`
           })
+          
+          return NextResponse.redirect(`${origin}/profile-setup`)
+        } else {
+          const enriched = enrichProfile(profile)
+          if (enriched && enriched.is_setup_completed === false) {
+            return NextResponse.redirect(`${origin}/profile-setup`)
+          }
         }
       }
       return NextResponse.redirect(`${origin}${next}`)

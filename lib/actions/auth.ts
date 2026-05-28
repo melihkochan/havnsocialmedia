@@ -7,12 +7,40 @@ import { getSessionId } from '@/lib/utils'
 
 export async function signIn(formData: FormData) {
   const supabase = await createClient()
-  const email = formData.get('email') as string
+  const identifier = formData.get('identifier') as string
   const password = formData.get('password') as string
+
+  let email = identifier?.trim() || ''
+
+  if (email && !email.includes('@')) {
+    // Treat as username: look up their profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('username', email)
+      .maybeSingle()
+
+    if (!profile) {
+      return { error: 'Girdiğiniz kullanıcı adı bulunamadı.' }
+    }
+
+    const { createServiceClient } = await import('@/lib/supabase/server')
+    const supabaseAdmin = await createServiceClient()
+    const { data: userData, error: authErr } = await supabaseAdmin.auth.admin.getUserById(profile.id)
+
+    if (authErr || !userData?.user?.email) {
+      return { error: 'Bu kullanıcı adına ait e-posta adresi bulunamadı.' }
+    }
+
+    email = userData.user.email
+  }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
+    if (error.message.includes('Invalid login credentials')) {
+      return { error: 'Geçersiz e-posta/kullanıcı adı veya şifre.' }
+    }
     return { error: error.message }
   }
 
