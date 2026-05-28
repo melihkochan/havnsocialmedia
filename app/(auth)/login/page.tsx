@@ -61,6 +61,18 @@ export default function LoginPage() {
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [identifierValue, setIdentifierValue] = useState('')
   const [passwordValue, setPasswordValue] = useState('')
+  const [isReturningUser, setIsReturningUser] = useState(false)
+
+  // Detect returning vs new visitor via localStorage
+  useEffect(() => {
+    const visited = localStorage.getItem('havn_visited')
+    if (visited) {
+      setIsReturningUser(true)
+    } else {
+      localStorage.setItem('havn_visited', '1')
+      setIsReturningUser(false)
+    }
+  }, [])
 
   const { placeholder: identifierPlaceholder, setFocused: setTypingFocused } = useTypingPlaceholder(
     ['sen@ornek.com', 'kullanici_adin', 'havn_kullanicisi'],
@@ -112,7 +124,7 @@ export default function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05, duration: 0.4 }}
         >
-          Tekrar Hoşgeldin
+          {isReturningUser ? 'Tekrar Hoşgeldin 👋' : 'Hoşgeldin 👋'}
         </motion.h1>
         <motion.p
           className="text-muted-foreground text-sm"
