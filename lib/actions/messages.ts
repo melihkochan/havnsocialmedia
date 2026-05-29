@@ -3,6 +3,7 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { calculateLastActiveStreak, calculateStreak, getIstanbulDateString } from '@/lib/streak-utils'
+import { checkLockdown } from '@/lib/actions/hq-auth'
 
 export async function getUnreadMessagesCount() {
   const supabase = await createClient()
@@ -124,6 +125,10 @@ export async function restoreStreak(otherUserId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   const { data: msgs, error: fetchErr } = await supabase
     .from('direct_messages')
     .select('created_at, sender_id')
@@ -219,6 +224,10 @@ export async function sendDirectMessage(receiverId: string, content: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   if (!content || !content.trim()) {
     return { error: 'Mesaj boş olamaz.' }
   }
@@ -272,6 +281,10 @@ export async function deleteDirectMessage(messageId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   const supabaseAdmin = await createServiceClient()
   const { data: msg } = await supabaseAdmin
     .from('direct_messages')
@@ -301,6 +314,10 @@ export async function editDirectMessage(messageId: string, newContent: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   if (!newContent || !newContent.trim()) {
     return { error: 'Mesaj boş olamaz.' }
@@ -377,6 +394,10 @@ export async function clearConversation(otherUserId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   const supabaseAdmin = await createServiceClient()
   const { error } = await supabaseAdmin

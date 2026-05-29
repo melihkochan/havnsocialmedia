@@ -2,6 +2,7 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { checkLockdown, checkMediaUploadLock } from '@/lib/actions/hq-auth'
 
 export async function getCommunities() {
   const supabase = await createClient()
@@ -34,6 +35,10 @@ export async function createCommunity(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   // Community Approval check
   const { data: approvalSetting } = await supabase
@@ -112,6 +117,10 @@ export async function joinCommunity(communityId: string, communityType: string) 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   const status = communityType === 'request_to_join' ? 'pending' : 'approved'
 
   const { error } = await supabase.from('community_members').insert({
@@ -149,6 +158,10 @@ export async function leaveCommunity(communityId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   const { error } = await supabase
     .from('community_members')
     .delete()
@@ -167,6 +180,17 @@ export async function updateCommunitySettings(communityId: string, formData: For
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
+  const avatarFile = formData.get('avatar') as File | null
+  const bannerFile = formData.get('banner') as File | null
+
+  if (((avatarFile && avatarFile.size > 0) || (bannerFile && bannerFile.size > 0)) && await checkMediaUploadLock()) {
+    return { error: 'Platform genelinde medya/görsel yüklemeleri acil durum nedeniyle geçici olarak kapatılmıştır.' }
+  }
 
   // Check platform role first
   const { data: platformProfile } = await supabase
@@ -197,8 +221,7 @@ export async function updateCommunitySettings(communityId: string, formData: For
   const rulesStr = formData.get('rules') as string | null
   const announcement = formData.get('announcement') as string | null
   const accentColor = formData.get('accent_color') as string | null
-  const avatarFile = formData.get('avatar') as File | null
-  const bannerFile = formData.get('banner') as File | null
+
 
   // Get current community to check slug/name
   const { data: currentComm } = await supabase
@@ -307,6 +330,10 @@ export async function approveMembership(communityId: string, userId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   // Verify that the current user is owner or moderator in this community
   const { data: currentMember } = await supabase
     .from('community_members')
@@ -348,6 +375,10 @@ export async function rejectMembership(communityId: string, userId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   // Verify that the current user is owner or moderator in this community
   const { data: currentMember } = await supabase
     .from('community_members')
@@ -387,6 +418,10 @@ export async function updateMemberRole(communityId: string, targetUserId: string
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   // Verify that the current user is the owner (only owners can promote/demote mods)
   const { data: currentMember } = await supabase
     .from('community_members')
@@ -420,6 +455,10 @@ export async function removeMember(communityId: string, targetUserId: string) {
   const serviceClient = await createServiceClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   // Verify that the current user is owner or moderator
   const { data: currentMember } = await supabase

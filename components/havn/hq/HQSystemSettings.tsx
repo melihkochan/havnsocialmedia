@@ -23,6 +23,8 @@ export function HQSystemSettings() {
           registration_open: data.registration_open !== false, // default true
           slow_mode_active: !!data.slow_mode_active,
           community_approval_required: !!data.community_approval_required,
+          lockdown_mode: !!data.lockdown_mode,
+          media_upload_lock: !!data.media_upload_lock,
         })
       } catch (err) {
         console.error('Failed to load settings:', err)
@@ -35,7 +37,7 @@ export function HQSystemSettings() {
 
   const handleToggle = (key: keyof typeof settings) => {
     const newValue = !settings[key]
-    
+
     // Optimistic update
     setSetting(key, newValue)
 
@@ -63,6 +65,22 @@ export function HQSystemSettings() {
   }
 
   const settingItems = [
+    {
+      key: 'lockdown_mode' as const,
+      label: '🚨 Acil Durum Modu (Lockdown)',
+      description: 'Tüm platformu anlık olarak salt okunur (read-only) moduna alır. Yeni gönderi, yorum, DM gönderilemez ve profiller değiştirilemez.',
+      icon: Shield,
+      color: 'text-red-500 bg-red-500/10 border-red-500/20',
+      activeColor: 'bg-red-600',
+    },
+    {
+      key: 'media_upload_lock' as const,
+      label: '📁 Medya Yükleme Kilidi',
+      description: 'Platform genelinde her türlü görsel, video veya dosya yüklenmesini devre dışı bırakır. Metin paylaşımları açıktır.',
+      icon: Shield,
+      color: 'text-orange-500 bg-orange-500/10 border-orange-500/20',
+      activeColor: 'bg-orange-500',
+    },
     {
       key: 'maintenance_mode' as const,
       label: 'Bakım Modu',
@@ -113,11 +131,10 @@ export function HQSystemSettings() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className={`flex items-center gap-2 p-4 rounded-xl border text-xs font-semibold ${
-            feedback.type === 'success'
+          className={`flex items-center gap-2 p-4 rounded-xl border text-xs font-semibold ${feedback.type === 'success'
               ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
               : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
-          }`}
+            }`}
         >
           {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
           <span>{feedback.message}</span>
@@ -157,14 +174,12 @@ export function HQSystemSettings() {
                   className="relative focus:outline-none cursor-pointer disabled:opacity-50"
                 >
                   <div
-                    className={`w-11 h-6 rounded-full transition-colors duration-300 ${
-                      isActive ? item.activeColor : 'bg-muted border border-border'
-                    }`}
+                    className={`w-11 h-6 rounded-full transition-colors duration-300 ${isActive ? item.activeColor : 'bg-muted border border-border'
+                      }`}
                   >
                     <div
-                      className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 absolute top-1 left-1 ${
-                        isActive ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 absolute top-1 left-1 ${isActive ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                     />
                   </div>
                 </button>

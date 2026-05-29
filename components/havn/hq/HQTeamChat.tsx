@@ -440,47 +440,55 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
         
         <div className="flex-1 overflow-y-auto space-y-3 pr-0.5 custom-scrollbar min-h-0">
           {filtered.map((note: any) => (
-            <div key={note.id} className="p-3.5 rounded-xl border border-white/5 bg-[#0e0e1a]/40 hover:bg-[#0e0e1a]/75 hover:border-white/10 transition-all flex flex-col gap-2 relative group">
+            <div 
+              key={note.id} 
+              className={`p-4 rounded-2xl border transition-all flex flex-col gap-2.5 relative group shadow-md ${
+                note.type === 'announcement'
+                  ? 'bg-rose-950/20 border-rose-500/20 hover:border-rose-500/40 hover:bg-rose-950/30'
+                  : 'bg-[#121225]/90 border-white/10 hover:border-primary/40 hover:bg-[#15152c]'
+              }`}
+            >
               <div className="flex items-center justify-between">
-                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
                   note.type === 'announcement'
-                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                    : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                 }`}>
                   {note.type === 'announcement' ? 'Duyuru' : 'Not'}
                 </span>
                 
                 <button
                   onClick={() => handleDeleteNote(note.id)}
-                  className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-rose-500/10 transition-all cursor-pointer"
+                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-all cursor-pointer"
                   title="Sil"
                 >
-                  <Trash2 size={11} />
+                  <Trash2 size={12} />
                 </button>
               </div>
               
-              <div>
-                <h4 className="text-xs font-bold text-white leading-snug">{note.title}</h4>
-                <p className="text-[10px] text-slate-400 mt-1 leading-relaxed whitespace-pre-wrap">{note.content}</p>
+              <div className="space-y-1">
+                <h4 className="text-xs font-black text-white leading-snug tracking-wide">{note.title}</h4>
+                <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-medium">{note.content}</p>
               </div>
 
-              <div className="mt-1 pt-2 border-t border-white/[0.03] flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-[8px] text-slate-500 font-mono">
-                  <span>Ekleme: {note.created_by?.name || 'Yetkili'}</span>
+              <div className="mt-1 pt-2.5 border-t border-white/5 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[9px] text-slate-400 font-mono">
+                  <span className="font-semibold">Ekleme: {note.created_by?.name || 'Yetkili'}</span>
                   <span>{new Date(note.created_at).toLocaleDateString('tr-TR')}</span>
                 </div>
                 {note.assigned_to && (
-                  <div className="text-[8px] text-purple-400 font-mono">
+                  <div className="text-[9px] text-purple-300 font-mono font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
                     Sorumlu: @{note.assigned_to}
                   </div>
                 )}
               </div>
 
-              <div className="mt-2 flex gap-1 pt-1.5 border-t border-white/[0.03]">
+              <div className="mt-2 flex gap-1.5 pt-2 border-t border-white/5">
                 {statusKey === 'todo' && (
                   <button
                     onClick={() => handleUpdateNoteStatus(note.id, 'inprogress')}
-                    className="flex-1 py-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/10 hover:border-blue-500/20 text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                    className="flex-1 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/10 hover:border-blue-500/20 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                   >
                     Başlat
                   </button>
@@ -489,13 +497,13 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                   <>
                     <button
                       onClick={() => handleUpdateNoteStatus(note.id, 'todo')}
-                      className="flex-1 py-1 rounded bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/10 hover:border-slate-500/20 text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                      className="flex-1 py-1.5 rounded-xl bg-slate-500/10 hover:bg-slate-500/20 text-slate-350 border border-slate-500/10 hover:border-slate-500/20 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                     >
                       Geri Al
                     </button>
                     <button
                       onClick={() => handleUpdateNoteStatus(note.id, 'completed')}
-                      className="flex-1 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/10 hover:border-emerald-500/20 text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                      className="flex-1 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/10 hover:border-emerald-500/20 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                     >
                       Tamamla
                     </button>
@@ -504,7 +512,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                 {statusKey === 'completed' && (
                   <button
                     onClick={() => handleUpdateNoteStatus(note.id, 'inprogress')}
-                    className="flex-1 py-1 rounded bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/10 hover:border-slate-500/20 text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                    className="flex-1 py-1.5 rounded-xl bg-slate-500/10 hover:bg-slate-500/20 text-slate-350 border border-slate-500/10 hover:border-slate-500/20 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                   >
                     Yeniden Aç
                   </button>
@@ -884,66 +892,65 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="p-4 border-b border-border/60 bg-muted/15 flex-shrink-0"
+                  className="p-3 border-b border-border/60 bg-muted/15 flex-shrink-0"
                 >
-                  <form onSubmit={handleAddNote} className="space-y-3 max-w-xl">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Not Başlığı</label>
-                        <input
-                          type="text"
-                          required
-                          value={newNoteTitle}
-                          onChange={(e) => setNewNoteTitle(e.target.value)}
-                          placeholder="Örn: 2X XP Aktifleştirme"
-                          className="w-full px-3 py-2 rounded-xl border border-border bg-background/55 text-xs text-foreground outline-none focus:border-primary transition-all"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Kategori</label>
-                          <select
-                            value={newNoteType}
-                            onChange={(e) => setNewNoteType(e.target.value as any)}
-                            className="w-full px-3 py-2 rounded-xl border border-border bg-background/55 text-xs text-foreground outline-none focus:border-primary transition-all"
-                          >
-                            <option value="note">Not</option>
-                            <option value="announcement">Duyuru</option>
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Sorumlu (@)</label>
-                          <input
-                            type="text"
-                            value={newNoteAssigned}
-                            onChange={(e) => setNewNoteAssigned(e.target.value)}
-                            placeholder="Kullanıcı adı"
-                            className="w-full px-3 py-2 rounded-xl border border-border bg-background/55 text-xs text-foreground outline-none focus:border-primary transition-all"
-                          />
-                        </div>
-                      </div>
+                  <form onSubmit={handleAddNote} className="flex flex-col gap-3 max-w-2xl bg-muted/10 p-3.5 border border-border/40 rounded-2xl">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Title */}
+                      <input
+                        type="text"
+                        required
+                        value={newNoteTitle}
+                        onChange={(e) => setNewNoteTitle(e.target.value)}
+                        placeholder="Not Başlığı (örn: 2X XP Aktifleştirme)"
+                        className="flex-1 min-w-[200px] px-3.5 py-2 rounded-xl border border-border/60 bg-[#0e0e1a]/80 text-xs text-foreground outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
+                      />
+                      
+                      {/* Category */}
+                      <select
+                        value={newNoteType}
+                        onChange={(e) => setNewNoteType(e.target.value as any)}
+                        className="w-32 px-3 py-2 rounded-xl border border-border/60 bg-[#0e0e1a]/80 text-xs text-foreground outline-none focus:border-primary transition-all cursor-pointer"
+                      >
+                        <option value="note">Not</option>
+                        <option value="announcement">Duyuru</option>
+                      </select>
+
+                      {/* Assignee Selection (Dropdown of Team Members) */}
+                      <select
+                        value={newNoteAssigned}
+                        onChange={(e) => setNewNoteAssigned(e.target.value)}
+                        className="w-48 px-3 py-2 rounded-xl border border-border/60 bg-[#0e0e1a]/80 text-xs text-foreground outline-none focus:border-primary transition-all cursor-pointer"
+                      >
+                        <option value="">Atanmamış (Sorumlu Yok)</option>
+                        {teamMembers.map((m) => (
+                          <option key={m.id} value={m.username}>
+                            @{m.username} ({[m.first_name, m.last_name].filter(Boolean).join(' ') || 'Yetkili'})
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Detaylar / İçerik</label>
-                      <textarea
+                    {/* Details input and Add button */}
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
                         required
-                        rows={2}
                         value={newNoteContent}
                         onChange={(e) => setNewNoteContent(e.target.value)}
                         placeholder="Yapılacak işin açıklaması veya duyuru detayları..."
-                        className="w-full px-3 py-2 rounded-xl border border-border bg-background/55 text-xs text-foreground outline-none focus:border-primary transition-all resize-none"
+                        className="flex-1 px-3.5 py-2 rounded-xl border border-border/60 bg-[#0e0e1a]/80 text-xs text-foreground outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                       />
-                    </div>
 
-                    <button
-                      type="submit"
-                      disabled={addingNote}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      {addingNote ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                      <span>Notu Panoya Ekle</span>
-                    </button>
+                      <button
+                        type="submit"
+                        disabled={addingNote}
+                        className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-primary hover:bg-primary/95 text-white transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 flex-shrink-0 shadow-md shadow-primary/10"
+                      >
+                        {addingNote ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                        <span>Not Ekle</span>
+                      </button>
+                    </div>
                   </form>
                 </motion.div>
               )}

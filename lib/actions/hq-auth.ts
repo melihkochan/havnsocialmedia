@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { isAdmin, isStaff } from '@/lib/founder'
 
@@ -11,7 +11,7 @@ export async function requireHQAccess(bypassSudo = false) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    redirect('/404-not-found-__havn__')
+    notFound()
   }
 
   const { data: profile } = await supabase
@@ -22,7 +22,7 @@ export async function requireHQAccess(bypassSudo = false) {
 
   if (!profile || !isStaff(profile)) {
     // Yetkisiz erişimde sanki sayfa hiç yokmuş gibi 404 döner
-    redirect('/404-not-found-__havn__')
+    notFound()
   }
 
   if (!bypassSudo) {
@@ -34,6 +34,30 @@ export async function requireHQAccess(bypassSudo = false) {
   }
 
   return profile
+}
+
+/** Acil Durum Modu (Lockdown) kontrolü */
+export async function checkLockdown() {
+  const supabase = await createClient()
+  const { data: setting } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'lockdown_mode')
+    .maybeSingle()
+
+  return setting && (setting.value === true || setting.value === 'true')
+}
+
+/** Medya Yükleme Kilidi kontrolü */
+export async function checkMediaUploadLock() {
+  const supabase = await createClient()
+  const { data: setting } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'media_upload_lock')
+    .maybeSingle()
+
+  return setting && (setting.value === true || setting.value === 'true')
 }
 
 /** HQ Yönetim Paneline girmeden önce şifre doğrulaması yapar (Sudo Mode) */

@@ -73,6 +73,7 @@ interface SidebarProps {
     bio?: string | null;
     is_gold?: boolean;
     is_verified?: boolean;
+    role?: 'founder' | 'admin' | 'moderator' | 'member' | null;
   }) | null;
   unreadCount?: number;
   unreadMessagesCount?: number;
@@ -1180,8 +1181,8 @@ export function Sidebar({
             )}
           </AnimatePresence>
 
-          {/* Trigger button */}
-          <button
+          {/* Trigger div */}
+          <div
             onMouseEnter={() => isCollapsed && setShowHoverCard(true)}
             onMouseLeave={() => isCollapsed && setShowHoverCard(false)}
             onClick={() => {
@@ -1193,27 +1194,53 @@ export function Sidebar({
               }
             }}
             className={cn(
-              "flex items-center transition-all duration-300 cursor-pointer text-left border border-border/30 bg-accent/15 hover:bg-accent/40 shadow-sm hover:shadow active:scale-[0.98]",
+              "flex items-center transition-all duration-300 cursor-pointer text-left border border-border/30 bg-accent/15 hover:bg-accent/40 shadow-sm hover:shadow active:scale-[0.98] select-none",
               isCollapsed
-                ? "justify-center p-0.5 w-11 h-11 rounded-full mx-auto"
-                : "gap-3 px-3 py-2.5 rounded-2xl w-full"
+                ? "justify-center p-0.5 w-11 h-11 rounded-full mx-auto relative"
+                : "gap-3 px-3 py-2.5 rounded-2xl w-full relative"
             )}
           >
             {isCollapsed ? (
-              <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 flex-shrink-0">
-                <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} updatedAt={currentUser.updated_at} />
-              </div>
-            ) : (
-              <>
-                <div className="flex-1 min-w-0 pl-1">
-                  <ProfileName profile={currentUser} layout="stacked" nameClassName="text-sm font-bold" showHandle={true} />
-                </div>
+              <div className="relative">
                 <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 flex-shrink-0">
                   <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} updatedAt={currentUser.updated_at} />
                 </div>
+                {['founder', 'admin', 'moderator'].includes(currentUser.role || '') && (
+                  <Link
+                    href="/havn-hq-control"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground border border-background flex items-center justify-center shadow-lg hover:scale-110 transition-transform z-10"
+                    title="HQ Kontrol Odası"
+                  >
+                    <Shield size={10} />
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 flex-shrink-0">
+                  <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} updatedAt={currentUser.updated_at} />
+                </div>
+                <div className="flex-1 min-w-0 pl-1">
+                  <ProfileName profile={currentUser} layout="stacked" nameClassName="text-sm font-bold" showHandle={true} />
+                </div>
+                {['founder', 'admin', 'moderator'].includes(currentUser.role || '') && (
+                  <Link
+                    href="/havn-hq-control"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="p-1.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20 select-none flex items-center justify-center flex-shrink-0 group/hq"
+                    title="HQ Kontrol Odası"
+                  >
+                    <Shield size={16} className="text-muted-foreground group-hover/hq:text-primary group-hover/hq:scale-110 transition-all" />
+                  </Link>
+                )}
               </>
             )}
-          </button>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-2 items-center w-full mt-auto">

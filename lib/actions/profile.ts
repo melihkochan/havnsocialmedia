@@ -3,6 +3,7 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { enrichProfile } from '@/lib/profile-enrich'
+import { checkLockdown, checkMediaUploadLock } from '@/lib/actions/hq-auth'
 import type { EnrichedProfile } from '@/lib/profile-enrich'
 import { saveProfileMetadata, checkDbHasVerificationColumns } from '@/lib/actions/profile-db'
 import { isFounder } from '@/lib/founder'
@@ -50,6 +51,10 @@ export async function updateProfile(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   const username = formData.get('username') as string
   const firstName = (formData.get('first_name') as string | null)?.trim() || null
   const lastName = (formData.get('last_name') as string | null)?.trim() || null
@@ -70,6 +75,10 @@ export async function updateProfile(formData: FormData) {
 
   const avatarFile = formData.get('avatar') as File | null
   const bannerFile = formData.get('banner') as File | null
+
+  if (((avatarFile && avatarFile.size > 0) || (bannerFile && bannerFile.size > 0)) && await checkMediaUploadLock()) {
+    return { error: 'Platform genelinde medya/görsel yüklemeleri acil durum nedeniyle geçici olarak kapatılmıştır.' }
+  }
 
   // New settings fields for metadata
   const isPrivate = formData.get('is_private') === 'true'
@@ -210,11 +219,15 @@ export async function changePassword(currentPassword: string, newPassword: strin
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user?.email) return { error: 'Kullanıcı bulunamadı.' }
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   // Verify current password by signing in
   const { error: verifyError } = await supabase.auth.signInWithPassword({
-    email: user.email,
+    email: user.email!,
     password: currentPassword,
   })
 
@@ -230,6 +243,10 @@ export async function updateDefaultFeedType(feedType: 'for_you' | 'following') {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   const res = await saveProfileMetadata(user.id, { default_feed_type: feedType })
   if (res.error) return { error: 'Besleme tercihi kaydedilemedi: ' + res.error }
@@ -478,6 +495,10 @@ export async function updateAccentTheme(themeName: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   const res = await saveProfileMetadata(user.id, { accent_theme: themeName })
   if (res.error) return { error: res.error }
   
@@ -491,6 +512,10 @@ export async function completeProfileSetup(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   const username = (formData.get('username') as string | null)?.trim()
   const firstName = (formData.get('first_name') as string | null)?.trim() || null
@@ -546,6 +571,9 @@ export async function completeProfileSetup(formData: FormData) {
   let avatarUrl: string | null | undefined = undefined
 
   if (avatarFile && avatarFile.size > 0) {
+    if (await checkMediaUploadLock()) {
+      return { error: 'Platform genelinde medya/görsel yüklemeleri acil durum nedeniyle geçici olarak kapatılmıştır.' }
+    }
     const ext = avatarFile.name.split('.').pop() || 'webp'
     const path = `${user.id}/avatar.${ext}`
     const { data: uploadData, error: uploadError } = await supabase.storage

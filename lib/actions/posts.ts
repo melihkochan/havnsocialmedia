@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sortPostsWithPinned } from '@/lib/sort-posts'
 import { enrichProfile } from '@/lib/profile-enrich'
+import { checkLockdown, checkMediaUploadLock } from '@/lib/actions/hq-auth'
 
 const PAGE_SIZE = 10
 
@@ -103,6 +104,10 @@ export async function createPost(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   // Slow Mode Check
   const { data: slowModeSetting } = await supabase
     .from('system_settings')
@@ -138,6 +143,9 @@ export async function createPost(formData: FormData) {
   // Handle image upload if present
   const imageFile = formData.get('image') as File | null
   if (imageFile && imageFile.size > 0) {
+    if (await checkMediaUploadLock()) {
+      return { error: 'Platform genelinde medya/görsel yüklemeleri acil durum nedeniyle geçici olarak kapatılmıştır.' }
+    }
     if (imageFile.name && containsNsfw(imageFile.name)) {
       return { error: 'Görsel ismi NSFW/uygunsuz kelimeler içerdiği için engellenmiştir.' }
     }
@@ -179,6 +187,10 @@ export async function deletePost(postId: string, reason?: string | null) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   const { data: post, error: fetchError } = await supabase
     .from('posts')
@@ -257,6 +269,10 @@ export async function togglePinPost(postId: string, scope: 'community' | 'profil
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   const { data: post, error: fetchError } = await supabase
     .from('posts')
@@ -365,6 +381,10 @@ export async function toggleLike(postId: string, reaction: string = 'like', forc
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   // Check if already liked
   const { data: existing } = await supabase
     .from('likes')
@@ -444,6 +464,10 @@ export async function repostPost(postId: string, communityId: string | null) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   // Check if already reposted
   const { data: existing } = await supabase
     .from('posts')
@@ -489,6 +513,10 @@ export async function toggleBookmark(postId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   // Check if already bookmarked
   const { data: existing } = await supabase
@@ -556,6 +584,10 @@ export async function editPost(postId: string, content: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   // NSFW check
   const { containsNsfw } = await import('@/lib/nsfw-filter')

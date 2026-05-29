@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { checkLockdown } from '@/lib/actions/hq-auth'
 
 export async function getComments(postId: string) {
   const supabase = await createClient()
@@ -20,6 +21,10 @@ export async function createComment(postId: string, content: string, parentComme
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   // Slow Mode Check
   const { data: slowModeSetting } = await supabase
@@ -94,6 +99,10 @@ export async function deleteComment(commentId: string, postId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
   // Check global admin/founder status
   const { data: currentUserProfile } = await supabase
     .from('profiles')
@@ -131,6 +140,10 @@ export async function toggleCommentLike(commentId: string, postId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
 
   // Check if already liked
   const { data: existing } = await supabase

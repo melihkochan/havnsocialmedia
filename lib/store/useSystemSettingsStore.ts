@@ -7,6 +7,8 @@ export interface SystemSettings {
   registration_open: boolean
   slow_mode_active: boolean
   community_approval_required: boolean
+  lockdown_mode: boolean
+  media_upload_lock: boolean
 }
 
 interface SystemSettingsState {
@@ -24,6 +26,8 @@ const defaultSettings: SystemSettings = {
   registration_open: true,
   slow_mode_active: false,
   community_approval_required: false,
+  lockdown_mode: false,
+  media_upload_lock: false,
 }
 
 export const useSystemSettingsStore = create<SystemSettingsState>((set) => ({
