@@ -51,6 +51,40 @@ const COLOR_PRESETS = [
   { name: '#0891b2', color: '#0891b2', label: 'Cyan' },
 ]
 
+function CommunityItemIcon({ id, name, accentColor, cacheBust }: { id: string; name: string; accentColor: string | null; cacheBust?: number }) {
+  const [error, setError] = useState(false)
+  
+  useEffect(() => {
+    setError(false)
+  }, [id])
+
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/communities/${id}/avatar`
+
+  if (error) {
+    return (
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm text-white flex-shrink-0 shadow-inner select-none"
+        style={{
+          background: accentColor && accentColor !== 'default'
+            ? accentColor
+            : `linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))`
+        }}
+      >
+        {name.charAt(0).toUpperCase()}
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={cacheBust ? `${url}?t=${cacheBust}` : `${url}?t=${id}`}
+      alt={name}
+      onError={() => setError(true)}
+      className="w-10 h-10 rounded-xl object-cover flex-shrink-0 shadow-inner select-none"
+    />
+  )
+}
+
 export function HQCommunitiesManagement({
   initialCommunities
 }: {
@@ -67,6 +101,9 @@ export function HQCommunitiesManagement({
   const [rules, setRules] = useState<string[]>([])
   const [newRule, setNewRule] = useState('')
   const [announcement, setAnnouncement] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [bannerFile, setBannerFile] = useState<File | null>(null)
+  const [cacheBust, setCacheBust] = useState(Date.now())
   
   const [isPending, startTransition] = useTransition()
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -85,6 +122,8 @@ export function HQCommunitiesManagement({
       )
       setAnnouncement(selectedCommunity.announcement || '')
       setFeedback(null)
+      setAvatarFile(null)
+      setBannerFile(null)
     }
   }, [selectedId, selectedCommunity])
 
@@ -104,12 +143,17 @@ export function HQCommunitiesManagement({
       fd.set('rules', JSON.stringify(rules))
       fd.set('announcement', announcement.trim())
       fd.set('accent_color', selectedAccent)
+      if (avatarFile) fd.set('avatar', avatarFile)
+      if (bannerFile) fd.set('banner', bannerFile)
 
       const res = await updateCommunitySettings(selectedCommunity.id, fd)
       if (res.error) {
         setFeedback({ type: 'error', text: `Hata: ${res.error}` })
       } else {
         setFeedback({ type: 'success', text: 'Topluluk ayarları başarıyla güncellendi.' })
+        setCacheBust(Date.now())
+        setAvatarFile(null)
+        setBannerFile(null)
         // Update local state
         setCommunities(prev => prev.map(c => c.id === selectedCommunity.id ? {
           ...c,
@@ -173,16 +217,7 @@ export function HQCommunitiesManagement({
                     : "bg-white/[0.01] border-white/5 hover:bg-white/[0.02] text-slate-400 hover:text-white"
                 )}
               >
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm text-white flex-shrink-0 shadow-inner"
-                  style={{
-                    background: c.accent_color && c.accent_color !== 'default'
-                      ? c.accent_color
-                      : `linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))`
-                  }}
-                >
-                  {initials}
-                </div>
+                <CommunityItemIcon id={c.id} name={c.name} accentColor={c.accent_color || null} cacheBust={cacheBust} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs font-bold truncate block">{c.name}</span>
@@ -262,6 +297,59 @@ export function HQCommunitiesManagement({
 
               {/* Form Settings List */}
               <div className="space-y-6">
+                {/* LOGO & BANNER UPLOAD */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-white/5">
+                  {/* Community Logo */}
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Topluluk Simgesi</label>
+                    <div className="flex items-center gap-3">
+                      <div className="relative group">
+                        <CommunityItemIcon id={selectedCommunity.id} name={selectedCommunity.name} accentColor={selectedAccent} cacheBust={cacheBust} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) setAvatarFile(file)
+                          }}
+                          className="text-[10px] text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-white/5 file:text-white hover:file:bg-white/10 file:cursor-pointer"
+                        />
+                        {avatarFile && <span className="text-[10px] text-emerald-400 font-bold">✓ {avatarFile.name} yüklenecek</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Community Banner */}
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Kapak Görseli (Banner)</label>
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-10 rounded-xl bg-slate-900 border border-white/5 overflow-hidden flex items-center justify-center flex-shrink-0">
+                        <img
+                          src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/communities/${selectedCommunity.id}/banner?t=${cacheBust}`}
+                          alt="Banner"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none'
+                          }}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) setBannerFile(file)
+                          }}
+                          className="text-[10px] text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-white/5 file:text-white hover:file:bg-white/10 file:cursor-pointer"
+                        />
+                        {bannerFile && <span className="text-[10px] text-emerald-400 font-bold">✓ {bannerFile.name} yüklenecek</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 {/* TOPLULUK TÜRÜ */}
                 <div className="space-y-2">
                   <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">Topluluk Türü</h4>

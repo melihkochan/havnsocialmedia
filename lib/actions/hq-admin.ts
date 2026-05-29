@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 // ── Genel İstatistikler ──────────────────────────────────────────────────────
 
 export async function getHQOverviewStats() {
+  const startTime = Date.now()
   const supabase = await createServiceClient()
 
   const now = new Date()
@@ -16,6 +17,7 @@ export async function getHQOverviewStats() {
   const [
     totalUsersRes,
     onlineUsersRes,
+    weeklyActiveRes,
     weeklyPostsRes,
     dailyPostsRes,
     openTicketsRes,
@@ -26,9 +28,11 @@ export async function getHQOverviewStats() {
     repliedTicketsRes,
     totalCommunitiesRes,
     totalSuggestionsRes,
+    settingsRes,
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('updated_at', fiveMinutesAgo),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('updated_at', sevenDaysAgo),
     supabase.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
     supabase.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
     supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
@@ -39,7 +43,29 @@ export async function getHQOverviewStats() {
     supabase.from('support_tickets').select('*', { count: 'exact', head: true }).in('status', ['replied', 'closed']),
     supabase.from('communities').select('*', { count: 'exact', head: true }),
     supabase.from('suggestions').select('*', { count: 'exact', head: true }),
+    supabase.from('system_settings').select('key, value'),
   ])
+
+  const latency = Date.now() - startTime
+
+  // Extract settings
+  const settingsMap: Record<string, boolean> = {}
+  if (settingsRes.data) {
+    settingsRes.data.forEach((row: any) => {
+      settingsMap[row.key] = row.value === true || row.value === 'true'
+    })
+  }
+
+  const slowModeActive = !!settingsMap['slow_mode_active']
+  const registrationOpen = settingsMap['registration_open'] !== false // default true
+  const doubleXpActive = !!settingsMap['double_xp_active']
+
+  const totalUsers = totalUsersRes.count ?? 0
+  const onlineUsers = onlineUsersRes.count ?? 0
+  const weeklyActive = weeklyActiveRes.count ?? 0
+
+  const userGrowthPct = totalUsers > 0 ? (weeklyActive / totalUsers) * 100 : 0
+  const activeGrowthPct = weeklyActive > 0 ? (onlineUsers / weeklyActive) * 100 : 0
 
   // Real OS metrics calculation using node's os module
   let cpuPct = 12
@@ -74,8 +100,9 @@ export async function getHQOverviewStats() {
   }
 
   return {
-    totalUsers: totalUsersRes.count ?? 0,
-    onlineUsers: onlineUsersRes.count ?? 0,
+    totalUsers,
+    onlineUsers,
+    weeklyActive,
     weeklyPosts: weeklyPostsRes.count ?? 0,
     dailyPosts: dailyPostsRes.count ?? 0,
     openTickets: openTicketsRes.count ?? 0,
@@ -91,6 +118,12 @@ export async function getHQOverviewStats() {
     ramTotal: totalMemGb,
     ramProgress: memPct,
     uptime: uptimeString,
+    latency,
+    slowModeActive,
+    registrationOpen,
+    doubleXpActive,
+    userGrowthPct,
+    activeGrowthPct,
   }
 }
 

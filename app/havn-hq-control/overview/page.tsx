@@ -1,6 +1,7 @@
-import { getHQOverviewStats } from '@/lib/actions/hq-admin'
+import { getHQOverviewStats, getHourlyActivity } from '@/lib/actions/hq-admin'
 import { requireHQAccess } from '@/lib/actions/hq-auth'
 import { HQSystemLog } from '@/components/havn/hq/HQSystemLog'
+import { HQBarChart } from '@/components/havn/hq/HQCharts'
 import { Users, Activity, FileText, Ticket, Server, Shield, Cpu, HardDrive } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -89,7 +90,10 @@ function StatusCard({ label, value, status }: { label: string; value: string; st
 
 export default async function HQOverviewPage() {
   await requireHQAccess()
-  const stats = await getHQOverviewStats()
+  const [stats, hourlyData] = await Promise.all([
+    getHQOverviewStats(),
+    getHourlyActivity(),
+  ])
 
   return (
     <div className="w-full p-8 space-y-8">
@@ -138,14 +142,14 @@ export default async function HQOverviewPage() {
           value={stats.totalUsers}
           icon={Users}
           color="#a78bfa"
-          sub="Platforma kayıtlı tüm kullanıcılar"
+          sub={`+${stats.userGrowthPct.toFixed(1)}% haftalık aktif katılım`}
         />
         <MetricCard
           title="Aktif & Çevrimiçi"
           value={stats.onlineUsers}
           icon={Activity}
           color="#34d399"
-          sub="Son 5 dakikada aktif olanlar"
+          sub={`%${stats.activeGrowthPct.toFixed(1)} anlık/haftalık oran`}
         />
         <MetricCard
           title="CPU Tüketimi"
@@ -171,7 +175,7 @@ export default async function HQOverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         {/* Security Status */}
         <div
-          className="rounded-2xl p-6 flex flex-col justify-between"
+          className="rounded-2xl p-6 flex flex-col justify-between gap-6"
           style={{
             background: 'rgba(255,255,255,0.03)',
             border: '1px solid rgba(120,80,255,0.12)',
@@ -180,18 +184,29 @@ export default async function HQOverviewPage() {
           <div>
             <div className="flex items-center gap-2 mb-5">
               <Shield size={16} className="text-primary" />
-              <p className="text-xs font-bold text-white uppercase tracking-wider">Node Güvenlik & Denetleme Durumu</p>
+              <p className="text-xs font-bold text-white uppercase tracking-wider">Sistem & Güvenlik Denetleme Durumu</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <StatusCard label="Network Hızı" value="Kararlı (0.8ms gecikme)" status="ok" />
-              <StatusCard label="Zaman Sorgulama Limiti" value="Slow Mode: Devre Dışı" status="ok" />
-              <StatusCard label="Onaylanmamış Bekleyenler" value={`${stats.openTickets} Yeni Moderasyon Talebi`} status={stats.openTickets > 0 ? 'warn' : 'ok'} />
-              <StatusCard label="Kullanıcı Önerileri" value={`${stats.totalSuggestions || 0} toplam öneri`} status="ok" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatusCard label="Network Hızı" value={`${stats.latency}ms (Kararlı)`} status={stats.latency > 150 ? 'warn' : 'ok'} />
+              <StatusCard label="Slow Mode Durumu" value={stats.slowModeActive ? "Slow Mode: Aktif (15s)" : "Slow Mode: Devre Dışı"} status={stats.slowModeActive ? "warn" : "ok"} />
+              <StatusCard label="Onay Bekleyenler" value={`${stats.openTickets} Moderasyon`} status={stats.openTickets > 0 ? 'warn' : 'ok'} />
+              <StatusCard label="Yeni Kayıtlar" value={stats.registrationOpen ? "Kayıtlar: Açık" : "Kayıtlar: Kapalı"} status={stats.registrationOpen ? "ok" : "off"} />
+            </div>
+          </div>
+
+          {/* Active Graph Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Activity size={14} className="text-amber-500" />
+              <p className="text-xs font-bold text-white uppercase tracking-wider">Son 24 Saat Etkileşim Grafiği (Gönderiler)</p>
+            </div>
+            <div className="p-4 rounded-xl border border-white/5 bg-black/10">
+              <HQBarChart data={hourlyData} />
             </div>
           </div>
 
           {/* Totals rows */}
-          <div className="flex flex-col gap-4 mt-6 pt-5 border-t border-white/5">
+          <div className="flex flex-col gap-4 pt-5 border-t border-white/5">
             {/* Row 1: Content metrics */}
             <div className="grid grid-cols-3 gap-4">
               <div className="rounded-xl p-3.5 text-center bg-blue-500/5 border border-blue-500/10">

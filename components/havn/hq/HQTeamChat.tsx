@@ -653,14 +653,6 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                   />
                 </div>
 
-                <button
-                  onClick={handleSaveDetails}
-                  disabled={isMgmtPending}
-                  className="w-full py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  {isMgmtPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                  <span>Değişiklikleri Kaydet</span>
-                </button>
               </div>
 
               {/* HIZLI YETKİLENDİRME */}
@@ -725,6 +717,21 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Divider */}
+            <div className="w-full h-px bg-white/5 my-4" />
+
+            {/* Centered Save changes button at the bottom */}
+            <div className="flex justify-center">
+              <button
+                onClick={handleSaveDetails}
+                disabled={isMgmtPending}
+                className="w-full max-w-[240px] py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-primary/10"
+              >
+                {isMgmtPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                <span>Değişiklikleri Kaydet</span>
+              </button>
             </div>
           </motion.div>
         </div>

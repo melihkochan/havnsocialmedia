@@ -1,17 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Lightweight proxy — no Supabase network calls to avoid DNS resolution timeouts in Edge Runtime
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Clone headers and inject x-pathname for server component layout routing
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-pathname', pathname)
+
   // ── 1. /admin → 404 (URL masking) ──────────────────────────────────────────
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
-    return NextResponse.rewrite(new URL('/404-not-found-__havn__', request.url))
+    return NextResponse.rewrite(new URL('/404-not-found-__havn__', request.url), {
+      request: {
+        headers: requestHeaders,
+      }
+    })
   }
 
   // ── 2. /havn-hq-control Sudo Mode Check ─────────────────────────────────────
-  // If trying to access control panel, verify they have unlocked the sudo session.
-  // We only check the local browser cookie here to keep proxy lightweight.
   if (pathname.startsWith('/havn-hq-control')) {
     const sudoToken = request.cookies.get('havn_hq_sudo_unlocked')
     if (!sudoToken || sudoToken.value !== 'true') {
@@ -19,7 +24,11 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return NextResponse.next()
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
 }
 
 export default proxy

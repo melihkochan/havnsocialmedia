@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { enrichProfile } from '@/lib/profile-enrich'
 
 export async function GET(request: Request) {
@@ -22,6 +22,22 @@ export async function GET(request: Request) {
           .single()
 
         if (!profile) {
+          // Enforce registration_open system setting for new OAuth signups
+          const supabaseAdmin = await createServiceClient()
+          const { data: regSetting } = await supabaseAdmin
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'registration_open')
+            .maybeSingle()
+
+          const isRegOpen = regSetting ? (regSetting.value === true || regSetting.value === 'true') : true
+          if (!isRegOpen) {
+            // Delete user in auth or just redirect to login with error (Supabase will have created the Auth user, but since no profile exists they can't log in/setup anyway)
+            // It's cleaner to sign out and redirect
+            await supabase.auth.signOut({ scope: 'local' })
+            return NextResponse.redirect(`${origin}/login?error=Platform yeni üye kayıtlarına geçici olarak kapatılmıştır.`)
+          }
+
           // Brand new OAuth signup — create temporary profile and redirect to setup wizard
           const baseUsername = user.email?.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') || 'user'
           const uniqueSuffix = Math.floor(1000 + Math.random() * 9000)

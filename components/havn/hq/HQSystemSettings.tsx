@@ -80,14 +80,6 @@ export function HQSystemSettings() {
       activeColor: 'bg-emerald-500',
     },
     {
-      key: 'auto_verification' as const,
-      label: 'Otomatik Mavi Tik',
-      description: 'Yeni kayıt olan kullanıcılara otomatik olarak doğrulanmış profil (Mavi Tik) tanımlar.',
-      icon: Shield,
-      color: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
-      activeColor: 'bg-blue-500',
-    },
-    {
       key: 'double_xp_active' as const,
       label: '2X XP Haftası',
       description: 'Tüm etkileşimlerden (gönderi, yorum, beğeni vb.) kazanılan XP miktarını ikiye katlar.',

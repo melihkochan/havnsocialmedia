@@ -68,6 +68,19 @@ export async function signUp(formData: FormData) {
   const country = (formData.get('country') as string || '').trim()
   const city = (formData.get('city') as string || '').trim()
 
+  // Enforce registration_open system setting
+  const supabaseAdmin = await createServiceClient()
+  const { data: regSetting } = await supabaseAdmin
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'registration_open')
+    .maybeSingle()
+
+  const isRegOpen = regSetting ? (regSetting.value === true || regSetting.value === 'true') : true
+  if (!isRegOpen) {
+    return { error: 'Platform yeni üye kayıtlarına geçici olarak kapatılmıştır.' }
+  }
+
   // Check if username is reserved
   const { isReservedUsername } = await import('@/lib/reserved-usernames')
   if (isReservedUsername(username)) {
@@ -123,22 +136,13 @@ export async function signUp(formData: FormData) {
       }
     }
 
-    // Check if auto verification is active in system settings
-    const { data: autoVerifySetting } = await supabaseAdmin
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'auto_verification')
-      .maybeSingle()
-
-    const autoVerify = autoVerifySetting?.value === true || autoVerifySetting?.value === 'true'
-
     const { error: upsertError } = await supabaseAdmin.from('profiles').upsert({
       id: data.user.id,
       username,
       first_name: firstName || null,
       last_name: lastName || null,
       avatar_url: avatarUrl,
-      is_verified: autoVerify ? true : false,
+      is_verified: false,
       country: country || null,
       city: city || null,
     })

@@ -4,7 +4,9 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Suspense } from "react";
 import { TopProgressBar } from "@/components/layout/TopProgressBar";
-import { GlobalStoreProvider } from "@/components/providers/GlobalStoreProvider";
+import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,11 +26,64 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Read pathname injected from proxy.ts (middleware)
+  const headerList = await headers();
+  const pathname = headerList.get("x-pathname") || "";
+
+  // Check maintenance mode status using the server client (which uses the custom DNS lookup / ipv4 preference)
+  try {
+    const supabase = await createClient();
+
+    // Query system settings
+    const { data: maintSetting } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "maintenance_mode")
+      .maybeSingle();
+
+    const isMaintenance = maintSetting ? (maintSetting.value === true || maintSetting.value === "true") : false;
+
+    if (isMaintenance) {
+      // Exclude paths: allowed paths are login, register, hq, callback, and the maintenance page itself
+      const isAllowed = 
+        pathname === "/maintenance" || 
+        pathname === "/login" || 
+        pathname === "/register" || 
+        pathname.startsWith("/havn-hq-control") || 
+        pathname === "/havn-hq-gate" ||
+        pathname.startsWith("/auth");
+
+      if (!isAllowed) {
+        // Retrieve current user
+        const { data: { user } } = await supabase.auth.getUser();
+        let isAuthorized = false;
+
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .single();
+
+          if (profile && ["founder", "admin"].includes(profile.role ?? "")) {
+            isAuthorized = true;
+          }
+        }
+
+        if (!isAuthorized) {
+          redirect("/maintenance");
+        }
+      }
+    }
+  } catch (err) {
+    console.error("RootLayout maintenance check error:", err);
+  }
+
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
@@ -53,9 +108,7 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <TopProgressBar />
           </Suspense>
-          <GlobalStoreProvider>
-            {children}
-          </GlobalStoreProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>
