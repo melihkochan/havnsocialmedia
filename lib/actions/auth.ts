@@ -65,6 +65,8 @@ export async function signUp(formData: FormData) {
   const firstName = (formData.get('first_name') as string || '').trim()
   const lastName = (formData.get('last_name') as string || '').trim()
   const avatarFile = formData.get('avatar') as File | null
+  const country = (formData.get('country') as string || '').trim()
+  const city = (formData.get('city') as string || '').trim()
 
   // Check if username is reserved
   const { isReservedUsername } = await import('@/lib/reserved-usernames')
@@ -137,6 +139,8 @@ export async function signUp(formData: FormData) {
       last_name: lastName || null,
       avatar_url: avatarUrl,
       is_verified: autoVerify ? true : false,
+      country: country || null,
+      city: city || null,
     })
 
     if (upsertError) {

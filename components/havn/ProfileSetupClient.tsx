@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { Check, Loader2, AlertCircle, Sparkles, Eye, EyeOff, Lock, Mail, Info } from 'lucide-react'
+import { useState, useTransition, useEffect } from 'react'
+import { Check, Loader2, AlertCircle, Sparkles, Eye, EyeOff, Lock, Mail, Info, MapPin } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { completeProfileSetup } from '@/lib/actions/profile'
 import { RESERVED_USERNAMES } from '@/lib/reserved-usernames'
 import { AvatarUpload } from '@/components/havn/AvatarUpload'
+import { SearchableSelect } from '@/components/havn/SearchableSelect'
 import { getInitials } from '@/lib/profile-display'
+import { getCountriesAction, getCitiesAction } from '@/lib/actions/location'
 import type { Profile } from '@/lib/supabase/types'
 
 interface ProfileSetupClientProps {
@@ -24,8 +26,48 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
   const [showPassword, setShowPassword] = useState(false)
   const [skipPassword, setSkipPassword] = useState(false)
 
+  const [selectedCountry, setSelectedCountry] = useState('')
+  const [selectedCity, setSelectedCity] = useState('')
+  const [countriesList, setCountriesList] = useState<{ value: string; label: string; image: string }[]>([])
+  const [citiesList, setCitiesList] = useState<{ value: string; label: string }[]>([])
+  const [loadingGeo, setLoadingGeo] = useState(false)
+
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    async function loadCountries() {
+      try {
+        const list = await getCountriesAction()
+        setCountriesList(list.map(c => ({
+          value: c.code,
+          label: c.name,
+          image: c.flag
+        })))
+      } catch (err) {
+        console.error('Failed to load countries:', err)
+      }
+    }
+    loadCountries()
+  }, [])
+
+  const handleCountryChange = async (countryCode: string) => {
+    setSelectedCountry(countryCode)
+    setSelectedCity('')
+    setCitiesList([])
+    if (!countryCode) return
+    setLoadingGeo(true)
+    try {
+      const list = await getCitiesAction(countryCode)
+      const formatted = list.map(city => ({ value: city, label: city }))
+      setCitiesList(formatted)
+      if (formatted.length > 0) setSelectedCity(formatted[0].value)
+    } catch (err) {
+      console.error('Failed to load cities:', err)
+    } finally {
+      setLoadingGeo(false)
+    }
+  }
 
   const handleComplete = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,6 +99,8 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
     fd.set('username', cleanUsername)
     fd.set('first_name', firstName.trim())
     fd.set('last_name', lastName.trim())
+    if (selectedCountry) fd.set('country', selectedCountry)
+    if (selectedCity) fd.set('city', selectedCity)
 
     if (avatarFile) {
       fd.set('avatar', avatarFile)
@@ -158,6 +202,36 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
           <p className="text-[10px] text-muted-foreground leading-normal">
             Profilinizde @ile görünür. Harf, rakam ve alt çizgi (_) kullanabilirsiniz.
           </p>
+        </div>
+
+        {/* Country & City */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+              <MapPin size={11} />
+              Ülke
+            </label>
+            <SearchableSelect
+              value={selectedCountry}
+              onChange={handleCountryChange}
+              options={countriesList}
+              placeholder="Ülke Seçin"
+              selectClassName="py-2.5"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground">
+              Şehir
+            </label>
+            <SearchableSelect
+              value={selectedCity}
+              onChange={setSelectedCity}
+              options={citiesList}
+              placeholder={loadingGeo ? 'Yükleniyor...' : 'Şehir Seçin'}
+              disabled={!selectedCountry || loadingGeo}
+              selectClassName="py-2.5"
+            />
+          </div>
         </div>
 
         {/* Email — readonly, only for OAuth users */}

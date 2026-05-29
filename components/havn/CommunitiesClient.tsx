@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Globe, Lock, Plus, Search, Check, Clock, X, Loader2, Crown } from 'lucide-react'
 import { joinCommunity, leaveCommunity, createCommunity } from '@/lib/actions/communities'
 import { cn } from '@/lib/utils'
 import { parseCommunityDescription } from '@/lib/community-rules'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 type Community = {
   id: string; name: string; slug: string; description: string | null
@@ -88,13 +90,13 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
             <Check size={20} />
           </div>
-          <h2 className="text-base font-black text-white">Talep Alındı</h2>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <h2 className="text-base font-black text-foreground">Talep Alındı</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
             Topluluk oluşturma talebiniz başarıyla kurucu onay kuyruğuna iletilmiştir. Onaylandıktan sonra topluluğunuz aktif hale gelecektir.
           </p>
           <button
             onClick={onClose}
-            className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all cursor-pointer"
+            className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
           >
             Tamam
           </button>
@@ -169,6 +171,25 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
   const [showCreate, setShowCreate] = useState(false)
   const [localMemberships, setLocalMemberships] = useState(memberships)
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('communities-realtime-update')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'communities' },
+        () => {
+          router.refresh()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [router])
 
   const filtered = communities.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -239,44 +260,48 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="relative bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 hover:border-primary/30 hover:shadow-md transition-all duration-200"
+                className="bg-card border border-border rounded-2xl p-5 flex flex-col justify-between hover:border-primary/30 hover:shadow-md transition-all duration-200 min-h-[190px]"
               >
-                {community.creator && (
-                  <a
-                    href={`/profile/${community.creator.username}`}
-                    className="absolute top-5 right-5 flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[9px] font-black border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 active:scale-95 text-amber-600 dark:text-amber-400 backdrop-blur-md shadow-sm select-none z-10 transition-all"
-                  >
-                    <Crown size={9} className="fill-amber-500/25 text-amber-500" />
-                    <span>KURUCU</span>
-                    <span className="opacity-40 font-normal">|</span>
-                    <span className="font-semibold text-foreground/80">@{community.creator.username}</span>
-                  </a>
-                )}
-
                 {/* Clickable area — navigates to community detail */}
-                <a href={`/communities/${community.slug}`} className="flex flex-col gap-4 cursor-pointer flex-1">
+                <a href={`/communities/${community.slug}`} className="flex flex-col gap-3.5 cursor-pointer flex-1">
                   {/* Header */}
-                  <div className="flex items-start gap-3 pr-28">
+                  <div className="flex items-start gap-3">
                     <CommunityAvatar id={community.id} name={community.name} />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-bold text-foreground">{community.name}</h3>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-sm font-extrabold text-foreground truncate max-w-[160px] xs:max-w-[200px]" title={community.name}>
+                          {community.name}
+                        </h3>
                         <span
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black select-none"
                           style={{
-                            background: 'color-mix(in oklch, var(--muted-foreground) 12%, transparent)',
+                            background: 'color-mix(in oklch, var(--muted-foreground) 10%, transparent)',
                             color: 'var(--muted-foreground)',
                           }}
                         >
-                          {community.type === 'public' ? <Globe size={9} /> : <Lock size={9} />}
-                          {community.type === 'public' ? 'Açık' : 'Başvurulu'}
+                          {community.type === 'public' ? <Globe size={8} /> : <Lock size={8} />}
+                          {community.type === 'public' ? 'Açık' : 'Özel'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground mt-0.5">
+                      
+                      {/* Meta information: Members & Creator info row */}
+                      <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground mt-1">
                         <span className="flex items-center gap-1">
-                          <Users size={11} />
+                          <Users size={10} />
                           <span>{memberCount.toLocaleString('tr-TR')} üye</span>
                         </span>
+                        
+                        {community.creator && (
+                          <>
+                            <span className="opacity-40 select-none">•</span>
+                            <span className="flex items-center gap-1 text-amber-500 font-extrabold">
+                              <Crown size={10} className="fill-amber-500/15" />
+                              <span className="hover:underline">
+                                @{community.creator.username}
+                              </span>
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -285,43 +310,48 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                   {(() => {
                     const parsed = parseCommunityDescription(community.description)
                     return parsed.description ? (
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{parsed.description}</p>
-                    ) : null
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 min-h-[2rem]">
+                        {parsed.description}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/45 italic min-h-[2rem]">Açıklama girilmemiş.</p>
+                    )
                   })()}
                 </a>
 
                 {/* Join button — outside clickable area */}
                 {currentUserId && (
-                  isMember ? (
-                    isPending_ ? (
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-muted-foreground bg-muted">
-                        <Clock size={13} /> Onay Bekleniyor
-                      </div>
+                  <div className="pt-3 border-t border-border/40 mt-auto flex items-center justify-end">
+                    {isMember ? (
+                      isPending_ ? (
+                        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground bg-muted select-none">
+                          <Clock size={13} /> Onay Bekleniyor
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleLeave(community.id)}
+                          disabled={isPending}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-all cursor-pointer"
+                        >
+                          <Check size={13} /> Ayrıl
+                        </button>
+                      )
                     ) : (
-                      <button
-                        onClick={() => handleLeave(community.id)}
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => handleJoin(community)}
                         disabled={isPending}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border border-border text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all"
-                        style={{ '--destructive': 'var(--destructive)' } as React.CSSProperties}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm shadow-primary/5"
+                        style={{
+                          background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
+                          color: 'var(--primary-foreground)',
+                        }}
                       >
-                        <Check size={13} /> Üyesin — Ayrıl
-                      </button>
-                    )
-                  ) : (
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => handleJoin(community)}
-                      disabled={isPending}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                      style={{
-                        background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
-                        color: 'var(--primary-foreground)',
-                      }}
-                    >
-                      <Plus size={13} />
-                      {community.type === 'public' ? 'Katıl' : 'Başvur'}
-                    </motion.button>
-                  )
+                        <Plus size={13} />
+                        {community.type === 'public' ? 'Katıl' : 'Başvur'}
+                      </motion.button>
+                    )}
+                  </div>
                 )}
               </motion.div>
             )

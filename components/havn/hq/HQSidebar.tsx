@@ -18,8 +18,9 @@ import {
   ArrowLeft,
   LogOut,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signOut } from '@/lib/actions/auth'
+import { createClient } from '@/lib/supabase/client'
 
 const NAV = [
   {
@@ -53,6 +54,12 @@ const NAV = [
     sub: 'Bekleyen topluluk talepleri',
   },
   {
+    href: '/havn-hq-control/communities',
+    icon: Activity,
+    label: 'Topluluk Yönetimi',
+    sub: 'Duyurular, kurallar ve tema',
+  },
+  {
     href: '/havn-hq-control/map',
     icon: MapPin,
     label: 'Katılım Haritası',
@@ -79,6 +86,38 @@ interface HQSidebarProps {
 export function HQSidebar({ currentUser }: HQSidebarProps) {
   const pathname = usePathname()
   const collapsed = false
+
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    async function loadPendingCount() {
+      const { count } = await supabase
+        .from('communities')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+      setPendingCount(count ?? 0)
+    }
+
+    loadPendingCount()
+
+    // Realtime channel
+    const channel = supabase
+      .channel('hq-sidebar-communities-count')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'communities' },
+        () => {
+          loadPendingCount()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const initials = [currentUser.first_name?.[0], currentUser.last_name?.[0]]
     .filter(Boolean)
@@ -148,28 +187,40 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
                   borderLeft: active ? '2px solid #7c3aed' : '2px solid transparent',
                 }}
               >
-                <Icon
-                  size={18}
-                  className="flex-shrink-0 transition-colors duration-150"
-                  style={{ color: active ? '#a78bfa' : 'rgba(255,255,255,0.4)' }}
-                />
+                <div className="relative">
+                  <Icon
+                    size={18}
+                    className="flex-shrink-0 transition-colors duration-150"
+                    style={{ color: active ? '#a78bfa' : 'rgba(255,255,255,0.4)' }}
+                  />
+                  {label === 'Topluluk Onayları' && pendingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 border border-[#0d0d1a] animate-pulse" />
+                  )}
+                </div>
                 <AnimatePresence>
                   {!collapsed && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="overflow-hidden min-w-0"
+                      className="overflow-hidden min-w-0 flex-1 flex items-center justify-between"
                     >
-                      <p
-                        className="text-xs font-bold truncate"
-                        style={{ color: active ? '#e2e8f0' : 'rgba(255,255,255,0.7)' }}
-                      >
-                        {label}
-                      </p>
-                      <p className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                        {sub}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="text-xs font-bold truncate"
+                          style={{ color: active ? '#e2e8f0' : 'rgba(255,255,255,0.7)' }}
+                        >
+                          {label}
+                        </p>
+                        <p className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                          {sub}
+                        </p>
+                      </div>
+                      {label === 'Topluluk Onayları' && pendingCount > 0 && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
+                          {pendingCount}
+                        </span>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

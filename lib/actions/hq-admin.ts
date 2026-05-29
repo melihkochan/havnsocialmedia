@@ -167,7 +167,7 @@ export async function getHQUsers({
   const supabase = await createServiceClient()
   let query = supabase
     .from('profiles')
-    .select('id, username, first_name, last_name, avatar_url, role, updated_at, is_verified, is_gold, xp, warns, last_seen_at, show_status', { count: 'exact' })
+    .select('id, username, first_name, last_name, avatar_url, role, updated_at, is_verified, is_gold, xp, warns, last_seen_at, show_status, country, city, bio', { count: 'exact' })
     .order('updated_at', { ascending: false })
     .range(page * pageSize, (page + 1) * pageSize - 1)
 
@@ -400,6 +400,13 @@ export async function resolveCommunityApproval(communityId: string, action: 'app
   const admin = await createServiceClient()
 
   if (action === 'approve') {
+    // Get creator and name to send notification
+    const { data: community } = await admin
+      .from('communities')
+      .select('created_by, name')
+      .eq('id', communityId)
+      .single()
+
     const { error: commError } = await admin
       .from('communities')
       .update({ status: 'approved' })
@@ -413,6 +420,18 @@ export async function resolveCommunityApproval(communityId: string, action: 'app
       .update({ status: 'approved' })
       .eq('community_id', communityId)
       .eq('role', 'owner')
+
+    if (community) {
+      const { createNotification } = await import('@/lib/actions/notifications')
+      await createNotification(
+        community.created_by,
+        user.id,
+        'approved',
+        null,
+        null,
+        { communityId, message: `"${community.name}" topluluk talebiniz onaylandı! 🎉` }
+      )
+    }
 
     revalidatePath('/communities')
     return { success: true }
@@ -433,4 +452,125 @@ export async function resolveCommunityApproval(communityId: string, action: 'app
     revalidatePath('/communities')
     return { success: true }
   }
+}
+
+export async function resetUserWarns(targetUserId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Yetkisiz.' }
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (!profile || !['founder', 'admin', 'moderator'].includes(profile.role ?? '')) {
+    return { error: 'Bu işlem için yetkiniz yok.' }
+  }
+
+  const admin = await createServiceClient()
+  const { error: updateError } = await admin
+    .from('profiles')
+    .update({ warns: 0 })
+    .eq('id', targetUserId)
+
+  if (updateError) return { error: updateError.message }
+
+  // Create notification
+  const { createNotification } = await import('@/lib/actions/notifications')
+  await createNotification(targetUserId, user.id, 'system_alert', null, null, { message: 'Hesap uyarılarınız sistem yöneticisi tarafından sıfırlandı. 👍' })
+
+  return { success: true }
+}
+
+export async function updateUserProfileDetails(
+  targetUserId: string,
+  firstName: string,
+  lastName: string,
+  bio: string,
+  country: string,
+  city: string
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Yetkisiz.' }
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (!profile || !['founder', 'admin', 'moderator'].includes(profile.role ?? '')) {
+    return { error: 'Bu işlem için yetkiniz yok.' }
+  }
+
+  const admin = await createServiceClient()
+  
+  // Update bio metadata
+  const { saveProfileMetadata } = await import('@/lib/actions/profile-db')
+  const metaRes = await saveProfileMetadata(targetUserId, {}, bio)
+  if (metaRes.error) return { error: metaRes.error }
+
+  const { error } = await admin
+    .from('profiles')
+    .update({
+      first_name: firstName.trim() || null,
+      last_name: lastName.trim() || null,
+      country: country.trim() || null,
+      city: city.trim() || null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', targetUserId)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function awardUserXP(targetUserId: string, xpAmount: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Yetkisiz.' }
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (!profile || !['founder', 'admin'].includes(profile.role ?? '')) {
+    return { error: 'Bu işlem için yetkiniz yok.' }
+  }
+
+  const admin = await createServiceClient()
+  const { data: targetProfile } = await admin.from('profiles').select('xp').eq('id', targetUserId).single()
+  if (!targetProfile) return { error: 'Kullanıcı bulunamadı.' }
+
+  const currentXp = targetProfile.xp ?? 0
+  const newXp = currentXp + xpAmount
+
+  const { error } = await admin
+    .from('profiles')
+    .update({ xp: newXp })
+    .eq('id', targetUserId)
+
+  if (error) return { error: error.message }
+
+  // Send notification to user
+  const { createNotification } = await import('@/lib/actions/notifications')
+  await createNotification(targetUserId, user.id, 'xp_reward', null, null, { message: `Tebrikler! Sistem yöneticisi tarafından hesabınıza +${xpAmount} XP onur ödülü aktarıldı. 💎` })
+
+  return { success: true, newXp }
+}
+
+export async function getAllCommunitiesForAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (!profile || !['founder', 'admin', 'moderator'].includes(profile.role ?? '')) {
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('communities')
+    .select(`*, creator:profiles!created_by(id, username, first_name, last_name, avatar_url), community_members(id)`)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('getAllCommunitiesForAdmin error:', error)
+    return []
+  }
+
+  return (data ?? []).map((c: any) => ({
+    ...c,
+    memberCount: c.community_members?.length ?? 0
+  }))
 }

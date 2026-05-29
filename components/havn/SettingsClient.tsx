@@ -13,6 +13,8 @@ import { getInitials } from '@/lib/profile-display'
 import type { Profile } from '@/lib/supabase/types'
 import { sendSupportRequest } from '@/lib/actions/support'
 import { createClient } from '@/lib/supabase/client'
+import { SearchableSelect } from '@/components/havn/SearchableSelect'
+import { getCountriesAction, getCitiesAction } from '@/lib/actions/location'
 
 interface SettingsClientProps { profile: Profile; email?: string }
 
@@ -101,6 +103,7 @@ function Switch({ checked, onChange, label, description }: { checked: boolean; o
   )
 }
 
+
 export function SettingsClient({ profile, email }: SettingsClientProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'appearance' | 'notifications' | 'support' | 'account'>('profile')
   const [notifPrefs, setNotifPrefs] = useState({
@@ -120,6 +123,66 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   const [twitter, setTwitter] = useState((profile as any).social_links?.twitter || '')
   const [instagram, setInstagram] = useState((profile as any).social_links?.instagram || '')
   const [github, setGithub] = useState((profile as any).social_links?.github || '')
+
+  const [selectedCountry, setSelectedCountry] = useState((profile as any).country || '')
+  const [selectedCity, setSelectedCity] = useState((profile as any).city || '')
+  const [countriesList, setCountriesList] = useState<{ value: string; label: string; image: string }[]>([])
+  const [citiesList, setCitiesList] = useState<{ value: string; label: string }[]>([])
+  const [loadingGeo, setLoadingGeo] = useState(false)
+  const isFirstLoad = useRef(true)
+
+  useEffect(() => {
+    async function loadCountries() {
+      try {
+        const list = await getCountriesAction()
+        setCountriesList(list.map(c => ({
+          value: c.code,
+          label: c.name,
+          image: c.flag
+        })))
+      } catch (err) {
+        console.error('Failed to load countries:', err)
+      }
+    }
+    loadCountries()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedCountry) {
+      setCitiesList([])
+      return
+    }
+    async function loadCities() {
+      setLoadingGeo(true)
+      try {
+        const list = await getCitiesAction(selectedCountry)
+        const formatted = list.map(city => ({ value: city, label: city }))
+        setCitiesList(formatted)
+        
+        if (!isFirstLoad.current) {
+          if (formatted.length > 0) {
+            setSelectedCity(formatted[0].value)
+          } else {
+            setSelectedCity('')
+          }
+        } else {
+          isFirstLoad.current = false
+        }
+      } catch (err) {
+        console.error('Failed to load cities:', err)
+      } finally {
+        setLoadingGeo(false)
+      }
+    }
+    loadCities()
+  }, [selectedCountry])
+
+  const handleCountryChange = (countryCode: string) => {
+    isFirstLoad.current = false
+    setSelectedCountry(countryCode)
+    setSelectedCity('')
+  }
+
 
   const [accentTheme, setAccentTheme] = useState('purple')
 
@@ -503,6 +566,34 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                         className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none placeholder:text-muted-foreground"
                       />
                     </div>
+
+                    {/* Ülke & Şehir Seçimi */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground">Ülke</label>
+                        <SearchableSelect
+                          value={selectedCountry}
+                          onChange={handleCountryChange}
+                          options={countriesList}
+                          placeholder="Ülke Seçin"
+                          selectClassName="bg-background py-3"
+                        />
+                        <input type="hidden" name="country" value={selectedCountry} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground">Şehir</label>
+                        <SearchableSelect
+                          value={selectedCity}
+                          onChange={setSelectedCity}
+                          options={citiesList}
+                          placeholder={loadingGeo ? "Yükleniyor..." : "Şehir Seçin"}
+                          disabled={!selectedCountry || loadingGeo}
+                          selectClassName="bg-background py-3"
+                        />
+                        <input type="hidden" name="city" value={selectedCity} />
+                      </div>
+                    </div>
+
 
                     {/* Profil Gizliliği */}
                     <div className="pt-2 border-t border-border/40">

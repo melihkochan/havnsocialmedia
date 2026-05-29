@@ -54,6 +54,8 @@ export async function updateProfile(formData: FormData) {
   const firstName = (formData.get('first_name') as string | null)?.trim() || null
   const lastName = (formData.get('last_name') as string | null)?.trim() || null
   const bio = formData.get('bio') as string | null
+  const country = (formData.get('country') as string | null)?.trim() || null
+  const city = (formData.get('city') as string | null)?.trim() || null
 
   // NSFW check
   const { containsNsfw } = await import('@/lib/nsfw-filter')
@@ -158,6 +160,8 @@ export async function updateProfile(formData: FormData) {
   if (bannerUrl !== undefined) updates.banner_url = bannerUrl
   updates.first_name = firstName
   updates.last_name = lastName
+  updates.country = country
+  updates.city = city
 
   let { error } = await supabase
     .from('profiles')
@@ -493,6 +497,8 @@ export async function completeProfileSetup(formData: FormData) {
   const lastName = (formData.get('last_name') as string | null)?.trim() || null
   const googleAvatarUrl = formData.get('google_avatar_url') as string | null
   const password = (formData.get('password') as string | null)?.trim() || null
+  const country = (formData.get('country') as string | null)?.trim() || null
+  const city = (formData.get('city') as string | null)?.trim() || null
 
   if (!username) {
     return { error: 'Kullanıcı adı zorunludur.' }
@@ -569,6 +575,8 @@ export async function completeProfileSetup(formData: FormData) {
     username,
     first_name: firstName,
     last_name: lastName,
+    country: country,
+    city: city,
     updated_at: new Date().toISOString()
   }
 

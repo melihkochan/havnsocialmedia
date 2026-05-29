@@ -1,9 +1,15 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Shield, ShieldOff, AlertTriangle, Trash2, RefreshCw, Loader2, Check, Star } from 'lucide-react'
-import { updateUserRole, getHQUsers, warnUser, deleteUserProfile, toggleProfileVerification } from '@/lib/actions/hq-admin'
+import { Search, Shield, ShieldOff, ShieldAlert, AlertTriangle, Trash2, RefreshCw, Loader2, Check, Star, Settings, X, Award, MapPin, Globe, Lock } from 'lucide-react'
+import { updateUserRole, getHQUsers, warnUser, deleteUserProfile, toggleProfileVerification, resetUserWarns, updateUserProfileDetails, awardUserXP } from '@/lib/actions/hq-admin'
+import { getRankInfo } from '@/lib/gamification'
+import { getCountryName, getCountryFlagUrl } from '@/lib/countries'
+import { SearchableSelect } from '@/components/havn/SearchableSelect'
+import { getCountriesAction, getCitiesAction } from '@/lib/actions/location'
+
+
 
 type UserRow = {
   id: string
@@ -20,6 +26,9 @@ type UserRow = {
   warns: number | null
   last_seen_at: string | null
   show_status: boolean | null
+  country: string | null
+  city: string | null
+  bio: string | null
 }
 
 const ROLE_STYLES: Record<string, { bg: string; color: string; label: string; border: string }> = {
@@ -70,15 +79,17 @@ function getOnlineStatus(user: UserRow) {
 function WarnCircles({ count }: { count: number }) {
   const c = Math.max(0, count)
   return (
-    <div className="flex items-center gap-1.5">
-      {[0, 1, 2].map((idx) => {
+    <div className="flex items-center gap-1">
+      {[0, 1, 2, 3, 4].map((idx) => {
         let bgClass = 'bg-white/10'
-        if (c === 1 && idx === 0) {
-          bgClass = 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
-        } else if (c === 2 && idx < 2) {
-          bgClass = 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
-        } else if (c >= 3) {
-          bgClass = 'bg-rose-500 shadow-[0_0_10px_rgba(239,68,68,0.7)]'
+        if (c > 0 && idx < c) {
+          if (c >= 5) {
+            bgClass = 'bg-rose-500 shadow-[0_0_10px_rgba(239,68,68,0.7)]'
+          } else if (c >= 3) {
+            bgClass = 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]'
+          } else {
+            bgClass = 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+          }
         }
         return (
           <div
@@ -88,6 +99,33 @@ function WarnCircles({ count }: { count: number }) {
         )
       })}
     </div>
+  )
+}
+
+function LevelBadge({ xp }: { xp: number }) {
+  const lvl = getRankInfo(xp).level
+  let badgeStyle = "bg-white/5 border-white/5 text-slate-400"
+  let shadow = ""
+  
+  if (lvl >= 50) {
+    badgeStyle = "bg-purple-500/10 border-purple-500/35 text-purple-300 font-extrabold"
+    shadow = "shadow-[0_0_10px_rgba(168,85,247,0.3)] animate-pulse"
+  } else if (lvl >= 30) {
+    badgeStyle = "bg-amber-500/10 border-amber-500/35 text-amber-400 font-extrabold"
+    shadow = "shadow-[0_0_8px_rgba(245,158,11,0.25)]"
+  } else if (lvl >= 20) {
+    badgeStyle = "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold"
+  } else if (lvl >= 10) {
+    badgeStyle = "bg-blue-500/10 border-blue-500/30 text-blue-400 font-bold"
+  }
+
+  return (
+    <span
+      className={`px-1.5 py-0.5 rounded border text-[9px] font-mono select-none ${badgeStyle} ${shadow}`}
+      title={`Seviye ${lvl} (${xp} XP)`}
+    >
+      Lv.{lvl}
+    </span>
   )
 }
 
@@ -130,6 +168,159 @@ export function HQUserTable({
 
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserRow | null>(null)
   const [isDeletePending, startDeleteTransition] = useTransition()
+
+  // Management card state
+  const [mgmtUser, setMgmtUser] = useState<UserRow | null>(null)
+  const [mgmtFirstName, setMgmtFirstName] = useState('')
+  const [mgmtLastName, setMgmtLastName] = useState('')
+  const [mgmtBio, setMgmtBio] = useState('')
+  const [mgmtCountry, setMgmtCountry] = useState('')
+  const [mgmtCity, setMgmtCity] = useState('')
+  const [countriesList, setCountriesList] = useState<{ value: string; label: string; image: string }[]>([])
+  const [citiesList, setCitiesList] = useState<{ value: string; label: string }[]>([])
+  const [loadingGeo, setLoadingGeo] = useState(false)
+  const isFirstLoadMgmt = useRef(true)
+
+  useEffect(() => {
+    async function loadCountries() {
+      try {
+        const list = await getCountriesAction()
+        setCountriesList(list.map(c => ({
+          value: c.code,
+          label: c.name,
+          image: c.flag
+        })))
+      } catch (err) {
+        console.error('Failed to load countries:', err)
+      }
+    }
+    loadCountries()
+  }, [])
+
+  useEffect(() => {
+    if (!mgmtCountry) {
+      setCitiesList([])
+      return
+    }
+    async function loadCities() {
+      setLoadingGeo(true)
+      try {
+        const list = await getCitiesAction(mgmtCountry)
+        const formatted = list.map(city => ({ value: city, label: city }))
+        setCitiesList(formatted)
+        
+        if (!isFirstLoadMgmt.current) {
+          if (formatted.length > 0) {
+            setMgmtCity(formatted[0].value)
+          } else {
+            setMgmtCity('')
+          }
+        } else {
+          isFirstLoadMgmt.current = false
+        }
+      } catch (err) {
+        console.error('Failed to load cities:', err)
+      } finally {
+        setLoadingGeo(false)
+      }
+    }
+    loadCities()
+  }, [mgmtCountry])
+
+  const [xpRewardAmount, setXpRewardAmount] = useState(100)
+  const [isMgmtPending, startMgmtTransition] = useTransition()
+  const [mgmtMsg, setMgmtMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const openMgmtCard = (u: UserRow) => {
+    isFirstLoadMgmt.current = true
+    setMgmtUser(u)
+    setMgmtFirstName(u.first_name || '')
+    setMgmtLastName(u.last_name || '')
+    const parts = (u.bio || '').split('\u200B')
+    setMgmtBio(parts[0] || '')
+    setMgmtCountry(u.country || '')
+    setMgmtCity(u.city || '')
+    setMgmtMsg(null)
+  }
+
+  const handleMgmtCountryChange = (countryCode: string) => {
+    isFirstLoadMgmt.current = false
+    setMgmtCountry(countryCode)
+    setMgmtCity('')
+  }
+
+
+  const handleSaveDetails = async () => {
+    if (!mgmtUser) return
+    setMgmtMsg(null)
+    startMgmtTransition(async () => {
+      const res = await updateUserProfileDetails(
+        mgmtUser.id,
+        mgmtFirstName,
+        mgmtLastName,
+        mgmtBio,
+        mgmtCountry,
+        mgmtCity
+      )
+      if (res.error) {
+        setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
+      } else {
+        setMgmtMsg({ type: 'success', text: 'Kullanıcı bilgileri güncellendi.' })
+        setUsers(prev => prev.map(m => m.id === mgmtUser.id ? {
+          ...m,
+          first_name: mgmtFirstName.trim() || null,
+          last_name: mgmtLastName.trim() || null,
+          country: mgmtCountry.trim() || null,
+          city: mgmtCity.trim() || null,
+          bio: mgmtBio.trim() ? `${mgmtBio.trim()}\u200B${m.bio?.split('\u200B')[1] || ''}` : null
+        } : m))
+      }
+    })
+  }
+
+  const handleToggleVerify = async (field: 'verified' | 'gold') => {
+    if (!mgmtUser) return
+    setMgmtMsg(null)
+    startMgmtTransition(async () => {
+      const res = await toggleProfileVerification(mgmtUser.id, field)
+      if (res.error) {
+        setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
+      } else {
+        setUsers(prev => prev.map(m => m.id === mgmtUser.id ? {
+          ...m,
+          is_verified: field === 'verified' ? !m.is_verified : m.is_verified,
+          is_gold: field === 'gold' ? !m.is_gold : m.is_gold,
+        } : m))
+        setMgmtUser((prev: any) => prev ? {
+          ...prev,
+          is_verified: field === 'verified' ? !prev.is_verified : prev.is_verified,
+          is_gold: field === 'gold' ? !prev.is_gold : prev.is_gold,
+        } : null)
+        setMgmtMsg({ type: 'success', text: `${field === 'verified' ? 'Mavi Tik' : 'Sarı Tik'} durumu değiştirildi.` })
+      }
+    })
+  }
+
+  const handleAwardXP = async () => {
+    if (!mgmtUser) return
+    setMgmtMsg(null)
+    startMgmtTransition(async () => {
+      const res = await awardUserXP(mgmtUser.id, xpRewardAmount)
+      if (res.error) {
+        setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
+      } else {
+        setUsers(prev => prev.map(m => m.id === mgmtUser.id ? {
+          ...m,
+          xp: (m.xp ?? 0) + xpRewardAmount
+        } : m))
+        setMgmtUser((prev: any) => prev ? {
+          ...prev,
+          xp: (prev.xp ?? 0) + xpRewardAmount
+        } : null)
+        setMgmtMsg({ type: 'success', text: `+${xpRewardAmount} XP başarıyla gönderildi.` })
+      }
+    })
+  }
 
   async function handleSearch(q: string, role: string) {
     const data = await getHQUsers({ search: q, role })
@@ -190,6 +381,19 @@ export function HQUserTable({
       setDeleteConfirmUser(null)
       setTimeout(() => setActionMsg(null), 3000)
     })
+  }
+
+  async function handleResetWarns(userId: string, username: string) {
+    const res = await resetUserWarns(userId)
+    if (res.error) {
+      setActionMsg({ id: userId, msg: `Hata: ${res.error}` })
+    } else {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, warns: 0 } : u))
+      )
+      setActionMsg({ id: userId, msg: `@${username} uyarıları sıfırlandı` })
+    }
+    setTimeout(() => setActionMsg(null), 3000)
   }
 
   async function handleToggleVerification(userId: string, field: 'verified' | 'gold', username: string) {
@@ -276,19 +480,21 @@ export function HQUserTable({
       <div
         className="rounded-2xl border border-white/5 bg-[#090912]/80 backdrop-blur-md overflow-x-auto"
       >
-        <div className="min-w-[950px]">
+        <div className="min-w-[1400px]">
           {/* Header Row */}
           <div
-            className="grid px-5 py-3.5 text-[10px] font-black uppercase tracking-widest border-b border-white/5 text-slate-400 bg-white/[0.01]"
+            className="grid px-5 py-3.5 text-[10px] font-black uppercase tracking-widest border-b border-white/5 text-slate-400 bg-white/[0.01] items-center"
             style={{
-              gridTemplateColumns: '2fr 1fr 1fr 1.2fr 0.8fr 0.8fr 180px',
+              gridTemplateColumns: '2fr 2fr 0.8fr 1fr 1.2fr 0.8fr 1.2fr 0.8fr 180px',
             }}
           >
             <span>Kullanıcı</span>
+            <span>Ülke / Şehir</span>
             <span>Statü</span>
             <span>Rolü</span>
             <span>Katılım Tarihi</span>
             <span>Yazı Adeti</span>
+            <span>Tik Yönetimi</span>
             <span>Uyarılar (Warns)</span>
             <span className="text-right">Hızlı Moderasyon</span>
           </div>
@@ -296,16 +502,16 @@ export function HQUserTable({
           {/* Rows */}
           <div className="divide-y divide-white/5">
             {users.map((user, i) => {
-              const status = getOnlineStatus(user)
+               const status = getOnlineStatus(user)
 
-              return (
+               return (
                 <motion.div
                   key={user.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.02 }}
                   className="grid px-5 py-3.5 items-center hover:bg-white/[0.01] transition-colors"
-                  style={{ gridTemplateColumns: '2fr 1fr 1fr 1.2fr 0.8fr 0.8fr 180px' }}
+                  style={{ gridTemplateColumns: '2fr 2fr 0.8fr 1fr 1.2fr 0.8fr 1.2fr 0.8fr 180px' }}
                 >
                   {/* User Column */}
                   <div className="flex items-center gap-3 min-w-0">
@@ -313,6 +519,7 @@ export function HQUserTable({
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
                         <span>{user.first_name || user.username}</span>
+                        <LevelBadge xp={user.xp ?? 0} />
                         {user.is_verified && <span className="text-blue-400 flex-shrink-0" title="Doğrulanmış Hesap">✓</span>}
                         {user.is_gold && <span className="text-amber-400 flex-shrink-0" title="İş Ortağı / Altın Hesap">★</span>}
                       </p>
@@ -321,6 +528,23 @@ export function HQUserTable({
                       </p>
                     </div>
                   </div>
+
+                  {/* Ülke / Şehir Column */}
+                  <p className="text-[11px] font-medium text-slate-300 truncate">
+                    {user.country ? (
+                      <span className="flex items-center gap-2">
+                        <img 
+                          src={getCountryFlagUrl(user.country)} 
+                          alt="" 
+                          className="w-4.5 h-3 object-cover rounded shadow-sm flex-shrink-0"
+                        />
+                        <span>{getCountryName(user.country)}{user.city ? `, ${user.city}` : ''}</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-600 italic">Belirtilmemiş</span>
+                    )}
+                  </p>
+
 
                   {/* Status Column */}
                   <div className="flex items-center gap-2">
@@ -341,9 +565,61 @@ export function HQUserTable({
                   {/* Post Count Column */}
                   <p className="text-xs font-mono font-bold text-white pl-2">{user.postCount}</p>
 
+                  {/* Tik Yönetimi Column */}
+                  <div className="flex items-center gap-1.5">
+                    {['founder', 'admin'].includes(currentUserRole) && user.role !== 'founder' ? (
+                      <>
+                        <button
+                          onClick={() => handleToggleVerification(user.id, 'verified', user.username)}
+                          title={user.is_verified ? "Doğrulamayı Kaldır" : "Doğrula (Mavi Tik)"}
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border cursor-pointer ${
+                            user.is_verified
+                              ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              : 'bg-white/5 hover:bg-blue-500/10 text-slate-400 hover:text-blue-400 border-white/5 hover:border-blue-500/20'
+                          }`}
+                        >
+                          <Check size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleToggleVerification(user.id, 'gold', user.username)}
+                          title={user.is_gold ? "Sarı Tiki Kaldır" : "Sarı Tik Ver"}
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border cursor-pointer ${
+                            user.is_gold
+                              ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                              : 'bg-white/5 hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 border-white/5 hover:border-amber-500/20'
+                          }`}
+                        >
+                          <Star size={12} className={user.is_gold ? "fill-amber-400" : ""} />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 pl-2">
+                        {user.is_verified ? (
+                          <span className="text-[10px] text-blue-400" title="Mavi Tik Aktif">✓</span>
+                        ) : (
+                          <span className="text-[10px] text-slate-700">-</span>
+                        )}
+                        {user.is_gold ? (
+                          <span className="text-[10px] text-amber-400" title="Sarı Tik Aktif">★</span>
+                        ) : (
+                          <span className="text-[10px] text-slate-700">-</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Warnings Column */}
-                  <div>
+                  <div className="flex items-center gap-2">
                     <WarnCircles count={user.warns ?? 0} />
+                    {(user.warns ?? 0) > 0 && ['founder', 'admin', 'moderator'].includes(currentUserRole) && (
+                      <button
+                        onClick={() => handleResetWarns(user.id, user.username)}
+                        title="Uyarıları Sıfırla"
+                        className="p-1 rounded bg-white/5 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 border border-white/5 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw size={10} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Actions Column */}
@@ -359,38 +635,23 @@ export function HQUserTable({
                       </button>
                     )}
 
-                    {/* Mavi Tik (Verification) Toggle */}
+                    {/* Admin Toggle Button */}
                     {['founder', 'admin'].includes(currentUserRole) && user.role !== 'founder' && (
                       <button
-                        onClick={() => handleToggleVerification(user.id, 'verified', user.username)}
-                        title={user.is_verified ? "Doğrulamayı Kaldır" : "Doğrula (Mavi Tik)"}
+                        onClick={() => handleRoleUpdate(user.id, user.role === 'admin' ? 'member' : 'admin', user.username)}
+                        title={user.role === 'admin' ? 'Yöneticilik Yetkisini Al' : 'Yönetici Yap'}
                         className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border cursor-pointer ${
-                          user.is_verified
-                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                            : 'bg-white/5 hover:bg-blue-500/10 text-slate-400 hover:text-blue-400 border-white/5 hover:border-blue-500/20'
+                          user.role === 'admin'
+                            ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                            : 'bg-white/5 hover:bg-purple-500/10 text-slate-400 hover:text-purple-400 border-white/5 hover:border-purple-500/20'
                         }`}
                       >
-                        <Check size={12} />
-                      </button>
-                    )}
-
-                    {/* Sarı Tik (Gold Partner) Toggle */}
-                    {['founder', 'admin'].includes(currentUserRole) && user.role !== 'founder' && (
-                      <button
-                        onClick={() => handleToggleVerification(user.id, 'gold', user.username)}
-                        title={user.is_gold ? "Sarı Tiki Kaldır" : "Sarı Tik Ver"}
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border cursor-pointer ${
-                          user.is_gold
-                            ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                            : 'bg-white/5 hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 border-white/5 hover:border-amber-500/20'
-                        }`}
-                      >
-                        <Star size={12} className={user.is_gold ? "fill-amber-400" : ""} />
+                        <ShieldAlert size={12} className={user.role === 'admin' ? "fill-purple-400/20" : ""} />
                       </button>
                     )}
 
                     {/* Moderator Toggle Button */}
-                    {['founder', 'admin'].includes(currentUserRole) && ['moderator', 'member'].includes(user.role ?? 'member') && user.role !== 'founder' && (
+                    {['founder', 'admin'].includes(currentUserRole) && ['moderator', 'member', 'admin'].includes(user.role ?? 'member') && user.role !== 'founder' && (
                       <button
                         onClick={() => handleRoleUpdate(user.id, user.role === 'moderator' ? 'member' : 'moderator', user.username)}
                         title={user.role === 'moderator' ? 'Moderatörlük Yetkisini Al' : 'Moderatör Yap'}
@@ -412,6 +673,17 @@ export function HQUserTable({
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-all bg-rose-500/10 hover:bg-rose-500/25 text-rose-500 border border-rose-500/20 cursor-pointer animate-pulse hover:animate-none"
                       >
                         <Trash2 size={12} />
+                      </button>
+                    )}
+
+                    {/* Yönet Button */}
+                    {['founder', 'admin'].includes(currentUserRole) && user.role !== 'founder' && (
+                      <button
+                        onClick={() => openMgmtCard(user)}
+                        title="Kullanıcıyı Yönet (Yönetim Kartı)"
+                        className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-purple-500/10 hover:bg-purple-500/25 text-purple-400 border border-purple-500/20 hover:border-purple-500/30 transition-all cursor-pointer"
+                      >
+                        Yönet
                       </button>
                     )}
                   </div>
@@ -528,6 +800,208 @@ export function HQUserTable({
                     <span>Kalıcı Olarak Sil</span>
                   )}
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* YÖNETİM KARTI Modal */}
+      <AnimatePresence>
+        {mgmtUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md p-6 rounded-2xl border border-white/5 bg-[#0c0c16]/95 backdrop-blur-md shadow-2xl relative"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setMgmtUser(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+
+              {/* Title / Header */}
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-5 select-none">
+                <Settings size={12} />
+                <span>YÖNETİM KARTI</span>
+              </h3>
+
+              {/* User overview section */}
+              <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex items-center gap-3.5 mb-5">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0 relative overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+                >
+                  {mgmtUser.avatar_url ? (
+                    <img src={mgmtUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    [mgmtUser.first_name?.[0], mgmtUser.last_name?.[0]].filter(Boolean).join('').toUpperCase() || mgmtUser.username.slice(0, 2).toUpperCase()
+                  )}
+                </div>
+                
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="text-sm font-black text-white truncate">{mgmtUser.first_name || mgmtUser.username} {mgmtUser.last_name || ''}</h4>
+                    {mgmtUser.is_verified && <span className="text-blue-400" title="Doğrulanmış">✓</span>}
+                    {mgmtUser.is_gold && <span className="text-amber-400" title="İş Ortağı">★</span>}
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-black uppercase tracking-wider select-none">
+                      ÜYE
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{mgmtUser.username} • Seviye {getRankInfo(mgmtUser.xp ?? 0).level} ({mgmtUser.xp ?? 0} XP)</p>
+                </div>
+              </div>
+
+              {/* Msg display */}
+              {mgmtMsg && (
+                <div className={`p-3 rounded-xl text-xs font-bold border mb-4 flex items-center gap-1.5 ${
+                  mgmtMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                }`}>
+                  {mgmtMsg.type === 'success' ? <Check size={14} /> : <AlertTriangle size={14} />}
+                  <span>{mgmtMsg.text}</span>
+                </div>
+              )}
+
+              {/* Form container */}
+              <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
+                {/* DETAY BİLGİLERİ GÜNCELLE */}
+                <div className="space-y-3">
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Detay Bilgileri Güncelle</h5>
+                  
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">İsim</label>
+                      <input
+                        type="text"
+                        value={mgmtFirstName}
+                        onChange={(e) => setMgmtFirstName(e.target.value)}
+                        placeholder="Melih"
+                        className="w-full p-2.5 rounded-xl border border-white/5 bg-[#0e0e1b] text-xs text-foreground outline-none focus:border-primary/40 transition-all placeholder:text-slate-700"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Soyisim</label>
+                      <input
+                        type="text"
+                        value={mgmtLastName}
+                        onChange={(e) => setMgmtLastName(e.target.value)}
+                        placeholder="Koçhan"
+                        className="w-full p-2.5 rounded-xl border border-white/5 bg-[#0e0e1b] text-xs text-foreground outline-none focus:border-primary/40 transition-all placeholder:text-slate-700"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Ülke</label>
+                      <SearchableSelect
+                        value={mgmtCountry}
+                        onChange={handleMgmtCountryChange}
+                        options={countriesList}
+                        placeholder="Ülke Seçin"
+                        selectClassName="p-2.5 bg-[#0e0e1b]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Şehir</label>
+                      <SearchableSelect
+                        value={mgmtCity}
+                        onChange={setMgmtCity}
+                        options={citiesList}
+                        placeholder={loadingGeo ? "Yükleniyor..." : "Şehir Seçin"}
+                        disabled={!mgmtCountry || loadingGeo}
+                        selectClassName="p-2.5 bg-[#0e0e1b]"
+                      />
+                    </div>
+                  </div>
+
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Biyografi</label>
+                    <textarea
+                      value={mgmtBio}
+                      onChange={(e) => setMgmtBio(e.target.value)}
+                      placeholder="Kendinizi tanıtın..."
+                      rows={2}
+                      className="w-full p-2.5 rounded-xl border border-white/5 bg-[#0e0e1b] text-xs text-foreground outline-none focus:border-primary/40 transition-all resize-none placeholder:text-slate-700"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSaveDetails}
+                    disabled={isMgmtPending}
+                    className="w-full py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    {isMgmtPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                    <span>Değişiklikleri Kaydet</span>
+                  </button>
+                </div>
+
+                {/* HIZLI YETKİLENDİRME */}
+                <div className="space-y-3 pt-2">
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Hızlı Yetkilendirme</h5>
+                  
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      onClick={() => handleToggleVerify('verified')}
+                      disabled={isMgmtPending}
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        mgmtUser.is_verified
+                          ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                          : 'bg-white/5 hover:bg-blue-500/10 text-slate-400 border-white/5 hover:border-blue-500/20'
+                      }`}
+                    >
+                      <Check size={12} />
+                      <span>Mavi Tik</span>
+                    </button>
+                    <button
+                      onClick={() => handleToggleVerify('gold')}
+                      disabled={isMgmtPending}
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        mgmtUser.is_gold
+                          ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                          : 'bg-white/5 hover:bg-amber-500/10 text-slate-400 border-white/5 hover:border-amber-500/20'
+                      }`}
+                    >
+                      <Star size={12} className={mgmtUser.is_gold ? "fill-amber-400" : ""} />
+                      <span>Sarı Tik (Sistem)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* HAVN ONUR ÖDÜLÜ */}
+                <div className="space-y-3 pt-2">
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">HAVN Onur Ödülü (XP Gönder)</h5>
+                  
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Katkılarından dolayı üyeye anlık deneyim puanı (XP) atayın. Bu eylem seviyelerini yükseltir!
+                  </p>
+
+                  <div className="flex gap-2">
+                    <select
+                      value={xpRewardAmount}
+                      onChange={(e) => setXpRewardAmount(Number(e.target.value))}
+                      className="flex-1 p-2.5 rounded-xl border border-white/5 bg-[#0e0e1b] text-xs text-foreground outline-none focus:border-primary/40 transition-all"
+                    >
+                      <option value={100}>+100 XP (Standart Ödül)</option>
+                      <option value={250}>+250 XP (Önemli Katkı)</option>
+                      <option value={500}>+500 XP (Büyük Emek)</option>
+                      <option value={1000}>+1000 XP (Süper Sinerji Ödülü)</option>
+                    </select>
+
+                    <button
+                      onClick={handleAwardXP}
+                      disabled={isMgmtPending}
+                      className="px-4 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      {isMgmtPending ? <Loader2 size={12} className="animate-spin" /> : <Award size={12} />}
+                      <span>Ödüllendir</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>

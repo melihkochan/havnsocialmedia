@@ -15,7 +15,7 @@ import { useGlobalStore } from '@/lib/store/useGlobalStore'
 type NotificationItem = {
   id: string
   created_at: string
-  type: 'like' | 'comment' | 'join_request' | 'approved' | 'repost' | 'comment_like' | 'reply' | 'post_removed' | 'post_pinned' | 'follow' | 'support_reply' | 'support_ticket' | 'warning'
+  type: 'like' | 'comment' | 'join_request' | 'approved' | 'repost' | 'comment_like' | 'reply' | 'post_removed' | 'post_pinned' | 'follow' | 'support_reply' | 'support_ticket' | 'warning' | 'xp_reward' | 'system_alert'
   is_read: boolean
   post_id: string | null
   comment_id: string | null
@@ -431,7 +431,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
     if (filter === 'comments') return notif.type === 'comment' || notif.type === 'reply'
     if (filter === 'follows') return notif.type === 'follow'
     if (filter === 'system') {
-      return ['join_request', 'approved', 'repost', 'post_removed', 'post_pinned', 'support_reply', 'support_ticket', 'warning'].includes(notif.type)
+      return ['join_request', 'approved', 'repost', 'post_removed', 'post_pinned', 'support_reply', 'support_ticket', 'warning', 'xp_reward', 'system_alert'].includes(notif.type)
     }
     return true
   })
@@ -620,6 +620,32 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       Hesap Uyarısı
                     </span>
                     <span className="font-semibold text-foreground/90">{notif.message ?? 'Hesabınız kuralları ihlal ettiği için uyarıldı.'}</span>
+                  </span>
+                )
+                break
+              }
+              case 'xp_reward': {
+                icon = <Sparkles size={14} className="text-amber-500 fill-amber-500/10" />
+                iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
+                contentText = (
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-500/15 text-amber-500 border border-amber-500/25 select-none uppercase tracking-wider">
+                      Onur Ödülü (XP)
+                    </span>
+                    <span className="font-semibold text-foreground/90">{notif.message ?? 'Yetkili tarafından ödüllendirildiniz.'}</span>
+                  </span>
+                )
+                break
+              }
+              case 'system_alert': {
+                icon = <Shield size={14} className="text-blue-500 fill-blue-500/10" />
+                iconBg = 'bg-blue-500/10 text-blue-500 border border-blue-500/25'
+                contentText = (
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-blue-500/15 text-blue-500 border border-blue-500/25 select-none uppercase tracking-wider">
+                      Sistem Bildirimi
+                    </span>
+                    <span className="font-semibold text-foreground/90">{notif.message ?? 'Sistem bildirimi.'}</span>
                   </span>
                 )
                 break

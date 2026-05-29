@@ -33,21 +33,18 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
     const channelToken = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 
     const fetchCounts = async () => {
-      const [notifs, dms] = await Promise.all([
-        supabase
-          .from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', currentUser.id)
-          .eq('is_read', false),
-        supabase
-          .from('direct_messages')
-          .select('id', { count: 'exact', head: true })
-          .eq('receiver_id', currentUser.id)
-          .eq('is_read', false)
-      ])
-      
-      setUnreadNotificationsCount(notifs.count ?? 0)
-      setUnreadDMsCount(dms.count ?? 0)
+      try {
+        const { getUnreadNotificationCount } = await import('@/lib/actions/notifications')
+        const { getUnreadMessagesCount } = await import('@/lib/actions/messages')
+        const [notifsCount, dmsCount] = await Promise.all([
+          getUnreadNotificationCount(),
+          getUnreadMessagesCount()
+        ])
+        setUnreadNotificationsCount(notifsCount)
+        setUnreadDMsCount(dmsCount)
+      } catch (err) {
+        console.error('Error fetching unread counts in provider:', err)
+      }
     }
 
     const fetchTicketsCount = async () => {
@@ -72,7 +69,12 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
     const dmChannel = supabase.channel(`global_dms_${currentUser.id}_${channelToken}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'direct_messages' },
+        { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${currentUser.id}` },
+        () => fetchCounts()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'direct_messages' },
         (payload) => {
           const newMsg = payload.new as any
           const oldMsg = payload.old as any
@@ -81,20 +83,29 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'direct_messages' },
+        () => fetchCounts()
+      )
       .subscribe()
 
     // Subscribe to notifications
     const notifChannel = supabase.channel(`global_notifs_${currentUser.id}_${channelToken}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications' },
-        (payload) => {
-          const newNotif = payload.new as any
-          const oldNotif = payload.old as any
-          if (newNotif?.user_id === currentUser.id || oldNotif?.user_id === currentUser.id) {
-            fetchCounts()
-          }
-        }
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
+        () => fetchCounts()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
+        () => fetchCounts()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'notifications' },
+        () => fetchCounts()
       )
       .subscribe()
 
@@ -107,7 +118,9 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
           fetchTicketsCount()
         }
       )
+
       .subscribe()
+
 
     // Listen for auth state changes to re-fetch if user changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {

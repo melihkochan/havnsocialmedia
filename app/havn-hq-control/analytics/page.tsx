@@ -43,7 +43,7 @@ export default async function HQAnalyticsPage() {
   )
 
   return (
-    <div className="max-w-7xl mx-auto w-full p-8 space-y-8">
+    <div className="w-full p-8 space-y-8">
       {/* Header */}
       <div>
         <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(124,58,237,0.8)' }}>

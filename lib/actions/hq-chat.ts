@@ -93,7 +93,7 @@ export async function getTeamMembers() {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, first_name, last_name, avatar_url, role, last_seen_at, show_status')
+    .select('id, username, first_name, last_name, avatar_url, role, last_seen_at, show_status, is_verified, is_gold, xp, bio, warns, country, city')
     .in('role', ['founder', 'admin', 'moderator'])
     .order('updated_at', { ascending: false })
 

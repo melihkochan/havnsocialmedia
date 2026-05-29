@@ -91,6 +91,10 @@ export function Sidebar({
 }: SidebarProps) {
   const [mounted, setMounted] = useState(false);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const storeCurrentUser = useGlobalStore((state) => state.currentUser);
   const unreadNotifications = useGlobalStore((state) => state.unreadNotificationsCount);
   const unreadDMs = useGlobalStore((state) => state.unreadDMsCount);

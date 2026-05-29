@@ -83,17 +83,12 @@ export const useGlobalStore = create<GlobalState>((set) => ({
       const memberCommunityIds = memberships.map((m: any) => m.community_id)
 
       // Step 2: Fetch remaining data in parallel
+      const { getUnreadNotificationCount } = await import('@/lib/actions/notifications')
+      const { getUnreadMessagesCount } = await import('@/lib/actions/messages')
+
       const promises: any[] = [
-        supabase
-          .from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('is_read', false),
-        supabase
-          .from('direct_messages')
-          .select('id', { count: 'exact', head: true })
-          .eq('receiver_id', user.id)
-          .eq('is_read', false),
+        getUnreadNotificationCount(),
+        getUnreadMessagesCount(),
         memberCommunityIds.length > 0 
           ? supabase.from('communities').select('id, name').in('id', memberCommunityIds)
           : Promise.resolve({ data: [] })
@@ -117,16 +112,17 @@ export const useGlobalStore = create<GlobalState>((set) => ({
         )
       }
 
-      const [notifs, dms, communitiesResult, tickets] = await Promise.all(promises)
+      const [notifsCount, dmsCount, communitiesResult, tickets] = await Promise.all(promises)
 
       set({
         currentUser: profile,
-        unreadNotificationsCount: notifs.count ?? 0,
-        unreadDMsCount: dms.count ?? 0,
+        unreadNotificationsCount: notifsCount,
+        unreadDMsCount: dmsCount,
         userCommunities: communitiesResult.data ?? [],
         openSupportTicketsCount: tickets?.count ?? 0,
         isInitialized: true,
       })
+
     } catch (error) {
       console.error('Error fetching global data:', error)
       set({ isInitialized: true })

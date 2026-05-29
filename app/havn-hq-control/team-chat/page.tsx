@@ -7,7 +7,7 @@ export default async function HQTeamChatPage() {
   const profile = await requireHQAccess()
 
   return (
-    <div className="max-w-7xl mx-auto w-full p-8 space-y-8">
+    <div className="w-full p-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-1.5 pb-4 border-b border-border/60">
         <div className="flex items-center gap-2 text-primary">

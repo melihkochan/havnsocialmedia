@@ -92,7 +92,7 @@ export default async function HQOverviewPage() {
   const stats = await getHQOverviewStats()
 
   return (
-    <div className="max-w-7xl mx-auto w-full p-8 space-y-8">
+    <div className="w-full p-8 space-y-8">
       {/* Top Header Row with status badge */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-white/5">
         <div>

@@ -168,16 +168,27 @@ export async function updateCommunitySettings(communityId: string, formData: For
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
-  // Verify user is owner/moderator
-  const { data: membership } = await supabase
-    .from('community_members')
-    .select('role, status')
-    .eq('community_id', communityId)
-    .eq('user_id', user.id)
+  // Check platform role first
+  const { data: platformProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
     .single()
 
-  if (!membership || membership.status !== 'approved' || (membership.role !== 'owner' && membership.role !== 'moderator')) {
-    return { error: 'Bu topluluğu düzenleme yetkiniz yok.' }
+  const isPlatformStaff = platformProfile && ['founder', 'admin', 'moderator'].includes(platformProfile.role ?? '')
+
+  if (!isPlatformStaff) {
+    // Verify user is owner/moderator in the community
+    const { data: membership } = await supabase
+      .from('community_members')
+      .select('role, status')
+      .eq('community_id', communityId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!membership || membership.status !== 'approved' || (membership.role !== 'owner' && membership.role !== 'moderator')) {
+      return { error: 'Bu topluluğu düzenleme yetkiniz yok.' }
+    }
   }
 
   const name = formData.get('name') as string

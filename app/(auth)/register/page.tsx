@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, Check } from 'lucide-react'
 import { signUp } from '@/lib/actions/auth'
 import { RESERVED_USERNAMES } from '@/lib/reserved-usernames'
 import { AvatarUpload } from '@/components/havn/AvatarUpload'
+import { SearchableSelect } from '@/components/havn/SearchableSelect'
+import { getCountriesAction, getCitiesAction } from '@/lib/actions/location'
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -15,6 +17,50 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [usernameInput, setUsernameInput] = useState('')
+
+  const [selectedCountry, setSelectedCountry] = useState('')
+  const [selectedCity, setSelectedCity] = useState('')
+  const [countriesList, setCountriesList] = useState<{ value: string; label: string; image: string }[]>([])
+  const [citiesList, setCitiesList] = useState<{ value: string; label: string }[]>([])
+  const [loadingGeo, setLoadingGeo] = useState(false)
+
+  useEffect(() => {
+    async function loadCountries() {
+      try {
+        const list = await getCountriesAction()
+        setCountriesList(list.map(c => ({
+          value: c.code,
+          label: c.name,
+          image: c.flag
+        })))
+      } catch (err) {
+        console.error('Failed to load countries:', err)
+      }
+    }
+    loadCountries()
+  }, [])
+
+  const handleCountryChange = async (countryCode: string) => {
+    setSelectedCountry(countryCode)
+    setSelectedCity('')
+    setCitiesList([])
+    if (!countryCode) return
+
+    setLoadingGeo(true)
+    try {
+      const list = await getCitiesAction(countryCode)
+      const formatted = list.map(city => ({ value: city, label: city }))
+      setCitiesList(formatted)
+      if (formatted.length > 0) {
+        setSelectedCity(formatted[0].value)
+      }
+    } catch (err) {
+      console.error('Failed to load cities:', err)
+    } finally {
+      setLoadingGeo(false)
+    }
+  }
+
 
   const strength = [
     password.length >= 8,
@@ -137,6 +183,34 @@ export default function RegisterPage() {
             />
           </div>
         </div>
+
+        {/* Ülke & Şehir Seçimi */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Ülke</label>
+            <SearchableSelect
+              value={selectedCountry}
+              onChange={handleCountryChange}
+              options={countriesList}
+              placeholder="Ülke Seçin"
+              selectClassName="bg-card py-3"
+            />
+            <input type="hidden" name="country" value={selectedCountry} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Şehir</label>
+            <SearchableSelect
+              value={selectedCity}
+              onChange={setSelectedCity}
+              options={citiesList}
+              placeholder={loadingGeo ? "Yükleniyor..." : "Şehir Seçin"}
+              disabled={!selectedCountry || loadingGeo}
+              selectClassName="bg-card py-3"
+            />
+            <input type="hidden" name="city" value={selectedCity} />
+          </div>
+        </div>
+
 
         {/* Password */}
         <div className="space-y-1.5">
