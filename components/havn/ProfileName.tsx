@@ -1,3 +1,6 @@
+'use client'
+
+import { useRouter } from 'next/navigation'
 import { getFullName } from '@/lib/profile-display'
 import type { ProfileNameFields } from '@/lib/profile-display'
 import { RoleBadge } from '@/components/havn/RoleBadge'
@@ -90,6 +93,7 @@ export function ProfileName({
   streak,
   align = 'left',
 }: ProfileNameProps) {
+  const router = useRouter()
   const fullName = getFullName(profile)
   const primary = fullName ?? profile.username
   const hasFullName = !!fullName
@@ -97,22 +101,36 @@ export function ProfileName({
   const enriched = profile ? enrichProfile(profile) : null
   const isVerified = enriched?.is_verified ?? profile?.is_verified
   const isGold = (enriched?.is_gold ?? profile?.is_gold) || isFounder(profile)
+  const isHLogoUser = profile && (profile.username === 'melih' || profile.username === 'havn')
 
   if (layout === 'inline') {
     return (
       <div className={cn('flex items-center gap-1 flex-nowrap min-w-0 flex-1', className)}>
         <span className={cn('font-semibold text-xs truncate min-w-0 flex-shrink', nameClassName)}>{primary}</span>
-        {isGold && (
+        {isHLogoUser && (
+          <span
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              router.push('/profile/havn')
+            }}
+            className="flex-shrink-0 align-middle inline-flex items-center justify-center w-3.5 h-3.5 rounded bg-gradient-to-tr from-yellow-400 via-amber-500 to-yellow-600 text-black border border-amber-400/30 shadow-[0_0_6px_rgba(245,158,11,0.55)] cursor-pointer hover:scale-110 active:scale-95 transition-all select-none"
+            title="HAVN Resmi Ortaklığı"
+          >
+            <span className="text-[9px] font-black text-black leading-none font-mono">H</span>
+          </span>
+        )}
+        {(isHLogoUser || isGold) && (
           <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Özel Hesap / Sistem Ortağı: HAVN ekibine veya resmi iş ortaklarına aittir.">
             <BadgeCheck size={14} className="fill-[#eab308] text-background drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
           </span>
         )}
-        {!isGold && isVerified && (
+        {!isHLogoUser && !isGold && isVerified && (
           <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Doğrulanmış Üye: HAVN topluluğunun aktif ve onaylanmış bir üyesidir.">
             <BadgeCheck size={14} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
           </span>
         )}
-        {isFounder(profile) && <span className="flex-shrink-0"><FounderBadge /></span>}
+        {isFounder(profile) && !isHLogoUser && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}
         {hasFullName && showHandle && (
@@ -126,17 +144,30 @@ export function ProfileName({
     <div className={cn('min-w-0 w-full', align === 'center' ? 'text-center flex flex-col items-center' : '', className)}>
       <div className={cn('flex items-center gap-1.5 flex-nowrap min-w-0 w-full', align === 'center' ? 'justify-center' : '')}>
         <span className={cn('font-semibold text-sm truncate min-w-0 flex-shrink', nameClassName)}>{primary}</span>
-        {isGold && (
+        {isHLogoUser && (
+          <span
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              router.push('/profile/havn')
+            }}
+            className="flex-shrink-0 align-middle inline-flex items-center justify-center w-4 h-4 rounded bg-gradient-to-tr from-yellow-400 via-amber-500 to-yellow-600 text-black border border-amber-400/30 shadow-[0_0_8px_rgba(245,158,11,0.55)] cursor-pointer hover:scale-110 active:scale-95 transition-all select-none"
+            title="HAVN Resmi Ortaklığı"
+          >
+            <span className="text-[10px] font-black text-black leading-none font-mono">H</span>
+          </span>
+        )}
+        {(isHLogoUser || isGold) && (
           <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Özel Hesap / Sistem Ortağı: HAVN ekibine veya resmi iş ortaklarına aittir.">
             <BadgeCheck size={14} className="fill-[#eab308] text-background drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
           </span>
         )}
-        {!isGold && isVerified && (
+        {!isHLogoUser && !isGold && isVerified && (
           <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Doğrulanmış Üye: HAVN topluluğunun aktif ve onaylanmış bir üyesidir.">
             <BadgeCheck size={14} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
           </span>
         )}
-        {isFounder(profile) && <span className="flex-shrink-0"><FounderBadge /></span>}
+        {isFounder(profile) && !isHLogoUser && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}
       </div>

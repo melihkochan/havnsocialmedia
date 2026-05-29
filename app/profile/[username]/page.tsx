@@ -72,7 +72,6 @@ import { FollowButton } from '@/components/havn/FollowButton'
 import { FollowStatsModal } from '@/components/havn/FollowStatsModal'
 import { InteractiveAvatar } from '@/components/havn/InteractiveAvatar'
 import { getUserSupportTickets } from '@/lib/actions/support'
-import { AdminControlsDropdown } from '@/components/havn/AdminControlsDropdown'
 import { ProfileTabsClient } from '@/components/havn/ProfileTabsClient'
 
 export const dynamic = 'force-dynamic'
@@ -147,12 +146,12 @@ export default async function ProfilePage({
     // Followers count inline
     supabase
       .from('follows')
-      .select('id', { count: 'exact', head: true })
+      .select('follower_id')
       .eq('following_id', profile.id),
     // Following count inline
     supabase
       .from('follows')
-      .select('id', { count: 'exact', head: true })
+      .select('following_id')
       .eq('follower_id', profile.id),
     user ? supabase.from('follows').select('created_at').eq('follower_id', user.id).eq('following_id', profile.id).maybeSingle() : Promise.resolve({ data: null }),
     user ? supabase.from('follows').select('created_at').eq('follower_id', profile.id).eq('following_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
@@ -178,8 +177,8 @@ export default async function ProfilePage({
   const followStatus = isFollowing ? 'following' : (isRequested ? 'requested' : 'none')
 
   const followStats = {
-    followersCount: followersResult.count ?? 0,
-    followingCount: followingResult.count ?? 0
+    followersCount: followersResult.data?.length ?? 0,
+    followingCount: followingResult.data?.length ?? 0
   }
 
   const currentProfileRaw = currentProfileResult.data
@@ -307,9 +306,6 @@ export default async function ProfilePage({
                 ) : (
                   user && (
                     <div className="flex gap-2 items-center">
-                      {isCurrentFounder && (
-                        <AdminControlsDropdown targetProfile={profile} />
-                      )}
                       <FollowButton targetUserId={profile.id} initialIsFollowing={followStatus} />
                       <MuteProfileButton username={profile.username} />
                     </div>
@@ -337,18 +333,27 @@ export default async function ProfilePage({
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-black text-foreground flex items-center gap-1.5">
                   {getDisplayName(profile)}
-                  {(profile.is_gold || isFounder(profile)) && (
+                  {(profile.username === 'melih' || profile.username === 'havn') && (
+                    <Link
+                      href="/profile/havn"
+                      className="flex-shrink-0 align-middle inline-flex items-center justify-center w-5 h-5 rounded bg-gradient-to-tr from-yellow-400 via-amber-500 to-yellow-600 text-black border border-amber-400/30 shadow-[0_0_8px_rgba(245,158,11,0.55)] cursor-pointer hover:scale-110 active:scale-95 transition-all select-none"
+                      title="HAVN Resmi Ortaklığı"
+                    >
+                      <span className="text-[12px] font-black text-black leading-none font-mono">H</span>
+                    </Link>
+                  )}
+                  {(profile.username === 'melih' || profile.username === 'havn' || profile.is_gold || isFounder(profile)) && (
                     <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Özel Hesap / Sistem Ortağı: HAVN ekibine veya resmi iş ortaklarına aittir.">
                       <BadgeCheck size={18} className="fill-[#eab308] text-background drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
                     </span>
                   )}
-                  {!(profile.is_gold || isFounder(profile)) && profile.is_verified && (
+                  {!(profile.username === 'melih' || profile.username === 'havn') && !(profile.is_gold || isFounder(profile)) && profile.is_verified && (
                     <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Doğrulanmış Üye: HAVN topluluğunun aktif ve onaylanmış bir üyesidir.">
                       <BadgeCheck size={18} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
                     </span>
                   )}
                 </h1>
-                {isFounder(profile) && (
+                {isFounder(profile) && !(profile.username === 'melih' || profile.username === 'havn') && (
                   <span
                     className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black tracking-wider shadow-sm bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-white border border-amber-600/30 select-none"
                     title="Sistem Kurucusu"

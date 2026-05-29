@@ -7,6 +7,7 @@ import { TopProgressBar } from "@/components/layout/TopProgressBar";
 import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { ensureHavnOfficialProfile } from "@/lib/actions/system-init";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,6 +32,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Seed official havn profile if it doesn't exist
+  await ensureHavnOfficialProfile();
+
   // Read pathname injected from proxy.ts (middleware)
   const headerList = await headers();
   const pathname = headerList.get("x-pathname") || "";

@@ -56,7 +56,7 @@ export function HQSystemLog({ stats }: { stats?: DashboardStats }) {
   const repliedTickets = stats?.repliedTickets || 0
   const resolutionRate = totalTickets > 0 ? Math.round((repliedTickets / totalTickets) * 100) : 100
 
-  const radius = 40
+  const radius = 24
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (resolutionRate / 100) * circumference
 
