@@ -35,6 +35,8 @@ export default async function RootLayout({
   const headerList = await headers();
   const pathname = headerList.get("x-pathname") || "";
 
+  let shouldRedirect = false;
+
   // Check maintenance mode status using the server client (which uses the custom DNS lookup / ipv4 preference)
   try {
     const supabase = await createClient();
@@ -76,12 +78,16 @@ export default async function RootLayout({
         }
 
         if (!isAuthorized) {
-          redirect("/maintenance");
+          shouldRedirect = true;
         }
       }
     }
   } catch (err) {
     console.error("RootLayout maintenance check error:", err);
+  }
+
+  if (shouldRedirect) {
+    redirect("/maintenance");
   }
 
   return (

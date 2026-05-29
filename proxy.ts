@@ -31,6 +31,8 @@ export async function proxy(request: NextRequest) {
   })
 }
 
+export const middleware = proxy
+
 export default proxy
 
 export const config = {

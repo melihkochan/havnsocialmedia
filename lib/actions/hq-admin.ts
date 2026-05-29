@@ -2,6 +2,7 @@
 
 import { createServiceClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { logHQModAction } from '@/lib/actions/hq-chat'
 
 // ── Genel İstatistikler ──────────────────────────────────────────────────────
 
@@ -254,8 +255,16 @@ export async function updateUserRole(targetUserId: string, newRole: string) {
   }
 
   const admin = await createServiceClient()
+  // Fetch target username first for the log
+  const { data: targetProfile } = await admin.from('profiles').select('username').eq('id', targetUserId).single()
+  const targetName = targetProfile ? `@${targetProfile.username}` : 'Bilinmeyen Kullanıcı'
+
   const { error } = await admin.from('profiles').update({ role: newRole }).eq('id', targetUserId)
   if (error) return { error: error.message }
+
+  const roleLabels: Record<string, string> = { founder: 'Kurucu', admin: 'Yönetici', moderator: 'Moderatör', member: 'Üye' }
+  await logHQModAction('role_change', targetName, `Kullanıcı rolünü "${roleLabels[newRole] || newRole}" olarak güncelledi.`)
+
   return { success: true }
 }
 
@@ -332,9 +341,15 @@ export async function warnUser(targetUserId: string, reason: string) {
 
   if (updateError) return { error: updateError.message }
 
+  // Fetch target username for the log
+  const { data: targetProf } = await admin.from('profiles').select('username').eq('id', targetUserId).single()
+  const targetName = targetProf ? `@${targetProf.username}` : 'Bilinmeyen Kullanıcı'
+
   // Create notification
   const { createNotification } = await import('@/lib/actions/notifications')
   await createNotification(targetUserId, user.id, 'warning', null, null, { message: reason })
+
+  await logHQModAction('user_warn', targetName, `Kullanıcıyı uyardı. Gerekçe: "${reason}"`)
 
   return { success: true }
 }
@@ -382,7 +397,7 @@ export async function toggleProfileVerification(targetUserId: string, field: 've
   const admin = await createServiceClient()
   
   // Get current state
-  const { data: targetProfile } = await admin.from('profiles').select('is_verified, is_gold').eq('id', targetUserId).single()
+  const { data: targetProfile } = await admin.from('profiles').select('username, is_verified, is_gold').eq('id', targetUserId).single()
   if (!targetProfile) return { error: 'Kullanıcı bulunamadı.' }
 
   const updateFields: Record<string, boolean> = {}
@@ -394,6 +409,12 @@ export async function toggleProfileVerification(targetUserId: string, field: 've
 
   const { error } = await admin.from('profiles').update(updateFields).eq('id', targetUserId)
   if (error) return { error: error.message }
+
+  const targetName = `@${targetProfile.username}`
+  const badgeName = field === 'verified' ? 'Mavi Tik' : 'Sarı Tik (İş Ortağı)'
+  const status = updateFields[field === 'verified' ? 'is_verified' : 'is_gold'] ? 'Aktif Edildi' : 'Pasif Edildi'
+  await logHQModAction('verification_toggle', targetName, `Kullanıcının "${badgeName}" rozetini değiştirdi: ${status}`)
+
   return { success: true }
 }
 
@@ -432,14 +453,15 @@ export async function resolveCommunityApproval(communityId: string, action: 'app
 
   const admin = await createServiceClient()
 
-  if (action === 'approve') {
-    // Get creator and name to send notification
-    const { data: community } = await admin
-      .from('communities')
-      .select('created_by, name')
-      .eq('id', communityId)
-      .single()
+  // Get community name
+  const { data: community } = await admin
+    .from('communities')
+    .select('created_by, name')
+    .eq('id', communityId)
+    .single()
+  const commName = community?.name || 'Bilinmeyen Topluluk'
 
+  if (action === 'approve') {
     const { error: commError } = await admin
       .from('communities')
       .update({ status: 'approved' })
@@ -466,6 +488,8 @@ export async function resolveCommunityApproval(communityId: string, action: 'app
       )
     }
 
+    await logHQModAction('community_approve', commName, `"${commName}" topluluk talebini onayladı.`)
+
     revalidatePath('/communities')
     return { success: true }
   } else {
@@ -481,6 +505,8 @@ export async function resolveCommunityApproval(communityId: string, action: 'app
       .eq('id', communityId)
 
     if (deleteError) return { error: deleteError.message }
+
+    await logHQModAction('community_reject', commName, `"${commName}" topluluk talebini reddetti (silindi).`)
     
     revalidatePath('/communities')
     return { success: true }
@@ -505,9 +531,15 @@ export async function resetUserWarns(targetUserId: string) {
 
   if (updateError) return { error: updateError.message }
 
+  // Fetch target username for log
+  const { data: targetProf } = await admin.from('profiles').select('username').eq('id', targetUserId).single()
+  const targetName = targetProf ? `@${targetProf.username}` : 'Bilinmeyen Kullanıcı'
+
   // Create notification
   const { createNotification } = await import('@/lib/actions/notifications')
   await createNotification(targetUserId, user.id, 'system_alert', null, null, { message: 'Hesap uyarılarınız sistem yöneticisi tarafından sıfırlandı. 👍' })
+
+  await logHQModAction('warn_reset', targetName, `Kullanıcının uyarılarını sıfırladı.`)
 
   return { success: true }
 }
@@ -562,7 +594,7 @@ export async function awardUserXP(targetUserId: string, xpAmount: number) {
   }
 
   const admin = await createServiceClient()
-  const { data: targetProfile } = await admin.from('profiles').select('xp').eq('id', targetUserId).single()
+  const { data: targetProfile } = await admin.from('profiles').select('username, xp').eq('id', targetUserId).single()
   if (!targetProfile) return { error: 'Kullanıcı bulunamadı.' }
 
   const currentXp = targetProfile.xp ?? 0
@@ -575,9 +607,13 @@ export async function awardUserXP(targetUserId: string, xpAmount: number) {
 
   if (error) return { error: error.message }
 
+  const targetName = `@${targetProfile.username}`
+
   // Send notification to user
   const { createNotification } = await import('@/lib/actions/notifications')
   await createNotification(targetUserId, user.id, 'xp_reward', null, null, { message: `Tebrikler! Sistem yöneticisi tarafından hesabınıza +${xpAmount} XP onur ödülü aktarıldı. 💎` })
+
+  await logHQModAction('xp_award', targetName, `Kullanıcıya +${xpAmount} XP onur ödülü gönderdi.`)
 
   return { success: true, newXp }
 }

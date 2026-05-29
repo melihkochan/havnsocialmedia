@@ -243,7 +243,7 @@ export default async function HQOverviewPage() {
 
         {/* Live Log */}
         <div className="h-full">
-          <HQSystemLog />
+          <HQSystemLog stats={stats} />
         </div>
       </div>
     </div>
