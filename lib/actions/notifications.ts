@@ -115,7 +115,7 @@ export type NotificationExtras = {
 export async function createNotification(
   userId: string,
   actorId: string,
-  type: 'like' | 'comment' | 'join_request' | 'approved' | 'repost' | 'comment_like' | 'reply' | 'post_removed' | 'post_pinned' | 'follow' | 'support_reply' | 'support_ticket',
+  type: 'like' | 'comment' | 'join_request' | 'approved' | 'repost' | 'comment_like' | 'reply' | 'post_removed' | 'post_pinned' | 'follow' | 'support_reply' | 'support_ticket' | 'warning',
   postId: string | null = null,
   commentId: string | null = null,
   extras?: NotificationExtras

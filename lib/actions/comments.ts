@@ -21,6 +21,27 @@ export async function createComment(postId: string, content: string, parentComme
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  // Slow Mode Check
+  const { data: slowModeSetting } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'slow_mode_active')
+    .maybeSingle()
+
+  if (slowModeSetting && (slowModeSetting.value === true || slowModeSetting.value === 'true')) {
+    const fifteenSecondsAgo = new Date(Date.now() - 15000).toISOString()
+    const { data: recentComments } = await supabase
+      .from('comments')
+      .select('created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', fifteenSecondsAgo)
+      .limit(1)
+
+    if (recentComments && recentComments.length > 0) {
+      return { error: 'Yavaş mod aktiftir. Lütfen sonraki yorumunuz için 15 saniye bekleyin.' }
+    }
+  }
+
   // NSFW check
   const { containsNsfw } = await import('@/lib/nsfw-filter')
   if (containsNsfw(content)) {

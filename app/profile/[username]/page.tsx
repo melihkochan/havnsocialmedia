@@ -11,7 +11,7 @@ import { CalendarDays, Users, Eye, Heart, MessageSquare, Lock, BadgeCheck } from
 import { enrichProfile } from '@/lib/profile-enrich'
 import { MuteProfileButton } from '@/components/havn/MuteProfileButton'
 import { getDisplayName, getFullName, getInitials, getOnlineStatus } from '@/lib/profile-display'
-import { cn } from '@/lib/utils'
+import { cn, getSafeTimestamp } from '@/lib/utils'
 import { getRankInfo } from '@/lib/gamification'
 
 const Twitter = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
@@ -95,7 +95,7 @@ export default async function ProfilePage({
     supabase.auth.getUser(),
     supabase
       .from('profiles')
-      .select('id, username, first_name, last_name, avatar_url, banner_url, bio, updated_at, is_verified, is_gold, xp, show_status, last_seen_at, social_links, follow_requests, is_private')
+      .select('id, username, first_name, last_name, avatar_url, banner_url, bio, updated_at, is_verified, is_gold, xp, show_status, last_seen_at, social_links, follow_requests, is_private, role')
       .eq('username', username)
       .single(),
   ])
@@ -122,7 +122,7 @@ export default async function ProfilePage({
     user
       ? supabase
           .from('profiles')
-          .select('id, username, first_name, last_name, avatar_url, banner_url, bio, updated_at, is_verified, is_gold')
+          .select('id, username, first_name, last_name, avatar_url, banner_url, bio, updated_at, is_verified, is_gold, role')
           .eq('id', user.id)
           .single()
       : Promise.resolve({ data: null }),
@@ -259,13 +259,10 @@ export default async function ProfilePage({
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
           <div className="h-32 relative">
             {profile.banner_url ? (
-              <Image
-                src={`${profile.banner_url}?t=${new Date(profile.updated_at).getTime()}`}
+              <img
+                src={`${profile.banner_url}?t=${getSafeTimestamp(profile.updated_at)}`}
                 alt="Kapak Görseli"
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                priority
-                className="object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
               />
             ) : (
               <div

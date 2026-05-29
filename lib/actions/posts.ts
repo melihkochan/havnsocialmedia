@@ -103,6 +103,27 @@ export async function createPost(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
 
+  // Slow Mode Check
+  const { data: slowModeSetting } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'slow_mode_active')
+    .maybeSingle()
+
+  if (slowModeSetting && (slowModeSetting.value === true || slowModeSetting.value === 'true')) {
+    const fifteenSecondsAgo = new Date(Date.now() - 15000).toISOString()
+    const { data: recentPosts } = await supabase
+      .from('posts')
+      .select('created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', fifteenSecondsAgo)
+      .limit(1)
+
+    if (recentPosts && recentPosts.length > 0) {
+      return { error: 'Yavaş mod aktiftir. Lütfen sonraki paylaşımınız için 15 saniye bekleyin.' }
+    }
+  }
+
   const content = formData.get('content') as string
   
   // NSFW keyword check

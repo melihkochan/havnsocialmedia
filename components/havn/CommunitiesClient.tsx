@@ -57,6 +57,7 @@ interface CommunitiesClientProps {
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [type, setType] = useState<'public' | 'request_to_join'>('public')
   const [error, setError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -66,8 +67,40 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
     startTransition(async () => {
       const res = await createCommunity(fd)
       if (res.error) setError(res.error)
-      else { onCreated(); onClose() }
+      else if (res.pendingApproval) {
+        setSuccessMsg('approval_needed')
+      } else {
+        onCreated()
+        onClose()
+      }
     })
+  }
+
+  if (successMsg === 'approval_needed') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="relative z-10 bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl text-center flex flex-col items-center gap-4"
+        >
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
+            <Check size={20} />
+          </div>
+          <h2 className="text-base font-black text-white">Talep Alındı</h2>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Topluluk oluşturma talebiniz başarıyla kurucu onay kuyruğuna iletilmiştir. Onaylandıktan sonra topluluğunuz aktif hale gelecektir.
+          </p>
+          <button
+            onClick={onClose}
+            className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all cursor-pointer"
+          >
+            Tamam
+          </button>
+        </motion.div>
+      </div>
+    )
   }
 
   return (

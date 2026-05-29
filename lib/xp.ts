@@ -14,7 +14,17 @@ export async function rewardXP(userId: string, amount: number) {
 
     if (getError || !profile) return { error: 'Profil bulunamadı.' }
 
-    const newXp = (profile.xp || 0) + amount
+    // Check if double XP is active in system settings
+    const { data: doubleXpSetting } = await serviceClient
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'double_xp_active')
+      .maybeSingle()
+
+    const doubleXp = doubleXpSetting?.value === true || doubleXpSetting?.value === 'true'
+    const finalAmount = doubleXp ? amount * 2 : amount
+
+    const newXp = (profile.xp || 0) + finalAmount
 
     const { error: updateError } = await serviceClient
       .from('profiles')

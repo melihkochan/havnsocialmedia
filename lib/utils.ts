@@ -16,3 +16,12 @@ export function getSessionId(accessToken?: string): string | null {
     return null
   }
 }
+
+export function getSafeTimestamp(dateStr?: string | null): string {
+  if (!dateStr) return ""
+  const formatted = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T")
+  const t = Date.parse(formatted)
+  return isNaN(t) ? "" : String(t)
+}
+
+

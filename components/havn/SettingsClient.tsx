@@ -7,7 +7,7 @@ import { updateProfile, changePassword, updateAccentTheme } from '@/lib/actions/
 import { signOut } from '@/lib/actions/auth'
 import { ThemeToggle } from '@/components/havn/ThemeToggle'
 import { AvatarUpload } from '@/components/havn/AvatarUpload'
-import { cn } from '@/lib/utils'
+import { cn, getSafeTimestamp } from '@/lib/utils'
 import Link from 'next/link'
 import { getInitials } from '@/lib/profile-display'
 import type { Profile } from '@/lib/supabase/types'
@@ -241,7 +241,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
 
   useEffect(() => {
     if (profile.banner_url) {
-      setBannerPreview(`${profile.banner_url}?t=${new Date(profile.updated_at).getTime()}`)
+      setBannerPreview(`${profile.banner_url}?t=${getSafeTimestamp(profile.updated_at)}`)
     } else {
       setBannerPreview(null)
     }
@@ -270,7 +270,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   function handleUndoBanner() {
     setIsBannerDeleted(false)
     if (profile.banner_url) {
-      setBannerPreview(`${profile.banner_url}?t=${new Date(profile.updated_at).getTime()}`)
+      setBannerPreview(`${profile.banner_url}?t=${getSafeTimestamp(profile.updated_at)}`)
     } else {
       setBannerPreview(null)
     }

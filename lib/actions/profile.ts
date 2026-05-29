@@ -92,6 +92,11 @@ export async function updateProfile(formData: FormData) {
 
   // Check username uniqueness (exclude current user)
   if (username) {
+    const { isReservedUsername } = await import('@/lib/reserved-usernames')
+    if (isReservedUsername(username)) {
+      return { error: 'Bu kullanıcı adı sistem tarafından rezerve edilmiştir.' }
+    }
+
     const { data: existing } = await supabase
       .from('profiles')
       .select('id')
@@ -515,6 +520,11 @@ export async function completeProfileSetup(formData: FormData) {
   }
 
   // Check username uniqueness
+  const { isReservedUsername } = await import('@/lib/reserved-usernames')
+  if (isReservedUsername(username)) {
+    return { error: 'Bu kullanıcı adı sistem tarafından rezerve edilmiştir.' }
+  }
+
   const { data: existing } = await supabase
     .from('profiles')
     .select('id')
@@ -546,11 +556,24 @@ export async function completeProfileSetup(formData: FormData) {
     avatarUrl = googleAvatarUrl
   }
 
+  // Check if auto verification is active in system settings
+  const { data: autoVerifySetting } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'auto_verification')
+    .maybeSingle()
+
+  const autoVerify = autoVerifySetting?.value === true || autoVerifySetting?.value === 'true'
+
   const updates: Record<string, any> = {
     username,
     first_name: firstName,
     last_name: lastName,
     updated_at: new Date().toISOString()
+  }
+
+  if (autoVerify) {
+    updates.is_verified = true
   }
 
   if (avatarUrl !== undefined) {

@@ -68,7 +68,7 @@ export const useGlobalStore = create<GlobalState>((set) => ({
       const [profileResult, membershipsResult] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, username, first_name, last_name, avatar_url, banner_url, bio, updated_at, is_verified, is_gold, default_feed_type, xp')
+          .select('id, username, first_name, last_name, avatar_url, banner_url, bio, updated_at, is_verified, is_gold, default_feed_type, xp, role')
           .eq('id', user.id)
           .single(),
         supabase

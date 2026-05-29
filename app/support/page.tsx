@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { SupportForm } from './SupportForm'
 import { getSupportTickets } from '@/lib/actions/support'
-import { isFounder as checkIsFounder, FOUNDER_ID } from '@/lib/founder'
+import { isFounder as checkIsFounder } from '@/lib/founder'
 
 export const metadata = { title: 'Destek ve Yardım — HAVN' }
 export const dynamic = 'force-dynamic'
@@ -18,14 +18,9 @@ export default async function SupportPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const isUserFounder = user.id === FOUNDER_ID
-
-  const [profileResult, initialTickets, userProfilesResult] = await Promise.all([
-    supabase.from('profiles').select('id, username, first_name, last_name, avatar_url, is_verified, is_gold, updated_at').eq('id', user.id).single(),
-    getSupportTickets(),
-    isUserFounder
-      ? supabase.from('profiles').select('id, username, first_name, last_name').neq('id', user.id).order('username')
-      : Promise.resolve({ data: [] })
+  const [profileResult, initialTickets] = await Promise.all([
+    supabase.from('profiles').select('id, username, first_name, last_name, avatar_url, is_verified, is_gold, updated_at, role').eq('id', user.id).single(),
+    getSupportTickets()
   ])
 
   const profile = profileResult.data
@@ -33,15 +28,12 @@ export default async function SupportPage({
 
   const isFounder = checkIsFounder(profile)
 
-  let userProfiles = userProfilesResult.data || []
-  if (isFounder && !isUserFounder) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, username, first_name, last_name')
-      .neq('id', user.id)
-      .order('username')
-    userProfiles = data || []
-  }
+  // If staff, re-fetch user list
+  const userProfilesResult = isFounder
+    ? await supabase.from('profiles').select('id, username, first_name, last_name').neq('id', user.id).order('username')
+    : { data: [] }
+
+  const userProfiles = userProfilesResult.data || []
 
   return (
     <MainLayout currentUser={profile}>

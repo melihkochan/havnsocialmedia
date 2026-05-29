@@ -7,6 +7,8 @@ export interface EnrichedProfile {
   banner_url: string | null
   bio: string | null
   updated_at: string
+  /** Platform-geneli rol — profiles.role kolonundan gelir */
+  role?: 'founder' | 'admin' | 'moderator' | 'member' | null
   is_private: boolean
   social_links: {
     twitter?: string | null
@@ -25,6 +27,7 @@ export interface EnrichedProfile {
   last_session_id?: string
   is_setup_completed?: boolean
 }
+
 
 export function cleanBio(bio: string | null): string {
   if (!bio) return ''

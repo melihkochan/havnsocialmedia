@@ -386,16 +386,18 @@ export async function getRightBarSuggestions() {
   if (!user) {
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at')
+      .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at, role')
       .order('updated_at', { ascending: false })
       .limit(5)
-    return (profiles ?? []).map(p => ({ ...p, relation: 'none' }))
+    
+    const list = (profiles ?? []).map(p => ({ ...p, relation: 'none' }))
+    return list.sort((a, b) => (a.username ?? '').localeCompare(b.username ?? '', 'tr'))
   }
 
   // Fetch recent profiles excluding current user
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at')
+    .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at, role')
     .neq('id', user.id)
     .order('updated_at', { ascending: false })
     .limit(5)
@@ -413,7 +415,7 @@ export async function getRightBarSuggestions() {
 
   const { enrichProfile } = await import('@/lib/profile-enrich')
 
-  return profiles.map(p => {
+  const list = profiles.map(p => {
     const enriched = enrichProfile(p)
     const pId = p.id
     const weFollow = followingSet.has(pId)
@@ -436,8 +438,11 @@ export async function getRightBarSuggestions() {
       is_verified: enriched?.is_verified ?? p.is_verified,
       is_gold: enriched?.is_gold ?? p.is_gold,
       bio: enriched?.bio ?? p.bio,
+      role: enriched?.role ?? p.role,
       relation
     }
   })
+
+  return list.sort((a, b) => (a.username ?? '').localeCompare(b.username ?? '', 'tr'))
 }
 

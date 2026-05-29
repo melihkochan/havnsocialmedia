@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, Check } from 'lucide-react'
 import { signUp } from '@/lib/actions/auth'
+import { RESERVED_USERNAMES } from '@/lib/reserved-usernames'
 import { AvatarUpload } from '@/components/havn/AvatarUpload'
 
 export default function RegisterPage() {
@@ -27,6 +28,14 @@ export default function RegisterPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
+
+    const usernameVal = usernameInput.trim()
+    if (RESERVED_USERNAMES.includes(usernameVal.toLowerCase())) {
+      setError('Bu kullanıcı adı sistem tarafından rezerve edilmiştir.')
+      setLoading(false)
+      return
+    }
+
     const formData = new FormData(e.currentTarget)
     if (avatarFile) formData.set('avatar', avatarFile)
     const result = await signUp(formData)

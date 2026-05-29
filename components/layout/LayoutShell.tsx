@@ -19,15 +19,10 @@ interface LayoutShellProps {
 
 export function LayoutShell({ children, sidebar, rightBar, username, currentUser, fullWidth, accentColor }: LayoutShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarCollapsed = false;
   const pathname = usePathname();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
-
-  useEffect(() => {
-    const collapsed = localStorage.getItem("sidebar_collapsed") === "true";
-    setSidebarCollapsed(collapsed);
-  }, []);
 
   useEffect(() => {
     if (currentUser?.accent_theme) {
@@ -71,26 +66,6 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
     });
   };
 
-  const handleToggleCollapse = () => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem("sidebar_collapsed", String(next));
-      return next;
-    });
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle using Ctrl + B or Ctrl + \ (standard sidebar toggle combos)
-      if ((e.ctrlKey || e.metaKey) && (e.key === "b" || e.key === "B" || e.key === "\\")) {
-        e.preventDefault();
-        handleToggleCollapse();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
   useEffect(() => {
     if (!currentUser) return;
     const update = async () => {
@@ -110,7 +85,7 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
   const clonedSidebar = isValidElement(sidebar)
     ? cloneElement(sidebar as React.ReactElement<any>, {
         isCollapsed: sidebarCollapsed,
-        onExpand: () => setSidebarCollapsed(false),
+        onExpand: () => {},
       })
     : sidebar;
 
@@ -136,21 +111,9 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
       )}
       {/* ── Desktop Left Sidebar ── */}
       <div
-        className={cn(
-          "hidden lg:flex flex-col border-r border-border flex-shrink-0 sticky top-0 h-screen overflow-visible transition-all duration-300 ease-in-out z-30",
-          sidebarCollapsed ? "w-20" : "w-64 xl:w-72"
-        )}
+        className="hidden lg:flex flex-col border-r border-border flex-shrink-0 sticky top-0 h-screen overflow-visible z-30 w-64 xl:w-72"
       >
         {clonedSidebar}
-        
-        {/* Toggle Button */}
-        <button
-          onClick={handleToggleCollapse}
-          className="absolute top-1/2 -translate-y-1/2 -right-3 z-50 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center hover:bg-accent text-foreground transition-all shadow-md active:scale-95 cursor-pointer"
-          title={sidebarCollapsed ? "Genişlet" : "Daralt"}
-        >
-          {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
       </div>
 
       {/* ── Mobile Sidebar Overlay ── */}

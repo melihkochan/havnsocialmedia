@@ -66,6 +66,12 @@ export async function signUp(formData: FormData) {
   const lastName = (formData.get('last_name') as string || '').trim()
   const avatarFile = formData.get('avatar') as File | null
 
+  // Check if username is reserved
+  const { isReservedUsername } = await import('@/lib/reserved-usernames')
+  if (isReservedUsername(username)) {
+    return { error: 'Bu kullanıcı adı sistem tarafından rezerve edilmiştir.' }
+  }
+
   // Check username uniqueness
   const { data: existing } = await supabase
     .from('profiles')
@@ -115,12 +121,22 @@ export async function signUp(formData: FormData) {
       }
     }
 
+    // Check if auto verification is active in system settings
+    const { data: autoVerifySetting } = await supabaseAdmin
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'auto_verification')
+      .maybeSingle()
+
+    const autoVerify = autoVerifySetting?.value === true || autoVerifySetting?.value === 'true'
+
     const { error: upsertError } = await supabaseAdmin.from('profiles').upsert({
       id: data.user.id,
       username,
       first_name: firstName || null,
       last_name: lastName || null,
       avatar_url: avatarUrl,
+      is_verified: autoVerify ? true : false,
     })
 
     if (upsertError) {
@@ -137,6 +153,15 @@ export async function signOut() {
   // 'global' (the default) would revoke ALL refresh tokens for this user on Supabase's server,
   // which would invalidate tokens stored in other browsers / the multi-account localStorage list.
   await supabase.auth.signOut({ scope: 'local' })
+  
+  try {
+    const { cookies } = await import('next/headers')
+    const cookieStore = await cookies()
+    cookieStore.delete('havn_hq_sudo_unlocked')
+  } catch (e) {
+    console.error('Failed to delete hq sudo cookie:', e)
+  }
+
   redirect('/login')
 }
 

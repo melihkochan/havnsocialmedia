@@ -2,8 +2,22 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { FOUNDER_ID, isFounder } from '@/lib/founder'
+import { isFounder } from '@/lib/founder'
 import { createNotification } from '@/lib/actions/notifications'
+
+/** Sistemdeki tüm founder/admin kullanıcıların ID'lerini döndürür (hardcoded ID yok). */
+async function getStaffUserIds(): Promise<string[]> {
+  try {
+    const supabaseAdmin = await createServiceClient()
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .in('role', ['founder', 'admin'])
+    return (data ?? []).map((p: any) => p.id)
+  } catch {
+    return []
+  }
+}
 
 function formatServerDate(dateStr: string) {
   try {
@@ -64,23 +78,26 @@ export async function sendSupportRequest(formData: FormData) {
       dbSaved = true
       insertedId = insertedData?.id
       
-      // Notify founder of new support ticket
-      if (user.id !== FOUNDER_ID) {
-        try {
-          await createNotification(
-            FOUNDER_ID,
-            user.id,
-            'support_ticket',
-            null,
-            null,
-            {
-              message: `Yeni destek talebi gönderildi: ${subject.trim()}`,
-              postPreview: insertedId
-            }
-          )
-        } catch (notifErr) {
-          console.warn('Could not create notification for support ticket:', notifErr)
+      // Notify all founder/admin users of new support ticket
+      try {
+        const staffIds = await getStaffUserIds()
+        for (const staffId of staffIds) {
+          if (staffId !== user.id) {
+            await createNotification(
+              staffId,
+              user.id,
+              'support_ticket',
+              null,
+              null,
+              {
+                message: `Yeni destek talebi gönderildi: ${subject.trim()}`,
+                postPreview: insertedId
+              }
+            ).catch(() => {})
+          }
         }
+      } catch (notifErr) {
+        console.warn('Could not create notification for support ticket:', notifErr)
       }
     }
   } catch (dbErr) {
@@ -444,7 +461,17 @@ export async function sendSupportFollowUp(ticketId: string, replyText: string) {
   // Format historical message
   let updatedMessage = ticket.message
   if (ticket.admin_reply) {
-    const replierLabel = ticket.replied_by === FOUNDER_ID ? 'Kurucu' : 'Yönetici'
+    let replierLabel = 'Yönetici'
+    if (ticket.replied_by) {
+      const { data: replier } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', ticket.replied_by)
+        .single()
+      if (replier?.role === 'founder') {
+        replierLabel = 'Kurucu'
+      }
+    }
     const adminReplyTime = formatServerDate(ticket.updated_at || new Date().toISOString())
     updatedMessage += `\n\n[${replierLabel} - Yanıt | ${adminReplyTime}]:\n${ticket.admin_reply}`
   }
@@ -468,22 +495,27 @@ export async function sendSupportFollowUp(ticketId: string, replyText: string) {
     return { error: 'Mesaj gönderilemedi.' }
   }
 
-  // Notify founder of follow-up message
+  // Notify all staff of follow-up message
   try {
     const { createNotification } = await import('@/lib/actions/notifications')
-    await createNotification(
-      FOUNDER_ID,
-      user.id,
-      'support_ticket',
-      null,
-      null,
-      {
-        message: `Destek talebine yeni mesaj: "${replyText.trim().slice(0, 30)}..."`,
-        postPreview: ticket.id
+    const staffIds = await getStaffUserIds()
+    for (const staffId of staffIds) {
+      if (staffId !== user.id) {
+        await createNotification(
+          staffId,
+          user.id,
+          'support_ticket',
+          null,
+          null,
+          {
+            message: `Destek talebine yeni mesaj: "${replyText.trim().slice(0, 30)}..."`,
+            postPreview: ticket.id
+          }
+        ).catch(() => {})
       }
-    )
+    }
   } catch (notifErr) {
-    console.warn('Could not notify founder of support ticket follow-up:', notifErr)
+    console.warn('Could not notify staff of support ticket follow-up:', notifErr)
   }
 
   revalidatePath('/support')

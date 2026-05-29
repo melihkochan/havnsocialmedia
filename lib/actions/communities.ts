@@ -9,6 +9,7 @@ export async function getCommunities() {
   const { data, error } = await supabase
     .from('communities')
     .select(`*, creator:profiles!created_by(id, username, first_name, last_name), community_members(id)`)
+    .eq('status', 'approved')
     .order('created_at', { ascending: false })
 
   if (error) return []
@@ -22,6 +23,7 @@ export async function getCommunity(slug: string) {
     .from('communities')
     .select(`*, community_members(id, user_id, role, status, profiles(*))`)
     .eq('slug', slug)
+    .eq('status', 'approved')
     .single()
 
   if (error) return null
@@ -32,6 +34,28 @@ export async function createCommunity(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  // Community Approval check
+  const { data: approvalSetting } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'community_approval_required')
+    .maybeSingle()
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const isStaffMember = profile && ['founder', 'admin', 'moderator'].includes(profile.role ?? '')
+  let isApproved = true
+
+  if (approvalSetting && (approvalSetting.value === true || approvalSetting.value === 'true')) {
+    if (!isStaffMember) {
+      isApproved = false
+    }
+  }
 
   const name = formData.get('name') as string
   const description = formData.get('description') as string
@@ -54,7 +78,14 @@ export async function createCommunity(formData: FormData) {
 
   const { data: community, error } = await supabase
     .from('communities')
-    .insert({ name, slug, description, type, created_by: user.id })
+    .insert({ 
+      name, 
+      slug, 
+      description, 
+      type, 
+      created_by: user.id,
+      status: isApproved ? 'approved' : 'pending'
+    })
     .select()
     .single()
 
@@ -65,10 +96,14 @@ export async function createCommunity(formData: FormData) {
     community_id: community.id,
     user_id: user.id,
     role: 'owner',
-    status: 'approved',
+    status: isApproved ? 'approved' : 'pending',
   })
 
   revalidatePath('/communities')
+  
+  if (!isApproved) {
+    return { success: true, pendingApproval: true }
+  }
   return { success: true, slug }
 }
 

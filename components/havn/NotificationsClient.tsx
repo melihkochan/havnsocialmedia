@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, Heart, MessageCircle, UserPlus, CheckCircle2, Loader2, Repeat, Trash2, Pin, UserCheck, HelpCircle, Shield, Sparkles } from 'lucide-react'
+import { Bell, Heart, MessageCircle, UserPlus, CheckCircle2, Loader2, Repeat, Trash2, Pin, UserCheck, HelpCircle, Shield, Sparkles, AlertTriangle } from 'lucide-react'
 import { markNotificationsAsRead, clearAllNotifications, deleteNotification } from '@/lib/actions/notifications'
 import { followUser, approveFollowRequest, declineFollowRequest } from '@/lib/actions/follows'
 import type { EnrichedProfile } from '@/lib/profile-enrich'
@@ -10,11 +10,12 @@ import { FormattedMessage } from '@/components/havn/FormattedMessage'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useGlobalStore } from '@/lib/store/useGlobalStore'
 
 type NotificationItem = {
   id: string
   created_at: string
-  type: 'like' | 'comment' | 'join_request' | 'approved' | 'repost' | 'comment_like' | 'reply' | 'post_removed' | 'post_pinned' | 'follow' | 'support_reply' | 'support_ticket'
+  type: 'like' | 'comment' | 'join_request' | 'approved' | 'repost' | 'comment_like' | 'reply' | 'post_removed' | 'post_pinned' | 'follow' | 'support_reply' | 'support_ticket' | 'warning'
   is_read: boolean
   post_id: string | null
   comment_id: string | null
@@ -329,13 +330,16 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
     }
   }, [])
 
+  const setUnreadNotificationsCount = useGlobalStore((state) => state.setUnreadNotificationsCount)
+
   useEffect(() => {
     // Mark notifications as read when the user views the page
     const clearNotifications = async () => {
       await markNotificationsAsRead()
+      setUnreadNotificationsCount(0)
     }
     clearNotifications()
-  }, [])
+  }, [setUnreadNotificationsCount])
 
   // Real-time Notification Streaming
   useEffect(() => {
@@ -427,7 +431,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
     if (filter === 'comments') return notif.type === 'comment' || notif.type === 'reply'
     if (filter === 'follows') return notif.type === 'follow'
     if (filter === 'system') {
-      return ['join_request', 'approved', 'repost', 'post_removed', 'post_pinned', 'support_reply', 'support_ticket'].includes(notif.type)
+      return ['join_request', 'approved', 'repost', 'post_removed', 'post_pinned', 'support_reply', 'support_ticket', 'warning'].includes(notif.type)
     }
     return true
   })
@@ -605,6 +609,19 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                 icon = <UserPlus size={14} />
                 iconBg = 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/25'
                 contentText = isRequest ? 'sana takip isteği gönderdi' : 'seni takip etmeye başladı'
+                break
+              }
+              case 'warning': {
+                icon = <AlertTriangle size={14} className="text-amber-500" />
+                iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
+                contentText = (
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-rose-500/15 text-rose-500 border border-rose-500/25 select-none uppercase tracking-wider">
+                      Hesap Uyarısı
+                    </span>
+                    <span className="font-semibold text-foreground/90">{notif.message ?? 'Hesabınız kuralları ihlal ettiği için uyarıldı.'}</span>
+                  </span>
+                )
                 break
               }
               case 'support_reply': {

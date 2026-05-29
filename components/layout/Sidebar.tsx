@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { HavnLogo } from "@/components/havn/HavnLogo";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, getSafeTimestamp } from "@/lib/utils";
 import { getDisplayName, getFullName } from "@/lib/profile-display";
 import type { ProfileNameFields } from "@/lib/profile-display";
 import { ProfileName } from "@/components/havn/ProfileName";
@@ -28,7 +28,7 @@ const navItems = [
 
 function Avatar({ username, avatarUrl, updatedAt }: { username: string; avatarUrl: string | null; updatedAt?: string | null }) {
   if (avatarUrl) {
-    const src = updatedAt ? `${avatarUrl}?t=${new Date(updatedAt).getTime()}` : avatarUrl;
+    const src = updatedAt ? `${avatarUrl}?t=${getSafeTimestamp(updatedAt)}` : avatarUrl;
     return (
       <img
         src={src}
@@ -1109,7 +1109,7 @@ export function Sidebar({
                 {/* Micro banner */}
                 {currentUser.banner_url ? (
                   <img
-                    src={currentUser.updated_at ? `${currentUser.banner_url}?t=${new Date(currentUser.updated_at).getTime()}` : currentUser.banner_url}
+                    src={currentUser.updated_at ? `${currentUser.banner_url}?t=${getSafeTimestamp(currentUser.updated_at)}` : currentUser.banner_url}
                     alt="Kapak Görseli"
                     className="h-14 w-full object-cover"
                   />
@@ -1129,7 +1129,7 @@ export function Sidebar({
                     <div className="w-12 h-12 rounded-full overflow-hidden">
                       {currentUser.avatar_url ? (
                         <img
-                          src={currentUser.updated_at ? `${currentUser.avatar_url}?t=${new Date(currentUser.updated_at).getTime()}` : currentUser.avatar_url}
+                          src={currentUser.updated_at ? `${currentUser.avatar_url}?t=${getSafeTimestamp(currentUser.updated_at)}` : currentUser.avatar_url}
                           alt={currentUser.username}
                           className="w-full h-full object-cover"
                         />

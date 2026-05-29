@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Check, Loader2, AlertCircle, Sparkles, Eye, EyeOff, Lock, Mail, Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { completeProfileSetup } from '@/lib/actions/profile'
+import { RESERVED_USERNAMES } from '@/lib/reserved-usernames'
 import { AvatarUpload } from '@/components/havn/AvatarUpload'
 import { getInitials } from '@/lib/profile-display'
 import type { Profile } from '@/lib/supabase/types'
@@ -33,6 +34,11 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
     const cleanUsername = username.trim()
     if (!cleanUsername) {
       setError('Kullanıcı adı zorunludur.')
+      return
+    }
+
+    if (RESERVED_USERNAMES.includes(cleanUsername.toLowerCase())) {
+      setError('Bu kullanıcı adı sistem tarafından rezerve edilmiştir.')
       return
     }
 
