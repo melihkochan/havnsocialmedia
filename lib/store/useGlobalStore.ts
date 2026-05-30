@@ -82,44 +82,29 @@ export const useGlobalStore = create<GlobalState>((set) => ({
       const memberships = membershipsResult.data ?? []
       const memberCommunityIds = memberships.map((m: any) => m.community_id)
 
-      // Step 2: Fetch remaining data in parallel
-      const { getUnreadNotificationCount } = await import('@/lib/actions/notifications')
-      const { getUnreadMessagesCount } = await import('@/lib/actions/messages')
+      // Step 2: Fetch communities and support tickets
+      const isUserFounder = profile ? isFounder(profile) : false
 
-      const promises: any[] = [
-        getUnreadNotificationCount(),
-        getUnreadMessagesCount(),
+      const [communitiesResult, tickets] = await Promise.all([
         memberCommunityIds.length > 0 
           ? supabase.from('communities').select('id, name').in('id', memberCommunityIds)
-          : Promise.resolve({ data: [] })
-      ]
-
-      const isUserFounder = profile ? isFounder(profile) : false
-      if (isUserFounder) {
-        promises.push(
-          supabase
-            .from('support_tickets')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'open')
-        )
-      } else {
-        promises.push(
-          supabase
-            .from('support_tickets')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('status', 'replied')
-        )
-      }
-
-      const [notifsCount, dmsCount, communitiesResult, tickets] = await Promise.all(promises)
+          : Promise.resolve({ data: [] }),
+        isUserFounder
+          ? supabase
+              .from('support_tickets')
+              .select('id', { count: 'exact', head: true })
+              .eq('status', 'open')
+          : supabase
+              .from('support_tickets')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('status', 'replied')
+      ])
 
       set({
         currentUser: profile,
-        unreadNotificationsCount: notifsCount,
-        unreadDMsCount: dmsCount,
         userCommunities: communitiesResult.data ?? [],
-        openSupportTicketsCount: tickets?.count ?? 0,
+        openSupportTicketsCount: (tickets as any)?.count ?? 0,
         isInitialized: true,
       })
 

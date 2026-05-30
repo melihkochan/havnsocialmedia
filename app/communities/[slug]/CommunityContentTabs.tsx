@@ -333,7 +333,7 @@ export function CommunityContentTabs({
                   pinContext="community"
                   communityId={communityId}
                   feedContext={{ type: 'community', communityId, sortBy: activeSort } satisfies FeedContext}
-                  initialHasMore={initialPosts.length >= 20}
+                  initialHasMore={initialPosts.length >= 10}
                 />
               </>
             )}

@@ -31,6 +31,7 @@ export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 
       parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))
     `)
     .eq('community_id', communityId)
+    .order('is_pinned', { ascending: false, nullsFirst: false })
     .order(orderCol, { ascending: false })
     .range(0, 9)
 
@@ -762,6 +763,7 @@ export async function loadMorePosts(
         .select(FEED_SELECT)
         .eq('community_id', context.communityId)
         .is('parent_post_id', null)
+        .order('is_pinned', { ascending: false, nullsFirst: false })
         .order(orderCol, { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) throw error
@@ -778,6 +780,7 @@ export async function loadMorePosts(
         .select(FEED_SELECT)
         .eq('user_id', context.profileUserId)
         .is('community_id', null)
+        .order('is_pinned', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) throw error

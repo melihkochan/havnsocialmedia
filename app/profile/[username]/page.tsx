@@ -131,6 +131,7 @@ export default async function ProfilePage({
       .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
       .eq('user_id', profile.id)
       .is('community_id', null)
+      .order('is_pinned', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .range(0, 9),
     // Memberships joined with communities directly to avoid waterfall
@@ -353,14 +354,6 @@ export default async function ProfilePage({
                     </span>
                   )}
                 </h1>
-                {isFounder(profile) && !(profile.username === 'melih' || profile.username === 'havn') && (
-                  <span
-                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black tracking-wider shadow-sm bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-white border border-amber-600/30 select-none"
-                    title="Sistem Kurucusu"
-                  >
-                    👑 KURUCU
-                  </span>
-                )}
               </div>
               {getFullName(profile) && (
                 <p className="text-xs text-muted-foreground">@{profile.username}</p>

@@ -3,10 +3,13 @@
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGlobalStore } from '@/lib/store/useGlobalStore'
+import { getUnreadNotificationCount } from '@/lib/actions/notifications'
+import { getUnreadMessagesCount } from '@/lib/actions/messages'
 
 export function GlobalStoreProvider({ children }: { children: React.ReactNode }) {
   const fetchGlobalData = useGlobalStore((state) => state.fetchGlobalData)
   const currentUser = useGlobalStore((state) => state.currentUser)
+  const isInitialized = useGlobalStore((state) => state.isInitialized)
   const setUnreadNotificationsCount = useGlobalStore((state) => state.setUnreadNotificationsCount)
   const setUnreadDMsCount = useGlobalStore((state) => state.setUnreadDMsCount)
   const setOpenSupportTicketsCount = useGlobalStore((state) => state.setOpenSupportTicketsCount)
@@ -64,6 +67,10 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
       const { count } = await query
       setOpenSupportTicketsCount(count ?? 0)
     }
+
+    // Immediately fetch counts on setup so the badge shows right away
+    fetchCounts()
+    fetchTicketsCount()
 
     // Subscribe to DMs
     const dmChannel = supabase.channel(`global_dms_${currentUser.id}_${channelToken}`)

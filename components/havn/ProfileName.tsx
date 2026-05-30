@@ -39,18 +39,6 @@ function LevelBadge({ xp }: { xp?: number }) {
   )
 }
 
-function FounderBadge() {
-  return (
-    <span
-      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black tracking-wider shadow-sm bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-white border border-amber-600/30 select-none"
-      title="Sistem Kurucusu"
-    >
-      <Crown size={9} className="fill-white" />
-      KURUCU
-    </span>
-  )
-}
-
 function StreakBadge({ streak }: { streak?: number }) {
   if (!streak || streak <= 0) return null
 
@@ -130,7 +118,6 @@ export function ProfileName({
             <BadgeCheck size={14} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
           </span>
         )}
-        {isFounder(profile) && !isHLogoUser && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}
         {hasFullName && showHandle && (
@@ -167,7 +154,6 @@ export function ProfileName({
             <BadgeCheck size={14} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
           </span>
         )}
-        {isFounder(profile) && !isHLogoUser && <span className="flex-shrink-0"><FounderBadge /></span>}
         {role && <span className="flex-shrink-0"><RoleBadge role={role} /></span>}
         {streak !== undefined && streak > 0 && <span className="flex-shrink-0"><StreakBadge streak={streak} /></span>}
       </div>

@@ -104,19 +104,23 @@ export async function updateProfile(formData: FormData) {
   // Check username uniqueness (exclude current user)
   if (username) {
     const { isReservedUsername } = await import('@/lib/reserved-usernames')
-    if (isReservedUsername(username)) {
+    // Allow users to keep their own reserved username (e.g. @havn, @melih system accounts)
+    const isKeepingOwnUsername = currentProfile.username === username
+    if (!isKeepingOwnUsername && isReservedUsername(username)) {
       return { error: 'Bu kullanıcı adı sistem tarafından rezerve edilmiştir.' }
     }
 
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', username)
-      .neq('id', user.id)
-      .single()
+    if (!isKeepingOwnUsername) {
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .neq('id', user.id)
+        .single()
 
-    if (existing) {
-      return { error: 'Bu kullanıcı adı zaten kullanılıyor.' }
+      if (existing) {
+        return { error: 'Bu kullanıcı adı zaten kullanılıyor.' }
+      }
     }
   }
 
@@ -552,7 +556,14 @@ export async function completeProfileSetup(formData: FormData) {
 
   // Check username uniqueness
   const { isReservedUsername } = await import('@/lib/reserved-usernames')
-  if (isReservedUsername(username)) {
+  // Check if this user already owns the reserved username (e.g. system accounts completing setup)
+  const { data: ownProfile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .maybeSingle()
+  const isKeepingOwnUsername = ownProfile?.username === username
+  if (!isKeepingOwnUsername && isReservedUsername(username)) {
     return { error: 'Bu kullanıcı adı sistem tarafından rezerve edilmiştir.' }
   }
 

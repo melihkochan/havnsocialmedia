@@ -9,6 +9,13 @@ import { createClient } from '@/lib/supabase/client'
 import { getSinglePost, loadMorePosts } from '@/lib/actions/posts'
 import type { FeedContext } from '@/lib/actions/posts'
 
+// Keep pinned posts at the top, preserving relative order within each group
+function keepPinnedFirst<T extends { is_pinned?: boolean | null; created_at: string }>(posts: T[]): T[] {
+  const pinned = posts.filter(p => p.is_pinned)
+  const rest = posts.filter(p => !p.is_pinned)
+  return [...pinned, ...rest]
+}
+
 interface PostFeedProps {
   posts: {
     id: string
@@ -155,7 +162,8 @@ export function PostFeed({
           if (isAtTop || isOwnPost) {
             setFeedPosts(prev => {
               if (prev.some(p => p.id === enrichedPost.id)) return prev
-              return [enrichedPost as any, ...prev]
+              // Keep pinned posts at the top after inserting the new post
+              return keepPinnedFirst([enrichedPost as any, ...prev])
             })
           } else {
             setPendingPosts(prev => {
@@ -184,7 +192,8 @@ export function PostFeed({
   const handleShowPendingPosts = () => {
     setFeedPosts(prev => {
       const uniquePending = pendingPosts.filter(p => !prev.some(existing => existing.id === p.id))
-      return [...uniquePending, ...prev]
+      // Keep pinned posts at the top when merging pending posts
+      return keepPinnedFirst([...uniquePending, ...prev])
     })
     setPendingPosts([])
     if (typeof window !== 'undefined') {

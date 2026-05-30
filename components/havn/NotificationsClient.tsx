@@ -92,7 +92,7 @@ function getGroupedNotificationText(group: GroupedNotification) {
         <Link href={`/profile/${actor1}`} className="font-bold text-foreground hover:underline">
           {actor1}
         </Link>{' '}
-        ve diğer <span className="font-bold text-foreground">diğer {count - 1} kişi</span>
+        ve <span className="font-bold text-foreground">diğer {count - 1} kişi</span>
       </>
     )
   }
@@ -457,6 +457,19 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
     })
   }
 
+  const activeNotifs = notifications.filter(notif => {
+    if (!notifPrefs.all) return false
+    const actorUsername = notif.actor?.username?.toLowerCase()
+    if (actorUsername && mutedUsers.includes(actorUsername)) return false
+    return true
+  })
+
+  const countAll = activeNotifs.length
+  const countLikes = activeNotifs.filter(n => n.type === 'like' || n.type === 'comment_like').length
+  const countComments = activeNotifs.filter(n => n.type === 'comment' || n.type === 'reply').length
+  const countFollows = activeNotifs.filter(n => n.type === 'follow').length
+  const countSystem = activeNotifs.filter(n => ['join_request', 'approved', 'repost', 'post_removed', 'post_pinned', 'support_reply', 'support_ticket', 'warning', 'xp_reward', 'system_alert'].includes(n.type)).length
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between px-1 gap-4 flex-wrap">
@@ -482,23 +495,31 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
       {/* Category Tabs */}
       <div className="flex flex-wrap gap-1.5 p-1 bg-card/40 border border-border/60 rounded-xl w-fit">
         {[
-          { key: 'all', label: 'Tümü' },
-          { key: 'likes', label: 'Beğeniler' },
-          { key: 'comments', label: 'Yorumlar' },
-          { key: 'follows', label: 'Takip' },
-          { key: 'system', label: 'Destek, Öneri & Sistem' }
+          { key: 'all', label: 'Tümü', count: countAll },
+          { key: 'likes', label: 'Beğeniler', count: countLikes },
+          { key: 'comments', label: 'Yorumlar', count: countComments },
+          { key: 'follows', label: 'Takip', count: countFollows },
+          { key: 'system', label: 'Destek, Öneri & Sistem', count: countSystem }
         ].map(tab => (
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key as any)}
             className={cn(
-              "px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer",
+              "px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
               filter === tab.key 
                 ? "bg-background text-foreground shadow-sm" 
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            {tab.label}
+            <span>{tab.label}</span>
+            {tab.count > 0 && (
+              <span className={cn(
+                "px-1.5 py-0.5 rounded-md text-[9px] font-black leading-none",
+                filter === tab.key ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+              )}>
+                {tab.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
