@@ -98,6 +98,7 @@ interface PostCardProps {
       likes?: { user_id: string }[]
       bookmarks?: { user_id: string }[]
       comments?: { id: string }[]
+      communities?: { name: string; slug: string } | null
     } | null
   }
   role?: UserRole
@@ -660,16 +661,16 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                   role={isRepost ? 'member' : role}
                 />
               </Link>
-              {post.communities && (
+              {displayPost.communities && (
                 <Link
-                  href={`/communities/${post.communities.slug}`}
+                  href={`/communities/${displayPost.communities.slug}`}
                   className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md hover:opacity-80 transition-opacity"
                   style={{
                     background: 'color-mix(in oklch, var(--primary) 12%, transparent)',
                     color: 'var(--primary)',
                   }}
                 >
-                  {post.communities.name}
+                  {displayPost.communities.name}
                 </Link>
               )}
             </div>

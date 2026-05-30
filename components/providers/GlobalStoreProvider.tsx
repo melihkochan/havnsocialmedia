@@ -37,8 +37,6 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
 
     const fetchCounts = async () => {
       try {
-        const { getUnreadNotificationCount } = await import('@/lib/actions/notifications')
-        const { getUnreadMessagesCount } = await import('@/lib/actions/messages')
         const [notifsCount, dmsCount] = await Promise.all([
           getUnreadNotificationCount(),
           getUnreadMessagesCount()

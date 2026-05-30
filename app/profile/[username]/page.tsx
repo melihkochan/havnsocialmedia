@@ -130,7 +130,7 @@ export default async function ProfilePage({
       .from('posts')
       .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
       .eq('user_id', profile.id)
-      .is('community_id', null)
+      .or('community_id.is.null,parent_post_id.not.is.null')
       .order('is_pinned', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .range(0, 9),

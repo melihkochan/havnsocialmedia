@@ -486,10 +486,12 @@ export async function repostPost(postId: string, communityId: string | null) {
     return { reposted: false }
   } else {
     // Create new repost
+    // Reposts are personal sharing actions that belong on the user's profile and main/following feeds,
+    // so we set community_id to null. The original post still keeps its original community_id.
     const { error } = await supabase.from('posts').insert({
       parent_post_id: postId,
       user_id: user.id,
-      community_id: communityId || null,
+      community_id: null,
       content: null,
       image_url: null
     })
@@ -779,7 +781,7 @@ export async function loadMorePosts(
         .from('posts')
         .select(FEED_SELECT)
         .eq('user_id', context.profileUserId)
-        .is('community_id', null)
+        .or('community_id.is.null,parent_post_id.not.is.null')
         .order('is_pinned', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
