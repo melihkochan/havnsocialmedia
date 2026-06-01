@@ -3,8 +3,6 @@
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGlobalStore } from '@/lib/store/useGlobalStore'
-import { getUnreadNotificationCount } from '@/lib/actions/notifications'
-import { getUnreadMessagesCount } from '@/lib/actions/messages'
 
 export function GlobalStoreProvider({ children }: { children: React.ReactNode }) {
   const fetchGlobalData = useGlobalStore((state) => state.fetchGlobalData)
@@ -37,12 +35,20 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
 
     const fetchCounts = async () => {
       try {
-        const [notifsCount, dmsCount] = await Promise.all([
-          getUnreadNotificationCount(),
-          getUnreadMessagesCount()
+        const [notifsCountRes, dmsCountRes] = await Promise.all([
+          supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', currentUser.id)
+            .eq('is_read', false),
+          supabase
+            .from('direct_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('receiver_id', currentUser.id)
+            .eq('is_read', false)
         ])
-        setUnreadNotificationsCount(notifsCount)
-        setUnreadDMsCount(dmsCount)
+        setUnreadNotificationsCount(notifsCountRes.count ?? 0)
+        setUnreadDMsCount(dmsCountRes.count ?? 0)
       } catch (err) {
         console.error('Error fetching unread counts in provider:', err)
       }
@@ -127,9 +133,18 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
       .subscribe()
 
 
-    // Listen for auth state changes to re-fetch if user changes
+    return () => {
+      supabase.removeChannel(dmChannel)
+      supabase.removeChannel(notifChannel)
+      supabase.removeChannel(supportChannel)
+    }
+  }, [currentUser?.id, fetchGlobalData, setUnreadNotificationsCount, setUnreadDMsCount, setOpenSupportTicketsCount])
+
+  // Listen for auth state changes unconditionally
+  useEffect(() => {
+    const supabase = createClient()
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         fetchGlobalData()
       } else if (event === 'SIGNED_OUT') {
         useGlobalStore.getState().resetStore()
@@ -137,12 +152,9 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
     })
 
     return () => {
-      supabase.removeChannel(dmChannel)
-      supabase.removeChannel(notifChannel)
-      supabase.removeChannel(supportChannel)
       subscription.unsubscribe()
     }
-  }, [currentUser?.id, fetchGlobalData, setUnreadNotificationsCount, setUnreadDMsCount, setOpenSupportTicketsCount])
+  }, [fetchGlobalData])
 
   return <>{children}</>
 }

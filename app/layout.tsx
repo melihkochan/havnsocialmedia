@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ensureHavnOfficialProfile } from "@/lib/actions/system-init";
+import { GlobalStoreProvider } from "@/components/providers/GlobalStoreProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -118,7 +119,9 @@ export default async function RootLayout({
           <Suspense fallback={null}>
             <TopProgressBar />
           </Suspense>
-          {children}
+          <GlobalStoreProvider>
+            {children}
+          </GlobalStoreProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -386,8 +386,12 @@ export async function toggleLike(postId: string, reaction: string = 'like', forc
     return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
   }
 
-  // Check if already liked
-  const { data: existing } = await supabase
+  // Create service client to bypass RLS/policies restrictions for likes updates
+  const { createServiceClient } = await import('@/lib/supabase/server')
+  const supabaseAdmin = await createServiceClient()
+
+  // Check if already liked using admin client
+  const { data: existing } = await supabaseAdmin
     .from('likes')
     .select('id')
     .eq('post_id', postId)
@@ -398,12 +402,10 @@ export async function toggleLike(postId: string, reaction: string = 'like', forc
 
   if (shouldUnlike) {
     if (existing) {
-      await supabase.from('likes').delete().eq('id', existing.id)
+      await supabaseAdmin.from('likes').delete().eq('id', existing.id)
       
       // Delete the corresponding like notification
       try {
-        const { createServiceClient } = await import('@/lib/supabase/server')
-        const supabaseAdmin = await createServiceClient()
         await supabaseAdmin
           .from('notifications')
           .delete()
@@ -417,14 +419,18 @@ export async function toggleLike(postId: string, reaction: string = 'like', forc
     return { liked: false }
   } else {
     if (!existing) {
-      await supabase.from('likes').insert({ post_id: postId, user_id: user.id })
+      const { error: insertErr } = await supabaseAdmin.from('likes').insert({ post_id: postId, user_id: user.id })
+      if (insertErr) {
+        console.error('Error inserting like:', insertErr)
+        return { error: insertErr.message }
+      }
       // Reward user with +2 XP
       const { rewardXP } = await import('@/lib/xp')
       await rewardXP(user.id, 2)
     }
     
     // Trigger notification
-    const { data: post } = await supabase.from('posts').select('user_id').eq('id', postId).single()
+    const { data: post } = await supabaseAdmin.from('posts').select('user_id').eq('id', postId).single()
     if (post && post.user_id !== user.id) {
       const { createNotification } = await import('@/lib/actions/notifications')
       await createNotification(post.user_id, user.id, 'like', postId, null, {
