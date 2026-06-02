@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { getFullName } from '@/lib/profile-display'
 import type { ProfileNameFields } from '@/lib/profile-display'
 import { RoleBadge } from '@/components/havn/RoleBadge'
@@ -22,6 +23,7 @@ interface ProfileNameProps {
   streak?: number
   align?: 'left' | 'center'
   disableHoverCard?: boolean
+  isLink?: boolean
 }
 
 function LevelBadge({ xp }: { xp?: number }) {
@@ -83,6 +85,7 @@ export function ProfileName({
   streak,
   align = 'left',
   disableHoverCard = false,
+  isLink = false,
 }: ProfileNameProps) {
   const router = useRouter()
   const fullName = getFullName(profile)
@@ -164,24 +167,34 @@ export function ProfileName({
     </div>
   )
 
+  const innerContent = layout === 'inline' ? contentInline : contentStacked
+
+  const linkContent = isLink ? (
+    <Link href={`/profile/${profile.username}`} className="hover:opacity-80 transition-opacity inline-block min-w-0 w-full">
+      {innerContent}
+    </Link>
+  ) : (
+    innerContent
+  )
+
   if (layout === 'inline') {
     if (disableHoverCard) {
-      return contentInline
+      return linkContent
     }
     return (
       <ProfileHoverCard username={profile.username}>
-        {contentInline}
+        {linkContent}
       </ProfileHoverCard>
     )
   }
 
   if (disableHoverCard) {
-    return contentStacked
+    return linkContent
   }
 
   return (
     <ProfileHoverCard username={profile.username}>
-      {contentStacked}
+      {linkContent}
     </ProfileHoverCard>
   )
 }

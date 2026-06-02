@@ -30,21 +30,23 @@ export async function getHQOverviewStats() {
     totalCommunitiesRes,
     totalSuggestionsRes,
     settingsRes,
+    warnsDataRes,
   ] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('updated_at', fiveMinutesAgo),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('updated_at', sevenDaysAgo),
-    supabase.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
-    supabase.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
-    supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
-    supabase.from('posts').select('*', { count: 'exact', head: true }),
-    supabase.from('comments').select('*', { count: 'exact', head: true }),
-    supabase.from('likes').select('*', { count: 'exact', head: true }),
-    supabase.from('support_tickets').select('*', { count: 'exact', head: true }),
-    supabase.from('support_tickets').select('*', { count: 'exact', head: true }).in('status', ['replied', 'closed']),
-    supabase.from('communities').select('*', { count: 'exact', head: true }),
-    supabase.from('suggestions').select('*', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('updated_at', fiveMinutesAgo),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('updated_at', sevenDaysAgo),
+    supabase.from('posts').select('id', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
+    supabase.from('posts').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
+    supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+    supabase.from('posts').select('id', { count: 'exact', head: true }),
+    supabase.from('comments').select('id', { count: 'exact', head: true }),
+    supabase.from('likes').select('id', { count: 'exact', head: true }),
+    supabase.from('support_tickets').select('id', { count: 'exact', head: true }),
+    supabase.from('support_tickets').select('id', { count: 'exact', head: true }).in('status', ['replied', 'closed']),
+    supabase.from('communities').select('id', { count: 'exact', head: true }),
+    supabase.from('suggestions').select('id', { count: 'exact', head: true }),
     supabase.from('system_settings').select('key, value'),
+    supabase.from('profiles').select('warns'),
   ])
 
   const latency = Date.now() - startTime
@@ -100,6 +102,15 @@ export async function getHQOverviewStats() {
     console.error('Failed to get real OS stats:', err)
   }
 
+  const warnsList = warnsDataRes.data ?? []
+  const bansCount = warnsList.filter((u: any) => (u.warns ?? 0) >= 5).length
+  const mutesCount = warnsList.filter((u: any) => (u.warns ?? 0) > 0 && (u.warns ?? 0) < 5).length
+  const totalWarnings = warnsList.reduce((acc: number, cur: any) => acc + (cur.warns ?? 0), 0)
+  
+  const toxicityScore = ((totalWarnings * 0.15 + (openTicketsRes.count ?? 0) * 0.08) / Math.max(1, totalUsers)).toFixed(2)
+  const toxicityNum = parseFloat(toxicityScore)
+  const toxicityLabel = toxicityNum < 0.15 ? 'Düşük' : toxicityNum < 0.4 ? 'Orta' : 'Yüksek'
+
   return {
     totalUsers,
     onlineUsers,
@@ -125,6 +136,10 @@ export async function getHQOverviewStats() {
     doubleXpActive,
     userGrowthPct,
     activeGrowthPct,
+    bansCount,
+    mutesCount,
+    toxicityScore,
+    toxicityLabel,
   }
 }
 
@@ -192,18 +207,32 @@ export async function getHQUsers({
   role = '',
   page = 0,
   pageSize = 20,
+  sortBy = 'first_name',
+  sortOrder = 'asc',
 }: {
   search?: string
   role?: string
   page?: number
   pageSize?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
 }) {
   const supabase = await createServiceClient()
   let query = supabase
     .from('profiles')
     .select('id, username, first_name, last_name, avatar_url, role, updated_at, is_verified, is_gold, xp, warns, last_seen_at, show_status, country, city, bio', { count: 'exact' })
-    .order('updated_at', { ascending: false })
-    .range(page * pageSize, (page + 1) * pageSize - 1)
+
+  if (sortBy) {
+    if (sortBy === 'first_name') {
+      query = query.order('first_name', { ascending: sortOrder === 'asc', nullsFirst: false })
+    } else {
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' })
+    }
+  } else {
+    query = query.order('updated_at', { ascending: false })
+  }
+
+  query = query.range(page * pageSize, (page + 1) * pageSize - 1)
 
   if (search) {
     query = query.ilike('username', `%${search}%`)
@@ -676,17 +705,19 @@ export async function getHQOverviewStatsForRange(range: '24s' | '7g' | '30g' | '
     resolvedTicketsRes,
     communitiesRes,
     settingsRes,
+    warnsDataRes,
   ] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('updated_at', new Date(now.getTime() - 5 * 60 * 1000).toISOString()),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('updated_at', isoRangeDate),
-    supabase.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', isoRangeDate),
-    supabase.from('comments').select('*', { count: 'exact', head: true }).gte('created_at', isoRangeDate),
-    supabase.from('likes').select('*', { count: 'exact', head: true }).gte('created_at', isoRangeDate),
-    supabase.from('support_tickets').select('*', { count: 'exact', head: true }).gte('created_at', isoRangeDate),
-    supabase.from('support_tickets').select('*', { count: 'exact', head: true }).gte('created_at', isoRangeDate).in('status', ['replied', 'closed']),
-    supabase.from('communities').select('*', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('updated_at', new Date(now.getTime() - 5 * 60 * 1000).toISOString()),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('updated_at', isoRangeDate),
+    supabase.from('posts').select('id', { count: 'exact', head: true }).gte('created_at', isoRangeDate),
+    supabase.from('comments').select('id', { count: 'exact', head: true }).gte('created_at', isoRangeDate),
+    supabase.from('likes').select('id', { count: 'exact', head: true }).gte('created_at', isoRangeDate),
+    supabase.from('support_tickets').select('id', { count: 'exact', head: true }).gte('created_at', isoRangeDate),
+    supabase.from('support_tickets').select('id', { count: 'exact', head: true }).gte('created_at', isoRangeDate).in('status', ['replied', 'closed']),
+    supabase.from('communities').select('id', { count: 'exact', head: true }),
     supabase.from('system_settings').select('key, value'),
+    supabase.from('profiles').select('warns'),
   ])
 
   const latency = Date.now() - startTime
@@ -740,6 +771,15 @@ export async function getHQOverviewStatsForRange(range: '24s' | '7g' | '30g' | '
     console.error(err)
   }
 
+  const warnsList = warnsDataRes.data ?? []
+  const bansCount = warnsList.filter((u: any) => (u.warns ?? 0) >= 5).length
+  const mutesCount = warnsList.filter((u: any) => (u.warns ?? 0) > 0 && (u.warns ?? 0) < 5).length
+  const totalWarnings = warnsList.reduce((acc: number, cur: any) => acc + (cur.warns ?? 0), 0)
+  
+  const toxicityScore = ((totalWarnings * 0.15 + (ticketsRes.count ?? 0) * 0.08) / Math.max(1, totalUsers)).toFixed(2)
+  const toxicityNum = parseFloat(toxicityScore)
+  const toxicityLabel = toxicityNum < 0.15 ? 'Düşük' : toxicityNum < 0.4 ? 'Orta' : 'Yüksek'
+
   return {
     totalUsers,
     onlineUsers,
@@ -765,6 +805,10 @@ export async function getHQOverviewStatsForRange(range: '24s' | '7g' | '30g' | '
     doubleXpActive,
     userGrowthPct,
     activeGrowthPct,
+    bansCount,
+    mutesCount,
+    toxicityScore,
+    toxicityLabel,
   }
 }
 

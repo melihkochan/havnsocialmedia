@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useGlobalStore } from '@/lib/store/useGlobalStore'
+import { usePathname } from 'next/navigation'
 
 export function GlobalStoreProvider({ children }: { children: React.ReactNode }) {
   const fetchGlobalData = useGlobalStore((state) => state.fetchGlobalData)
@@ -11,11 +12,20 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
   const setUnreadNotificationsCount = useGlobalStore((state) => state.setUnreadNotificationsCount)
   const setUnreadDMsCount = useGlobalStore((state) => state.setUnreadDMsCount)
   const setOpenSupportTicketsCount = useGlobalStore((state) => state.setOpenSupportTicketsCount)
+  const pathname = usePathname()
 
   // Fetch initial data on mount
   useEffect(() => {
     fetchGlobalData()
   }, [fetchGlobalData])
+
+  // Refetch global data on route changes if currentUser is not yet loaded
+  // (helps sync client state after server-side login/redirect)
+  useEffect(() => {
+    if (!currentUser?.id) {
+      fetchGlobalData()
+    }
+  }, [pathname, currentUser?.id, fetchGlobalData])
 
   // Redirect users with incomplete setup to the profile setup wizard
   useEffect(() => {
@@ -25,6 +35,40 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
       }
     }
   }, [currentUser])
+
+  // Recount notification/DM values on route changes
+  useEffect(() => {
+    if (!currentUser?.id) return
+
+    const supabase = createClient()
+    const fetchCounts = async () => {
+      try {
+        const [notifsCountRes, dmsCountRes] = await Promise.all([
+          supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', currentUser.id)
+            .eq('is_read', false),
+          supabase
+            .from('direct_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('receiver_id', currentUser.id)
+            .eq('is_read', false)
+        ])
+        setUnreadNotificationsCount(notifsCountRes.count ?? 0)
+        setUnreadDMsCount(dmsCountRes.count ?? 0)
+      } catch (err) {
+        console.error('Error refreshing counts on route change:', err)
+      }
+    }
+
+    // Delay slightly to allow the page-level mark-as-read DB updates to complete
+    const timer = setTimeout(() => {
+      fetchCounts()
+    }, 450)
+
+    return () => clearTimeout(timer)
+  }, [pathname, currentUser?.id, setUnreadNotificationsCount, setUnreadDMsCount])
 
   // Real-time Postgres subscriptions
   useEffect(() => {
@@ -76,67 +120,54 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
     fetchCounts()
     fetchTicketsCount()
 
-    // Subscribe to DMs
-    const dmChannel = supabase.channel(`global_dms_${currentUser.id}_${channelToken}`)
+    // Subscribe to all global telemetry changes via a consolidated channel
+    const realtimeChannel = supabase.channel(`global_realtime_${currentUser.id}_${channelToken}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${currentUser.id}` },
-        () => fetchCounts()
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'direct_messages' },
+        { event: '*', schema: 'public', table: 'direct_messages' },
         (payload) => {
+          console.log('[Realtime] DM event received:', payload)
           const newMsg = payload.new as any
           const oldMsg = payload.old as any
-          if (newMsg?.receiver_id === currentUser.id || oldMsg?.receiver_id === currentUser.id) {
+          if (
+            (payload.eventType === 'INSERT' && newMsg?.receiver_id === currentUser.id) ||
+            (payload.eventType === 'UPDATE' && (newMsg?.receiver_id === currentUser.id || oldMsg?.receiver_id === currentUser.id)) ||
+            payload.eventType === 'DELETE'
+          ) {
             fetchCounts()
           }
         }
       )
       .on(
         'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'direct_messages' },
-        () => fetchCounts()
+        { event: '*', schema: 'public', table: 'notifications' },
+        (payload) => {
+          console.log('[Realtime] Notification event received:', payload)
+          const newNotif = payload.new as any
+          const oldNotif = payload.old as any
+          if (
+            (payload.eventType === 'INSERT' && newNotif?.user_id === currentUser.id) ||
+            (payload.eventType === 'UPDATE' && (newNotif?.user_id === currentUser.id || oldNotif?.user_id === currentUser.id)) ||
+            payload.eventType === 'DELETE'
+          ) {
+            fetchCounts()
+          }
+        }
       )
-      .subscribe()
-
-    // Subscribe to notifications
-    const notifChannel = supabase.channel(`global_notifs_${currentUser.id}_${channelToken}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
-        () => fetchCounts()
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
-        () => fetchCounts()
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'notifications' },
-        () => fetchCounts()
-      )
-      .subscribe()
-
-    // Subscribe to support tickets
-    const supportChannel = supabase.channel(`global_support_tickets_${channelToken}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'support_tickets' },
-        () => {
+        (payload) => {
+          console.log('[Realtime] Support ticket event received:', payload)
           fetchTicketsCount()
         }
       )
-
-      .subscribe()
-
+      .subscribe((status) => {
+        console.log(`[Realtime] Global channel status for user ${currentUser.id}:`, status)
+      })
 
     return () => {
-      supabase.removeChannel(dmChannel)
-      supabase.removeChannel(notifChannel)
-      supabase.removeChannel(supportChannel)
+      supabase.removeChannel(realtimeChannel)
     }
   }, [currentUser?.id, fetchGlobalData, setUnreadNotificationsCount, setUnreadDMsCount, setOpenSupportTicketsCount])
 

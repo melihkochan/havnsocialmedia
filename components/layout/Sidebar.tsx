@@ -1362,7 +1362,7 @@ export function Sidebar({
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <ProfileName profile={user} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} />
+                        <ProfileName profile={user} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} disableHoverCard={true} />
                         {user.bio && (
                           <p className="text-[10px] text-muted-foreground truncate mt-0.5">{cleanBio(user.bio)}</p>
                         )}

@@ -80,6 +80,7 @@ export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 
     .from('posts')
     .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
     .is('community_id', null)
+    .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
     .order(orderCol, { ascending: false })
     .range(0, 9)
 

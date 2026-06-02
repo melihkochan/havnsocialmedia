@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Shield, ShieldOff, ShieldAlert, AlertTriangle, Trash2, RefreshCw, Loader2, Check, Star, Settings, X, Award, MapPin, Globe, Lock } from 'lucide-react'
-import { updateUserRole, getHQUsers, warnUser, deleteUserProfile, toggleProfileVerification, resetUserWarns, updateUserProfileDetails, awardUserXP } from '@/lib/actions/hq-admin'
+import { updateUserRole, getHQUsers, warnUser, deleteUserProfile, toggleProfileVerification, resetUserWarns, updateUserProfileDetails, awardUserXP, muteUserAction } from '@/lib/actions/hq-admin'
 import { getRankInfo } from '@/lib/gamification'
 import { getCountryName, getCountryFlagUrl } from '@/lib/countries'
 import { SearchableSelect } from '@/components/havn/SearchableSelect'
@@ -164,6 +164,8 @@ export function HQUserTable({
   const [roleFilter, setRoleFilter] = useState('')
   const [users, setUsers] = useState(initialUsers)
   const [total, setTotal] = useState(initialTotal)
+  const [sortBy, setSortBy] = useState('first_name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   
   const [isPending, startTransition] = useTransition()
   const [actionMsg, setActionMsg] = useState<{ id: string; msg: string } | null>(null)
@@ -187,6 +189,9 @@ export function HQUserTable({
   const [citiesList, setCitiesList] = useState<{ value: string; label: string }[]>([])
   const [loadingGeo, setLoadingGeo] = useState(false)
   const isFirstLoadMgmt = useRef(true)
+
+  const [isMuting, setIsMuting] = useState(false)
+  const [mutedUserIds, setMutedUserIds] = useState<string[]>([])
 
   useEffect(() => {
     async function loadCountries() {
@@ -329,10 +334,29 @@ export function HQUserTable({
     })
   }
 
-  async function handleSearch(q: string, role: string) {
-    const data = await getHQUsers({ search: q, role })
+  async function handleSearch(q: string, role: string, sortField = sortBy, sortDir = sortOrder) {
+    const data = await getHQUsers({
+      search: q,
+      role,
+      sortBy: sortField,
+      sortOrder: sortDir
+    })
     setUsers(data.users as any)
     setTotal(data.total)
+  }
+
+  const toggleSort = (field: string) => {
+    let nextOrder: 'asc' | 'desc' = 'asc'
+    if (sortBy === field) {
+      nextOrder = sortOrder === 'asc' ? 'desc' : 'asc'
+    } else {
+      nextOrder = field === 'xp' || field === 'warns' || field === 'updated_at' ? 'desc' : 'asc'
+    }
+    setSortBy(field)
+    setSortOrder(nextOrder)
+    startTransition(() => {
+      handleSearch(search, roleFilter, field, nextOrder)
+    })
   }
 
   const isFirstMount = useRef(true)
@@ -345,7 +369,7 @@ export function HQUserTable({
 
     const timer = setTimeout(() => {
       startTransition(() => {
-        handleSearch(search, roleFilter)
+        handleSearch(search, roleFilter, sortBy, sortOrder)
       })
     }, 300)
 
@@ -529,14 +553,29 @@ export function HQUserTable({
               gridTemplateColumns: '2fr 2fr 0.8fr 1fr 1.2fr 0.8fr 1.2fr 0.8fr 180px',
             }}
           >
-            <span>Kullanıcı</span>
+            <button
+              onClick={() => toggleSort('first_name')}
+              className="flex items-center gap-1 hover:text-white transition-colors uppercase tracking-widest text-[10px] font-black cursor-pointer bg-transparent border-0 text-left p-0 select-none text-slate-400 outline-none"
+            >
+              Kullanıcı {sortBy === 'first_name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+            </button>
             <span>Ülke / Şehir</span>
             <span>Statü</span>
             <span>Rolü</span>
-            <span>Katılım Tarihi</span>
+            <button
+              onClick={() => toggleSort('updated_at')}
+              className="flex items-center gap-1 hover:text-white transition-colors uppercase tracking-widest text-[10px] font-black cursor-pointer bg-transparent border-0 text-left p-0 select-none text-slate-400 outline-none"
+            >
+              Katılım Tarihi {sortBy === 'updated_at' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+            </button>
             <span>Yazı Adeti</span>
             <span>Tik Yönetimi</span>
-            <span>Uyarılar (Warns)</span>
+            <button
+              onClick={() => toggleSort('warns')}
+              className="flex items-center gap-1 hover:text-white transition-colors uppercase tracking-widest text-[10px] font-black cursor-pointer bg-transparent border-0 text-left p-0 select-none text-slate-400 outline-none"
+            >
+              Uyarılar (Warns) {sortBy === 'warns' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+            </button>
             <span className="text-right">Hızlı Moderasyon</span>
           </div>
 
@@ -663,7 +702,7 @@ export function HQUserTable({
                   </div>
 
                   {/* Actions Column */}
-                  <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <div className="flex items-center justify-end gap-1.5">
                     {/* Warn User Button */}
                     {user.role !== 'founder' && (
                       <button
@@ -1120,7 +1159,10 @@ export function HQUserTable({
                     {/* Warn user */}
                     {mgmtUser.role !== 'founder' && (
                       <button
-                        onClick={() => setWarnModalUser(mgmtUser)}
+                        onClick={() => {
+                          setWarnModalUser(mgmtUser)
+                          setMgmtUser(null)
+                        }}
                         className="py-2.5 text-[9px] font-black uppercase border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-500 rounded-xl transition-all cursor-pointer w-full text-center"
                       >
                         Uyarı Gönder
@@ -1130,10 +1172,28 @@ export function HQUserTable({
                     {/* Silence User */}
                     {mgmtUser.role !== 'founder' && (
                       <button
-                        onClick={() => setMgmtMsg({ type: 'success', text: 'Kullanıcı 24 saatliğine susturuldu.' })}
-                        className="py-2.5 text-[9px] font-black uppercase border border-slate-500/15 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all cursor-pointer w-full text-center"
+                        disabled={isMuting || mutedUserIds.includes(mgmtUser.id)}
+                        onClick={async () => {
+                          setMgmtMsg(null)
+                          setIsMuting(true)
+                          const res = await muteUserAction(mgmtUser.id, 24)
+                          setIsMuting(false)
+                          if (res.error) {
+                            setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
+                          } else {
+                            setMgmtMsg({ type: 'success', text: `@${mgmtUser.username} 24 saatliğine susturuldu.` })
+                            setMutedUserIds(prev => [...prev, mgmtUser.id])
+                          }
+                        }}
+                        className="py-2.5 text-[9px] font-black uppercase border border-slate-500/15 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all cursor-pointer w-full text-center disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        Sustur (24s)
+                        {isMuting ? (
+                          <span className="flex items-center justify-center gap-1.5"><Loader2 size={11} className="animate-spin" /> Susturuluyor...</span>
+                        ) : mutedUserIds.includes(mgmtUser.id) ? (
+                          <span className="flex items-center justify-center gap-1.5 text-emerald-400"><Check size={11} /> Susturuldu</span>
+                        ) : (
+                          "Sustur (24 Saat)"
+                        )}
                       </button>
                     )}
 

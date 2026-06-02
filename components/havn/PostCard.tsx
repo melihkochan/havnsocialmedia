@@ -686,16 +686,15 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
           </ProfileHoverCard>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <Link href={`/profile/${displayUsername}`} className="hover:opacity-80 transition-opacity">
-                <ProfileName
-                  profile={{
-                    ...(displayPost.profiles ?? { username: displayUsername }),
-                    is_gold: isGoldAuthor,
-                    is_verified: (displayPost.profiles as any)?.is_verified ?? false
-                  }}
-                  role={isRepost ? 'member' : role}
-                />
-              </Link>
+              <ProfileName
+                profile={{
+                  ...(displayPost.profiles ?? { username: displayUsername }),
+                  is_gold: isGoldAuthor,
+                  is_verified: (displayPost.profiles as any)?.is_verified ?? false
+                }}
+                role={isRepost ? 'member' : role}
+                isLink={true}
+              />
               {displayPost.communities && (
                 <Link
                   href={`/communities/${displayPost.communities.slug}`}
@@ -1094,7 +1093,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                           {user.username.slice(0, 2).toUpperCase()}
                         </div>
                       )}
-                      <ProfileName profile={user} layout="stacked" nameClassName="text-xs" showHandle={true} />
+                      <ProfileName profile={user} layout="stacked" nameClassName="text-xs" showHandle={true} disableHoverCard={true} />
                     </div>
                     <div className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold">
                       {sendingUserId === user.id ? <Loader2 size={10} className="animate-spin" /> : "Gönder"}
@@ -1246,7 +1245,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                           {user.username.slice(0, 2).toUpperCase()}
                         </div>
                       )}
-                      <ProfileName profile={user} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} />
+                      <ProfileName profile={user} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} disableHoverCard={true} />
                     </Link>
                     <span className="text-lg select-none filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]">{user.reaction}</span>
                   </div>

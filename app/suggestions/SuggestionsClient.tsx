@@ -676,6 +676,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                             layout="inline" 
                             showHandle={true} 
                             nameClassName="text-xs font-semibold"
+                            disableHoverCard={true}
                           />
                         </div>
                       </Link>

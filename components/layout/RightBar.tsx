@@ -4,17 +4,19 @@ import { useEffect, useState, startTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Globe, Lock, Users, TrendingUp, ShieldCheck, Crown, ShieldAlert,
-  UserMinus, UserCheck, FileText, Eye, Loader2, ArrowRight, Sparkles, Hash
+  UserMinus, UserCheck, FileText, Eye, Loader2, ArrowRight, Sparkles, Hash, BadgeCheck
 } from 'lucide-react'
 import { getCommunityStats } from '@/lib/actions/analytics'
 import { updateMemberRole, removeMember } from '@/lib/actions/communities'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { getDisplayName, getFullName } from '@/lib/profile-display'
+import { getDisplayName, getFullName, getOnlineStatus } from '@/lib/profile-display'
 import { ProfileName } from '@/components/havn/ProfileName'
 import { cleanBio } from '@/lib/profile-enrich'
-import { getRightBarSuggestions } from '@/lib/actions/follows'
 import { parseCommunityDescription } from '@/lib/community-rules'
+import { getRightBarData } from '@/lib/actions/rightbar'
+import { FormattedMessage } from '@/components/havn/FormattedMessage'
+import { Award, Volume2 } from 'lucide-react'
 
 interface CommunityData {
   id: string
@@ -45,13 +47,17 @@ interface RightBarProps {
   currentUserRole?: 'owner' | 'moderator' | 'member' | null
 }
 
-function Avatar({ username, avatarUrl, size = 'sm', updatedAt }: { username: string; avatarUrl: string | null; size?: 'sm' | 'md'; updatedAt?: string }) {
+function Avatar({ username, avatarUrl, size = 'sm', updatedAt, isOnline }: { username: string; avatarUrl: string | null; size?: 'sm' | 'md'; updatedAt?: string; isOnline?: boolean }) {
   const sizeCls = size === 'md' ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs'
-  if (avatarUrl) {
-    const finalUrl = updatedAt ? `${avatarUrl}?t=${new Date(updatedAt).getTime()}` : avatarUrl
-    return <img src={finalUrl} alt={username} className={cn(sizeCls, "rounded-full object-cover flex-shrink-0 ring-1 ring-border")} />
-  }
-  return (
+  const dotSize = size === 'md' ? 'w-3 h-3 border-2 border-background' : 'w-2 h-2 border-2 border-background'
+
+  const imgEl = avatarUrl ? (
+    <img 
+      src={updatedAt ? `${avatarUrl}?t=${new Date(updatedAt).getTime()}` : avatarUrl} 
+      alt={username} 
+      className={cn(sizeCls, "rounded-full object-cover flex-shrink-0 ring-1 ring-border")} 
+    />
+  ) : (
     <div
       className={cn(sizeCls, "rounded-full flex items-center justify-center font-bold flex-shrink-0")}
       style={{
@@ -61,6 +67,15 @@ function Avatar({ username, avatarUrl, size = 'sm', updatedAt }: { username: str
       }}
     >
       {username.slice(0, 2).toUpperCase()}
+    </div>
+  )
+
+  return (
+    <div className="relative inline-block flex-shrink-0">
+      {imgEl}
+      {isOnline && (
+        <span className={cn("absolute bottom-0 right-0 bg-emerald-500 rounded-full animate-pulse", dotSize)} />
+      )}
     </div>
   )
 }
@@ -99,64 +114,17 @@ function RoleChip({ role }: { role: string }) {
 
 // ─── Global RightBar (no community context) ───────────────────────────────────
 
-interface PopularCommunity {
-  id: string
-  name: string
-  slug: string
-  type: string
-  memberCount: number
-}
-
-interface SuggestedUser {
-  id: string
-  username: string
-  first_name: string | null
-  last_name: string | null
-  avatar_url: string | null
-  bio: string | null
-  relation?: 'none' | 'following' | 'follows_you' | 'mutual' | 'requested'
-}
-
 function GlobalRightBar() {
-  const [communities, setCommunities] = useState<PopularCommunity[]>([])
-  const [suggested, setSuggested] = useState<SuggestedUser[]>([])
-  const [totalMembers, setTotalMembers] = useState(0)
-  const [totalCommunities, setTotalCommunities] = useState(0)
+  const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
     async function load() {
       try {
-        const [commResult, suggestedUsersList] = await Promise.all([
-          supabase
-            .from('communities')
-            .select('id, name, slug, type')
-            .order('created_at', { ascending: false })
-            .limit(20),
-          getRightBarSuggestions(),
-        ])
-
-        const rawComms = commResult.data ?? []
-        setTotalCommunities(rawComms.length)
-
-        // Get member counts for each community
-        const withCounts = await Promise.all(
-          rawComms.slice(0, 6).map(async (c) => {
-            const { count } = await supabase
-              .from('community_members')
-              .select('*', { count: 'exact', head: true })
-              .eq('community_id', c.id)
-              .eq('status', 'approved')
-            return { ...c, memberCount: count ?? 0 }
-          })
-        )
-        withCounts.sort((a, b) => b.memberCount - a.memberCount)
-        setCommunities(withCounts.slice(0, 5))
-        setTotalMembers(withCounts.reduce((s, c) => s + c.memberCount, 0))
-        setSuggested(suggestedUsersList as SuggestedUser[])
-      } catch {
-        // silent
+        const res = await getRightBarData()
+        setData(res)
+      } catch (err) {
+        console.error(err)
       } finally {
         setLoading(false)
       }
@@ -181,37 +149,201 @@ function GlobalRightBar() {
   return (
     <aside className="h-full py-6 px-4 flex flex-col gap-4 overflow-y-auto">
       {/* Platform Stats */}
-      <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
-        <div className="flex items-center gap-2 mb-1">
-          <div
-            className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
-          >
-            <Sparkles size={12} className="text-primary-foreground" />
+      <div className="bg-card/65 backdrop-blur-md border border-border/80 rounded-2xl p-4 flex flex-col gap-3 shadow-md transition-all duration-300 hover:border-primary/20 flex-shrink-0">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary"
+            >
+              <Sparkles size={12} className="stroke-[2.5]" />
+            </div>
+            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">HAVN İstatistikleri</h2>
           </div>
-          <h2 className="text-xs font-black text-foreground uppercase tracking-wider">HAVN İstatistikleri</h2>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wide">Canlı</span>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-muted/40 border border-border/40 rounded-xl p-3">
-            <div className="flex items-center gap-1 text-muted-foreground mb-1">
-              <Hash size={11} />
-              <span className="text-[11px] font-medium">Topluluklar</span>
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Communities Stat */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-violet-500/8 to-indigo-500/3 hover:from-violet-500/12 hover:to-indigo-500/6 border border-violet-500/15 hover:border-violet-500/30 rounded-xl p-3.5 transition-all duration-300 group/stat hover:-translate-y-0.5">
+            <div className="absolute top-0 right-0 w-12 h-12 bg-violet-500/10 blur-lg rounded-full -mr-3 -mt-3 pointer-events-none group-hover/stat:bg-violet-500/20 transition-all duration-300" />
+            <div className="flex items-center justify-between text-violet-500 dark:text-violet-400 mb-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider">Topluluklar</span>
+              <div className="p-1 rounded-lg bg-violet-500/10 border border-violet-500/10">
+                <Hash size={12} className="stroke-[2.5]" />
+              </div>
             </div>
-            <p className="text-lg font-black text-foreground">{totalCommunities}</p>
+            <p className="text-2xl font-black text-foreground tracking-tight drop-shadow-[0_0_12px_rgba(139,92,246,0.15)]">{data?.totalCommunities ?? 0}</p>
           </div>
-          <div className="bg-muted/40 border border-border/40 rounded-xl p-3">
-            <div className="flex items-center gap-1 text-muted-foreground mb-1">
-              <Users size={11} />
-              <span className="text-[11px] font-medium">Üyeler</span>
+          {/* Members Stat */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500/8 to-teal-500/3 hover:from-emerald-500/12 hover:to-teal-500/6 border border-emerald-500/15 hover:border-emerald-500/30 rounded-xl p-3.5 transition-all duration-300 group/stat hover:-translate-y-0.5">
+            <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-500/10 blur-lg rounded-full -mr-3 -mt-3 pointer-events-none group-hover/stat:bg-emerald-500/20 transition-all duration-300" />
+            <div className="flex items-center justify-between text-emerald-500 dark:text-emerald-400 mb-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider">Üyeler</span>
+              <div className="p-1 rounded-lg bg-emerald-500/10 border border-emerald-500/10">
+                <Users size={12} className="stroke-[2.5]" />
+              </div>
             </div>
-            <p className="text-lg font-black text-foreground">{totalMembers.toLocaleString('tr-TR')}</p>
+            <p className="text-2xl font-black text-foreground tracking-tight drop-shadow-[0_0_12px_rgba(16,185,129,0.15)]">{(data?.totalMembers ?? 0).toLocaleString('tr-TR')}</p>
           </div>
         </div>
       </div>
 
+      {/* HAVN Ekibi (Always Visible) */}
+      {data?.team && data.team.length > 0 && (
+        <div className="bg-card/65 backdrop-blur-md border border-amber-500/25 rounded-2xl p-4 flex flex-col gap-3 shadow-lg shadow-amber-500/[0.015] relative overflow-hidden group hover:border-amber-500/40 transition-all duration-300 flex-shrink-0">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/[0.02] blur-xl rounded-full -mr-6 -mt-6 pointer-events-none" />
+          <div className="flex items-center gap-2 mb-1">
+            <div
+              className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-tr from-yellow-400 via-amber-500 to-yellow-600 shadow-[0_0_8px_rgba(245,158,11,0.35)]"
+            >
+              <Crown size={12} className="text-black fill-black" />
+            </div>
+            <h2 className="text-xs font-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 bg-clip-text text-transparent uppercase tracking-wider">Havn Ekibi</h2>
+          </div>
+          <div className="flex flex-col gap-2">
+            {data.team.map((member: any) => {
+              const online = getOnlineStatus(member).status === 'online'
+              return (
+                <div key={member.id} className="flex items-center justify-between gap-2.5 p-2 rounded-xl bg-accent/20 border border-border/30 hover:border-amber-500/15 transition-all">
+                  <Link href={`/profile/${member.username}`} className="flex items-center gap-2.5 min-w-0 flex-1 group/item">
+                    <Avatar username={member.username} avatarUrl={member.avatar_url} size="sm" isOnline={online} updatedAt={member.updated_at} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-xs font-bold text-foreground truncate group-hover/item:text-amber-500 transition-colors">
+                          {getFullName(member) ?? member.username}
+                        </span>
+                        <span className="flex-shrink-0 align-middle inline-flex items-center justify-center w-3 h-3 rounded bg-gradient-to-tr from-yellow-400 via-amber-500 to-yellow-600 text-black border border-amber-400/30 shadow-[0_0_4px_rgba(245,158,11,0.55)]">
+                          <span className="text-[7px] font-black text-black leading-none font-mono">H</span>
+                        </span>
+                      </div>
+                      <p className="text-[9px] text-muted-foreground truncate">@{member.username}</p>
+                    </div>
+                  </Link>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase border bg-amber-500/10 border-amber-500/20 text-amber-500 select-none">
+                    Kurucu
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Resmi Duyuru (Latest announcement by havn) */}
+      {data?.announcement && (
+        <div className="bg-card/65 backdrop-blur-md border border-violet-500/25 rounded-2xl p-4 flex flex-col gap-3 shadow-lg shadow-violet-500/[0.015] relative overflow-hidden group hover:border-violet-500/40 transition-all duration-300 flex-shrink-0">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-violet-500/[0.02] blur-xl rounded-full -mr-5 -mt-5 pointer-events-none" />
+          <div className="flex items-center gap-2 mb-1">
+            <div
+              className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-tr from-[#8b5cf6] via-[#ec4899] to-[#f97316] shadow-[0_0_8px_rgba(139,92,246,0.35)]"
+            >
+              <Volume2 size={12} className="text-white" />
+            </div>
+            <h2 className="text-xs font-black bg-gradient-to-r from-[#8b5cf6] via-[#ec4899] to-[#f97316] bg-clip-text text-transparent uppercase tracking-wider">Resmi Duyuru</h2>
+          </div>
+          <div className="p-3.5 rounded-xl bg-accent/25 border border-border/40 text-xs leading-relaxed flex flex-col gap-2">
+            <FormattedMessage text={data.announcement.content || ''} className="text-muted-foreground text-xs font-medium" />
+            <div className="flex items-center justify-between border-t border-border/30 pt-2.5 mt-1 text-[9px] text-muted-foreground font-semibold font-mono select-none">
+              <span>{data.announcement.profiles ? `@${data.announcement.profiles.username}` : 'Havn'}</span>
+              <span>{new Date(data.announcement.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Havn Gündemi (Trending Hashtags) */}
+      {data?.trendingTags && data.trendingTags.length > 0 && (
+        <div className="bg-card/65 backdrop-blur-md border border-border/80 rounded-2xl p-4 flex flex-col gap-3 shadow-md transition-all duration-300 hover:border-primary/20 flex-shrink-0">
+          <div className="flex items-center gap-2 mb-1">
+            <div
+              className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary"
+            >
+              <Hash size={12} className="stroke-[3]" />
+            </div>
+            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">Havn Gündemi</h2>
+          </div>
+          <div className="flex flex-col gap-2">
+            {data.trendingTags.map((t: any) => (
+              <div
+                key={t.tag}
+                className="flex items-center justify-between p-2 rounded-xl bg-accent/10 border border-border/30 hover:border-primary/20 transition-all select-none"
+              >
+                <span className="text-xs font-black text-primary font-mono">{t.tag}</span>
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-muted/65 text-muted-foreground border border-border/40 font-mono">
+                  {t.count} paylaşım
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Liderlik Tablosu */}
+      {data?.leaderboard && data.leaderboard.length > 0 && (
+        <div className="bg-card/65 backdrop-blur-md border border-border/80 rounded-2xl p-4 flex flex-col gap-3 shadow-md transition-all duration-300 hover:border-primary/20 flex-shrink-0">
+          <div className="flex items-center gap-2 mb-1">
+            <div
+              className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 bg-violet-500/10 text-violet-400"
+            >
+              <Award size={12} />
+            </div>
+            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">Liderlik Tablosu</h2>
+          </div>
+          <div className="flex flex-col gap-2">
+            {data.leaderboard.map((u: any, idx: number) => {
+              const online = getOnlineStatus(u).status === 'online'
+              return (
+                <div key={u.id} className="flex items-center justify-between gap-2.5 p-2 rounded-xl bg-accent/20 border border-border/30 hover:border-violet-500/15 transition-all">
+                  <Link href={`/profile/${u.username}`} className="flex items-center gap-2.5 min-w-0 flex-1 group/item">
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "text-[10px] font-black font-mono w-4 text-right flex-shrink-0",
+                        idx === 0 ? "text-amber-500 font-extrabold" :
+                        idx === 1 ? "text-slate-400 font-bold" :
+                        idx === 2 ? "text-amber-700 font-bold" :
+                        "text-muted-foreground/80"
+                      )}>
+                        {idx + 1}.
+                      </span>
+                      <Avatar username={u.username} avatarUrl={u.avatar_url} size="sm" isOnline={online} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-xs font-bold text-foreground truncate group-hover/item:text-primary transition-colors">
+                          {getFullName(u) ?? u.username}
+                        </span>
+                        {u.is_gold && (
+                          <span className="flex-shrink-0 align-middle inline-flex cursor-help">
+                            <BadgeCheck size={12} className="fill-[#eab308] text-background" />
+                          </span>
+                        )}
+                        {u.is_verified && !u.is_gold && (
+                          <span className="flex-shrink-0 align-middle inline-flex cursor-help">
+                            <BadgeCheck size={12} className="fill-[#0ea5e9] text-background" />
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[9px] text-muted-foreground truncate">@{u.username}</p>
+                    </div>
+                  </Link>
+                  <span className={cn(
+                    "text-[9px] font-black px-1.5 py-0.5 rounded-md font-mono border select-none",
+                    idx === 0 ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                    idx === 1 ? "bg-slate-400/10 border-slate-400/20 text-slate-400" :
+                    idx === 2 ? "bg-amber-700/10 border-amber-700/20 text-amber-700" :
+                    "bg-violet-500/10 border-violet-500/20 text-violet-400"
+                  )}>
+                    {u.xp} XP
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Popular Communities */}
-      {communities.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
+      {data?.popularCommunities && data.popularCommunities.length > 0 && (
+        <div className="bg-card/65 backdrop-blur-md border border-border/80 rounded-2xl p-4 flex flex-col gap-3 shadow-md transition-all duration-300 hover:border-primary/20 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TrendingUp size={13} className="text-primary" />
@@ -223,7 +355,7 @@ function GlobalRightBar() {
           </div>
 
           <div className="flex flex-col gap-1 divide-y divide-border/40">
-            {communities.map((c, i) => (
+            {data.popularCommunities.map((c: any, i: number) => (
               <Link
                 key={c.id}
                 href={`/communities/${c.slug}`}
@@ -255,58 +387,6 @@ function GlobalRightBar() {
                     </span>
                   </div>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Suggested Users */}
-      {suggested.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Eye size={13} className="text-primary" />
-            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">Keşfet</h2>
-          </div>
-          <div className="flex flex-col gap-1 divide-y divide-border/40">
-            {suggested.map((u: any) => (
-              <Link
-                key={u.username}
-                href={`/profile/${u.username}`}
-                className="w-full flex items-center justify-between gap-2.5 py-2.5 hover:opacity-85 transition-opacity group"
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <Avatar username={u.username} avatarUrl={u.avatar_url} updatedAt={u.updated_at} />
-                  <div className="flex-1 min-w-0">
-                    <ProfileName profile={u} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} />
-                    {u.bio && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{cleanBio(u.bio)}</p>}
-                  </div>
-                </div>
-                
-                {u.relation && u.relation !== 'none' && (
-                  <div className="flex-shrink-0 ml-2">
-                    {u.relation === 'mutual' && (
-                      <span className="inline-flex items-center text-[8px] font-black tracking-wider text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md select-none uppercase">
-                        Takipleşiliyor
-                      </span>
-                    )}
-                    {u.relation === 'following' && (
-                      <span className="inline-flex items-center text-[8px] font-black tracking-wider text-sky-500 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded-md select-none uppercase">
-                        Takip Ediliyor
-                      </span>
-                    )}
-                    {u.relation === 'follows_you' && (
-                      <span className="inline-flex items-center text-[8px] font-black tracking-wider text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md select-none uppercase">
-                        Seni Takip Ediyor
-                      </span>
-                    )}
-                    {u.relation === 'requested' && (
-                      <span className="inline-flex items-center text-[8px] font-black tracking-wider text-muted-foreground bg-muted/40 border border-border/50 px-1.5 py-0.5 rounded-md select-none uppercase animate-pulse">
-                        İstek Gönderildi
-                      </span>
-                    )}
-                  </div>
-                )}
               </Link>
             ))}
           </div>
@@ -455,7 +535,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
   return (
     <aside className="h-full py-6 px-4 flex flex-col gap-4 overflow-y-auto">
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-card/60 backdrop-blur-md border border-border rounded-2xl shadow-sm">
+      <div className="flex items-center gap-1 p-1 bg-card/60 backdrop-blur-md border border-border rounded-2xl shadow-sm flex-shrink-0">
         <button
           onClick={() => setActiveTab('about')}
           className={cn(
@@ -483,7 +563,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
       {activeTab === 'about' ? (
         <>
           {/* About Panel */}
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-4">
+          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-4 flex-shrink-0">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-foreground">Topluluk Hakkında</h2>
               <span
@@ -524,7 +604,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
 
           {/* Admin Detail Stats Panel */}
           {isAdmin && stats && (
-            <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
+            <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3 flex-shrink-0">
               <div className="flex items-center gap-1.5 border-b border-border/60 pb-2 mb-1">
                 <ShieldCheck size={14} className="text-primary" />
                 <h3 className="text-xs font-bold text-foreground">Yönetici İstatistikleri</h3>
@@ -551,7 +631,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
           )}
 
           {/* Rules Panel */}
-          <div className="bg-card border border-border rounded-2xl p-4">
+          <div className="bg-card border border-border rounded-2xl p-4 flex-shrink-0">
             <h2 className="text-sm font-bold text-foreground mb-3">Topluluk Kuralları</h2>
             <ol className="flex flex-col gap-2">
               {(() => {
@@ -564,7 +644,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
                   : ['Saygılı ve yapıcı ol', 'Yalnızca ilgili içerik paylaş', 'Spam ve reklam yasaktır', 'Kaynakları atıfla belirt']
                 return displayRules.map((rule, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-xs text-muted-foreground">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-px" style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)', color: 'var(--primary)' }}>{i + 1}</span>
+                     <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-px" style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)', color: 'var(--primary)' }}>{i + 1}</span>
                     {rule}
                   </li>
                 ))
@@ -574,7 +654,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
         </>
       ) : (
         /* Members Tab */
-        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
+        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3 flex-shrink-0">
           <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2.5 mb-1 flex-wrap">
             <h2 className="text-sm font-bold text-foreground">Topluluk Üyeleri</h2>
             <div className="flex items-center gap-1 p-0.5 bg-muted/40 border border-border/60 rounded-xl select-none">

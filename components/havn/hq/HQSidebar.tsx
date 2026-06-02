@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   LogOut,
   UserCheck,
+  Megaphone,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { signOut } from '@/lib/actions/auth'
@@ -29,6 +30,12 @@ const NAV = [
     icon: LayoutDashboard,
     label: 'Genel Durum',
     sub: 'Sistem ve sunucu anlık yükü',
+  },
+  {
+    href: '/havn-hq-control/announcements',
+    icon: Megaphone,
+    label: 'Resmi Duyurular',
+    sub: 'Resmi Havn duyuruları oluştur',
   },
   {
     href: '/havn-hq-control/analytics',
@@ -99,9 +106,24 @@ interface HQSidebarProps {
 export function HQSidebar({ currentUser }: HQSidebarProps) {
   const pathname = usePathname()
   const collapsed = false
-
   const [pendingCount, setPendingCount] = useState(0)
   const [openTicketsCount, setOpenTicketsCount] = useState(0)
+
+  interface HQToast {
+    id: string
+    title: string
+    message: string
+    type?: 'info' | 'success' | 'warning' | 'danger'
+  }
+  const [toasts, setToasts] = useState<HQToast[]>([])
+
+  const addToast = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'danger' = 'info') => {
+    const id = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    setToasts((prev) => [...prev, { id, title, message, type }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 6000)
+  }
 
   useEffect(() => {
     const supabase = createClient()
@@ -128,15 +150,23 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'communities' },
-        () => {
+        (payload) => {
           loadPendingCount()
+          if (payload.eventType === 'INSERT') {
+            const newComm = payload.new as any
+            addToast('Yeni Topluluk Talebi', `"${newComm.name}" topluluk onay talebi alındı.`, 'info')
+          }
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'support_tickets' },
-        () => {
+        (payload) => {
           loadPendingCount()
+          if (payload.eventType === 'INSERT') {
+            const newTicket = payload.new as any
+            addToast('Destek & Şikayet', `Yeni bir destek/şikayet talebi açıldı: "${newTicket.subject}"`, 'warning')
+          }
         }
       )
       .subscribe()
@@ -159,202 +189,254 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
   }
 
   return (
-    <motion.aside
-      animate={{ width: collapsed ? 72 : 220 }}
-      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      className="flex-shrink-0 h-screen flex flex-col relative overflow-hidden"
-      style={{
-        background: 'linear-gradient(180deg, #0d0d1a 0%, #0a0a14 100%)',
-        borderRight: '1px solid rgba(120,80,255,0.15)',
-      }}
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b" style={{ borderColor: 'rgba(120,80,255,0.12)' }}>
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{
-            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-            boxShadow: '0 0 20px rgba(124,58,237,0.4)',
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 52 52" fill="none">
-            <rect x="5" y="4" width="11" height="44" rx="4" fill="white" fillOpacity="0.95" />
-            <rect x="36" y="4" width="11" height="44" rx="4" fill="white" fillOpacity="0.95" />
-            <rect x="16" y="21" width="20" height="10" rx="3" fill="white" fillOpacity="0.95" />
-          </svg>
-        </div>
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <p className="text-white font-black text-sm tracking-wider">HAVN HQ</p>
-              <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: '#7c3aed' }}>
-                FOUNDER PANEL
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
-        {NAV.map(({ href, icon: Icon, label, sub }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
-          return (
-            <Link key={href} href={href}>
-              <div
-                className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-150 group"
-                style={{
-                  background: active ? 'rgba(124,58,237,0.2)' : 'transparent',
-                  borderLeft: active ? '2px solid #7c3aed' : '2px solid transparent',
-                }}
-              >
-                <div className="relative">
-                  <Icon
-                    size={18}
-                    className="flex-shrink-0 transition-colors duration-150"
-                    style={{ color: active ? '#a78bfa' : 'rgba(255,255,255,0.4)' }}
-                  />
-                  {label === 'Topluluk Onayları' && pendingCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 border border-[#0d0d1a] animate-pulse" />
-                  )}
-                  {label === 'Moderasyon' && openTicketsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 border border-[#0d0d1a] animate-pulse" />
-                  )}
-                </div>
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="overflow-hidden min-w-0 flex-1 flex items-center justify-between"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className="text-xs font-bold truncate"
-                          style={{ color: active ? '#e2e8f0' : 'rgba(255,255,255,0.7)' }}
-                        >
-                          {label}
-                        </p>
-                        <p className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                          {sub}
-                        </p>
-                      </div>
-                      {label === 'Topluluk Onayları' && pendingCount > 0 && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
-                          {pendingCount}
-                        </span>
-                      )}
-                      {label === 'Moderasyon' && openTicketsCount > 0 && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
-                          {openTicketsCount}
-                        </span>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* Status indicator */}
-      <div className="px-3 py-2 border-t" style={{ borderColor: 'rgba(120,80,255,0.12)' }}>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="text-[10px] font-semibold"
-                style={{ color: 'rgba(255,255,255,0.55)' }}
-              >
-                Supabase Synchronized
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* User */}
-      <div className="px-3 py-3 border-t flex flex-col gap-2" style={{ borderColor: 'rgba(120,80,255,0.12)' }}>
-        <div className="flex items-center gap-2.5">
+    <>
+      <motion.aside
+        animate={{ width: collapsed ? 72 : 220 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="flex-shrink-0 h-screen flex flex-col relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(180deg, #0d0d1a 0%, #0a0a14 100%)',
+          borderRight: '1px solid rgba(120,80,255,0.15)',
+        }}
+      >
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-4 py-5 border-b" style={{ borderColor: 'rgba(120,80,255,0.12)' }}>
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              boxShadow: '0 0 20px rgba(124,58,237,0.4)',
+            }}
           >
-            {currentUser.avatar_url ? (
-              <img src={currentUser.avatar_url} alt="" className="w-full h-full rounded-xl object-cover" />
-            ) : (
-              initials
-            )}
+            <svg width="18" height="18" viewBox="0 0 52 52" fill="none">
+              <rect x="5" y="4" width="11" height="44" rx="4" fill="white" fillOpacity="0.95" />
+              <rect x="36" y="4" width="11" height="44" rx="4" fill="white" fillOpacity="0.95" />
+              <rect x="16" y="21" width="20" height="10" rx="3" fill="white" fillOpacity="0.95" />
+            </svg>
           </div>
           <AnimatePresence>
             {!collapsed && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="min-w-0 flex-1"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
               >
-                <p className="text-xs font-bold text-white truncate">
-                  {currentUser.first_name} {currentUser.last_name}
-                </p>
-                <p className="text-[10px] font-semibold" style={{ color: '#a78bfa' }}>
-                  ✦ {roleLabel}
+                <p className="text-white font-black text-sm tracking-wider">HAVN HQ</p>
+                <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: '#7c3aed' }}>
+                  FOUNDER PANEL
                 </p>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Action Buttons: Geri Dön & Çıkış Yap */}
-        <div className="flex gap-2 mt-1 select-none">
-          {collapsed ? (
-            <div className="flex flex-col gap-1.5 items-center w-full">
-              <Link href="/feed" title="Ana Sayfaya Dön" className="w-full flex justify-center">
-                <div className="p-2 rounded-lg border border-white/10 hover:bg-white/5 text-slate-300 cursor-pointer transition-all">
-                  <ArrowLeft size={12} />
+        {/* Nav */}
+        <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
+          {NAV.map(({ href, icon: Icon, label, sub }) => {
+            const active = pathname === href || pathname.startsWith(href + '/')
+            return (
+              <Link key={href} href={href}>
+                <div
+                  className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-150 group"
+                  style={{
+                    background: active ? 'rgba(124,58,237,0.2)' : 'transparent',
+                    borderLeft: active ? '2px solid #7c3aed' : '2px solid transparent',
+                  }}
+                >
+                  <div className="relative">
+                    <Icon
+                      size={18}
+                      className="flex-shrink-0 transition-colors duration-150"
+                      style={{ color: active ? '#a78bfa' : 'rgba(255,255,255,0.4)' }}
+                    />
+                    {label === 'Topluluk Onayları' && pendingCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 border border-[#0d0d1a] animate-pulse" />
+                    )}
+                    {label === 'Moderasyon' && openTicketsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 border border-[#0d0d1a] animate-pulse" />
+                    )}
+                  </div>
+                  <AnimatePresence>
+                    {!collapsed && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="overflow-hidden min-w-0 flex-1 flex items-center justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className="text-xs font-bold truncate"
+                            style={{ color: active ? '#e2e8f0' : 'rgba(255,255,255,0.7)' }}
+                          >
+                            {label}
+                          </p>
+                          <p className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                            {sub}
+                          </p>
+                        </div>
+                        {label === 'Topluluk Onayları' && pendingCount > 0 && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
+                            {pendingCount}
+                          </span>
+                        )}
+                        {label === 'Moderasyon' && openTicketsCount > 0 && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
+                            {openTicketsCount}
+                          </span>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </Link>
-              <button
-                onClick={handleSignOut}
-                title="Oturumu Kapat"
-                className="p-2 rounded-lg border border-rose-500/20 hover:bg-rose-500/10 text-rose-400 cursor-pointer transition-all"
-              >
-                <LogOut size={12} />
-              </button>
-            </div>
-          ) : (
-            <>
-              <Link href="/feed" className="flex-1">
-                <div className="w-full py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-[9px] font-black uppercase text-slate-300 flex items-center justify-center gap-1 cursor-pointer transition-all">
-                  <ArrowLeft size={10} />
-                  <span>Geri Dön</span>
-                </div>
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="flex-1 py-1.5 rounded-lg border border-rose-500/20 hover:bg-rose-500/10 text-[9px] font-black uppercase text-rose-400 flex items-center justify-center gap-1 cursor-pointer transition-all"
-              >
-                <LogOut size={10} />
-                <span>Çıkış Yap</span>
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+            )
+          })}
+        </nav>
 
-    </motion.aside>
+        {/* Status indicator */}
+        <div className="px-3 py-2 border-t" style={{ borderColor: 'rgba(120,80,255,0.12)' }}>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-[10px] font-semibold"
+                  style={{ color: 'rgba(255,255,255,0.55)' }}
+                >
+                  Supabase Synchronized
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* User */}
+        <div className="px-3 py-3 border-t flex flex-col gap-2" style={{ borderColor: 'rgba(120,80,255,0.12)' }}>
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+            >
+              {currentUser.avatar_url ? (
+                <img src={currentUser.avatar_url} alt="" className="w-full h-full rounded-xl object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="min-w-0 flex-1"
+                >
+                  <p className="text-xs font-bold text-white truncate">
+                    {currentUser.first_name} {currentUser.last_name}
+                  </p>
+                  <p className="text-[10px] font-semibold" style={{ color: '#a78bfa' }}>
+                    ✦ {roleLabel}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Action Buttons: Geri Dön & Çıkış Yap */}
+          <div className="flex gap-2 mt-1 select-none">
+            {collapsed ? (
+              <div className="flex flex-col gap-1.5 items-center w-full">
+                <Link href="/feed" title="Ana Sayfaya Dön" className="w-full flex justify-center">
+                  <div className="p-2 rounded-lg border border-white/10 hover:bg-white/5 text-slate-300 cursor-pointer transition-all">
+                    <ArrowLeft size={12} />
+                  </div>
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  title="Oturumu Kapat"
+                  className="p-2 rounded-lg border border-rose-500/20 hover:bg-rose-500/10 text-rose-400 cursor-pointer transition-all"
+                >
+                  <LogOut size={12} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link href="/feed" className="flex-1">
+                  <div className="w-full py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-[9px] font-black uppercase text-slate-300 flex items-center justify-center gap-1 cursor-pointer transition-all">
+                    <ArrowLeft size={10} />
+                    <span>Geri Dön</span>
+                  </div>
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="flex-1 py-1.5 rounded-lg border border-rose-500/20 hover:bg-rose-500/10 text-[9px] font-black uppercase text-rose-400 flex items-center justify-center gap-1 cursor-pointer transition-all"
+                >
+                  <LogOut size={10} />
+                  <span>Çıkış Yap</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </motion.aside>
+
+      {/* Floating Toast Notification Container */}
+      <div className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3 max-w-sm w-full pointer-events-none select-none font-mono">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 50 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="pointer-events-auto w-full border border-violet-500/25 bg-[#090912]/95 backdrop-blur-md rounded-2xl p-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex gap-3 relative overflow-hidden"
+              style={{
+                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05), 0 10px 30px rgba(124,58,237,0.15)'
+              }}
+            >
+              {/* Accent Color Band */}
+              <div 
+                className="absolute left-0 top-0 bottom-0 w-1" 
+                style={{
+                  background: toast.type === 'warning' ? '#f59e0b' : '#7c3aed'
+                }}
+              />
+
+              {/* Content */}
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-ping" />
+                  <p className="text-[10px] font-black tracking-widest text-violet-400 uppercase">
+                    {toast.title}
+                  </p>
+                </div>
+                <p className="text-xs font-semibold text-slate-200 leading-relaxed uppercase tracking-wide">
+                  {toast.message}
+                </p>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                className="text-slate-500 hover:text-slate-300 p-0.5 rounded-md hover:bg-white/5 transition-colors cursor-pointer self-start flex-shrink-0"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </>
   )
 }
 

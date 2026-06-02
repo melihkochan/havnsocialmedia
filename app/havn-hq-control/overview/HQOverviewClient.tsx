@@ -14,7 +14,7 @@ import { getRankInfo } from '@/lib/gamification'
 import { 
   updateUserRole, warnUser, deleteUserProfile, toggleProfileVerification, 
   resetUserWarns, updateUserProfileDetails, awardUserXP, getHQUsers,
-  getHQOverviewStatsForRange
+  getHQOverviewStatsForRange, muteUserAction
 } from '@/lib/actions/hq-admin'
 import { getHQModLogs } from '@/lib/actions/hq-chat'
 import { replyToSupportTicket, closeSupportTicketByAdmin } from '@/lib/actions/support'
@@ -101,6 +101,11 @@ export default function HQOverviewClient({
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isDeletePending, startDeleteTransition] = useTransition()
+
+  // Mute & Warn States
+  const [warnUserObj, setWarnUserObj] = useState<any | null>(null)
+  const [isMuting, setIsMuting] = useState(false)
+  const [mutedUserIds, setMutedUserIds] = useState<string[]>([])
 
   // Load locations
   useEffect(() => {
@@ -395,16 +400,17 @@ export default function HQOverviewClient({
 
   // Warn user action
   const handleWarnUser = async () => {
-    if (!selectedUser || !warnReason.trim()) return
+    if (!warnUserObj || !warnReason.trim()) return
     startWarnTransition(async () => {
-      const res = await warnUser(selectedUser.id, warnReason.trim())
+      const res = await warnUser(warnUserObj.id, warnReason.trim())
       if (res.error) {
         setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
       } else {
-        setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, warns: (u.warns ?? 0) + 1 } : u))
-        setMgmtMsg({ type: 'success', text: `@${selectedUser.username} başarıyla uyarıldı.` })
-        setShowWarnModal(false)
+        setUsers(prev => prev.map(u => u.id === warnUserObj.id ? { ...u, warns: (u.warns ?? 0) + 1 } : u))
+        setActionMsg(`@${warnUserObj.username} başarıyla uyarıldı.`)
         setWarnReason('')
+        setWarnUserObj(null)
+        setTimeout(() => setActionMsg(null), 3000)
       }
     })
   }
@@ -773,16 +779,30 @@ export default function HQOverviewClient({
             </div>
             <div className="rounded-xl p-4 border border-white/[0.04] bg-white/[0.01] flex flex-col justify-between min-h-[90px]">
               <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Aktif Ban / Mute</span>
-              <p className="text-2xl font-black text-white mt-1">4 - 7</p>
-              <p className="text-[8px] text-slate-500">2 süreli, 2 kalıcı</p>
+              <p className="text-2xl font-black text-white mt-1">
+                {((stats as any).bansCount ?? 0) + ((stats as any).mutesCount ?? 0)}
+              </p>
+              <p className="text-[8px] text-slate-500">
+                {(stats as any).mutesCount ?? 0} süreli, {(stats as any).bansCount ?? 0} kalıcı
+              </p>
             </div>
             <div className="rounded-xl p-4 border border-white/[0.04] bg-white/[0.01] flex flex-col justify-between min-h-[90px]">
               <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">AI Toksisite Skoru</span>
               <div className="flex items-center gap-1.5 mt-1 select-none">
-                <span className="text-lg font-black text-emerald-400">Düşük</span>
-                <Sparkles size={11} className="text-emerald-400 fill-emerald-500/10" />
+                <span className={`text-lg font-black ${
+                  (stats as any).toxicityLabel === 'Yüksek' ? 'text-rose-400' :
+                  (stats as any).toxicityLabel === 'Orta' ? 'text-amber-400' :
+                  'text-emerald-400'
+                }`}>
+                  {(stats as any).toxicityLabel ?? 'Düşük'}
+                </span>
+                <Sparkles size={11} className={
+                  (stats as any).toxicityLabel === 'Yüksek' ? 'text-rose-400 fill-rose-500/10' :
+                  (stats as any).toxicityLabel === 'Orta' ? 'text-amber-400 fill-amber-500/10' :
+                  'text-emerald-400 fill-emerald-500/10'
+                } />
               </div>
-              <p className="text-[8px] text-slate-500">0.12 ortalama toksisite</p>
+              <p className="text-[8px] text-slate-500">{(stats as any).toxicityScore ?? '0.00'} ortalama toksisite</p>
             </div>
           </div>
         </div>
@@ -1015,8 +1035,6 @@ export default function HQOverviewClient({
 
       </div>
 
-
-
       {/* AUDIT LOG table */}
       <div className="rounded-2xl border border-white/[0.06] bg-[#090912]/80 p-5 space-y-4">
         <div className="pb-2.5 border-b border-white/5 flex items-center gap-1.5">
@@ -1026,17 +1044,18 @@ export default function HQOverviewClient({
 
         <div className="overflow-x-auto">
           <div className="min-w-[800px] text-xs">
-            <div className="grid grid-cols-[100px_120px_120px_1fr_120px] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-white/[0.04]">
+            <div className="grid grid-cols-[80px_110px_110px_120px_1fr_80px] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-white/[0.04]">
               <span>Zaman</span>
               <span>Yetkili</span>
               <span>Aksiyon</span>
+              <span>Kime</span>
               <span>Detay</span>
               <span className="text-right">IP Adresi</span>
             </div>
 
             <div className="divide-y divide-white/[0.02] max-h-[300px] overflow-y-auto pr-1">
               {logs.map((log: any) => (
-                <div key={log.id} className="grid grid-cols-[100px_120px_120px_1fr_120px] px-3 py-3 items-center hover:bg-white/[0.005] transition-all">
+                <div key={log.id} className="grid grid-cols-[80px_110px_110px_120px_1fr_80px] px-3 py-3 items-center hover:bg-white/[0.005] transition-all">
                   <span className="font-mono text-[10px] text-slate-500">{new Date(log.timestamp).toLocaleTimeString('tr-TR')}</span>
                   <div className="min-w-0">
                     <p className="font-bold text-white truncate">{log.actor?.name}</p>
@@ -1046,6 +1065,15 @@ export default function HQOverviewClient({
                     <span className={`px-1.5 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider ${actionStyles[log.action] || 'bg-white/5 border-white/5 text-slate-400'}`}>
                       {actionLabels[log.action] || 'Sistem'}
                     </span>
+                  </div>
+                  <div className="truncate pr-2">
+                    {log.target ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/25">
+                        {log.target.startsWith('@') ? log.target : `@${log.target}`}
+                      </span>
+                    ) : (
+                      <span className="text-slate-600">-</span>
+                    )}
                   </div>
                   <span className="text-slate-300 font-medium leading-relaxed truncate pr-3" title={log.details}>{log.details}</span>
                   <span className="text-right font-mono text-[9px] text-slate-600">188.34.x.x</span>
@@ -1308,17 +1336,38 @@ export default function HQOverviewClient({
                     )}
 
                     <button 
-                      onClick={() => setShowWarnModal(true)}
+                      onClick={() => {
+                        setWarnUserObj(selectedUser)
+                        setSelectedUser(null)
+                      }}
                       className="py-2.5 text-[9px] font-black uppercase border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-500 rounded-xl transition-all cursor-pointer w-full text-center"
                     >
                       Uyarı Gönder
                     </button>
 
                     <button 
-                      onClick={() => setMgmtMsg({ type: 'success', text: 'Kullanıcı 24 saatliğine susturuldu.' })}
-                      className="py-2.5 text-[9px] font-black uppercase border border-slate-500/15 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all cursor-pointer w-full text-center"
+                      disabled={isMuting || mutedUserIds.includes(selectedUser.id)}
+                      onClick={async () => {
+                        setMgmtMsg(null)
+                        setIsMuting(true)
+                        const res = await muteUserAction(selectedUser.id, 24)
+                        setIsMuting(false)
+                        if (res.error) {
+                          setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
+                        } else {
+                          setMgmtMsg({ type: 'success', text: `@${selectedUser.username} 24 saatliğine susturuldu.` })
+                          setMutedUserIds(prev => [...prev, selectedUser.id])
+                        }
+                      }}
+                      className="py-2.5 text-[9px] font-black uppercase border border-slate-500/15 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all cursor-pointer w-full text-center disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Sustur (24s)
+                      {isMuting ? (
+                        <span className="flex items-center justify-center gap-1.5"><Loader2 size={11} className="animate-spin" /> Susturuluyor...</span>
+                      ) : mutedUserIds.includes(selectedUser.id) ? (
+                        <span className="flex items-center justify-center gap-1.5 text-emerald-400"><Check size={11} /> Susturuldu</span>
+                      ) : (
+                        "Sustur (24 Saat)"
+                      )}
                     </button>
 
                     <button 
@@ -1338,7 +1387,7 @@ export default function HQOverviewClient({
 
       {/* WARN modal */}
       <AnimatePresence>
-        {showWarnModal && selectedUser && (
+        {warnUserObj && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
@@ -1348,7 +1397,7 @@ export default function HQOverviewClient({
             >
               <h3 className="text-sm font-black text-white flex items-center gap-2">
                 <AlertTriangle size={15} className="text-amber-500" />
-                <span>@{selectedUser.username} Kullanıcısını Uyar</span>
+                <span>@{warnUserObj.username} Kullanıcısını Uyar</span>
               </h3>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Kullanıcıya gönderilecek uyarı gerekçesini yazınız. Bu işlem kullanıcının uyarı sayacını +1 artırır.
@@ -1360,7 +1409,7 @@ export default function HQOverviewClient({
                 className="w-full h-24 p-3 rounded-xl border border-white/5 bg-slate-950/60 text-xs text-white outline-none resize-none"
               />
               <div className="flex gap-2 justify-end text-xs">
-                <button onClick={() => setShowWarnModal(false)} className="px-4 py-2 text-slate-500 hover:text-white transition-all cursor-pointer">İptal</button>
+                <button onClick={() => setWarnUserObj(null)} className="px-4 py-2 text-slate-500 hover:text-white transition-all cursor-pointer">İptal</button>
                 <button 
                   onClick={handleWarnUser}
                   disabled={isWarningPending || !warnReason.trim()}

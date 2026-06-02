@@ -351,9 +351,13 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
     const channel = supabase.channel(`notifications_realtime_list_${channelToken}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
         async (payload) => {
-          const newNotifId = payload.new.id
+          console.log('[Realtime] NotificationsClient list received INSERT event:', payload)
+          const newNotif = payload.new as any
+          if (newNotif?.user_id !== currentUser.id) return
+
+          const newNotifId = newNotif.id
           
           // Fetch enriched notification details
           const { getSingleNotification } = await import('@/lib/actions/notifications')
@@ -376,7 +380,9 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
           setNotifications(prev => prev.filter(n => n.id !== deletedNotifId))
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log(`[Realtime] NotificationsClient channel status for user ${currentUser.id}:`, status)
+      })
 
     return () => {
       supabase.removeChannel(channel)

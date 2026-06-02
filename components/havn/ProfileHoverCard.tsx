@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useParams, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { BadgeCheck, Loader2 } from 'lucide-react'
 import Link from 'next/link'
@@ -15,6 +16,15 @@ interface ProfileHoverCardProps {
 }
 
 export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) {
+  const params = useParams()
+  const pathname = usePathname()
+  const routeUsername = params?.username as string | undefined
+
+  const isCurrentProfilePage =
+    (routeUsername?.toLowerCase() === username.toLowerCase()) ||
+    (pathname?.toLowerCase() === `/profile/${username}`.toLowerCase()) ||
+    (pathname?.toLowerCase() === `/profile/${username}/`.toLowerCase())
+
   const [isOpen, setIsOpen] = useState(false)
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -25,6 +35,7 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleMouseEnter = () => {
+    if (isCurrentProfilePage) return
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
     setIsOpen(true)
     if (!profile && !loading) {
@@ -53,7 +64,6 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
       
       if (rawProfile) {
         const enriched = enrichProfile(rawProfile)
-        setProfile(enriched)
 
         // Fetch follow stats
         const [followersRes, followingRes, followCheck] = await Promise.all([
@@ -65,6 +75,7 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
         setFollowerCount(followersRes.count ?? 0)
         setFollowingCount(followingRes.count ?? 0)
         setIsFollowing(!!followCheck.data)
+        setProfile(enriched)
       }
     } catch (e) {
       console.error(e)
