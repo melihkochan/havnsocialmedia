@@ -334,22 +334,41 @@ export async function getSuggestedUsers() {
     .eq('follower_id', user.id)
   const followingIds = (followsData ?? []).map(f => f.following_id)
 
-  let query = supabase
+  // 1. Fetch unfollowed gold/founder profiles first
+  let goldQuery = supabase
     .from('profiles')
     .select('*')
     .neq('id', user.id)
-    .limit(5)
+    .or('is_gold.eq.true,role.eq.founder,role.eq.admin,username.eq.melih,username.eq.havn')
+  
+  if (followingIds.length > 0) {
+    goldQuery = goldQuery.not('id', 'in', `(${followingIds.join(',')})`)
+  }
+  const { data: goldProfiles } = await goldQuery
+
+  // 2. Fetch other profiles
+  let normalQuery = supabase
+    .from('profiles')
+    .select('*')
+    .neq('id', user.id)
+    .order('updated_at', { ascending: false })
 
   if (followingIds.length > 0) {
-    query = query.not('id', 'in', `(${followingIds.join(',')})`)
+    normalQuery = normalQuery.not('id', 'in', `(${followingIds.join(',')})`)
   }
+  const goldIds = (goldProfiles ?? []).map(p => p.id)
+  if (goldIds.length > 0) {
+    normalQuery = normalQuery.not('id', 'in', `(${goldIds.join(',')})`)
+  }
+  
+  const { data: normalProfiles, error } = await normalQuery.limit(8)
 
-  const { data: profiles, error } = await query
-
-  if (error || !profiles) {
-    if (error) console.error('getSuggestedUsers error:', error)
+  if (error) {
+    console.error('getSuggestedUsers error:', error)
     return []
   }
+
+  const profiles = [...(goldProfiles ?? []), ...(normalProfiles ?? [])].slice(0, 8)
 
   // Fetch who follows current user from this list
   const suggestedUserIds = profiles.map(p => p.id)
@@ -401,20 +420,38 @@ export async function getRightBarSuggestions() {
     .eq('follower_id', user.id)
   const followingIds = (followsData ?? []).map(f => f.following_id)
 
-  let query = supabase
+  // 1. Fetch unfollowed gold/founder profiles first
+  let goldQuery = supabase
     .from('profiles')
     .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at, role')
     .neq('id', user.id)
+    .or('is_gold.eq.true,role.eq.founder,role.eq.admin,username.eq.melih,username.eq.havn')
+  
+  if (followingIds.length > 0) {
+    goldQuery = goldQuery.not('id', 'in', `(${followingIds.join(',')})`)
+  }
+  const { data: goldProfiles } = await goldQuery
+
+  // 2. Fetch other profiles
+  let normalQuery = supabase
+    .from('profiles')
+    .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at, role')
+    .neq('id', user.id)
+    .order('updated_at', { ascending: false })
 
   if (followingIds.length > 0) {
-    query = query.not('id', 'in', `(${followingIds.join(',')})`)
+    normalQuery = normalQuery.not('id', 'in', `(${followingIds.join(',')})`)
   }
+  const goldIds = (goldProfiles ?? []).map(p => p.id)
+  if (goldIds.length > 0) {
+    normalQuery = normalQuery.not('id', 'in', `(${goldIds.join(',')})`)
+  }
+  
+  const { data: normalProfiles, error } = await normalQuery.limit(5)
 
-  let { data: profiles, error } = await query
-    .order('updated_at', { ascending: false })
-    .limit(5)
+  if (error || (!goldProfiles && !normalProfiles)) return []
 
-  if (error || !profiles) return []
+  const profiles = [...(goldProfiles ?? []), ...(normalProfiles ?? [])].slice(0, 5)
 
   // Fallback to followed users if we have fewer than 3 suggestions, to prevent empty UI
   if (profiles.length < 3) {

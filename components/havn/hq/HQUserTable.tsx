@@ -78,8 +78,15 @@ function getOnlineStatus(user: UserRow) {
 
 function WarnCircles({ count }: { count: number }) {
   const c = Math.max(0, count)
+  if (c === 0) {
+    return (
+      <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg">
+        Temiz
+      </span>
+    )
+  }
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" title={`${c} aktif uyarı puanı`}>
       {[0, 1, 2, 3, 4].map((idx) => {
         let bgClass = 'bg-white/10'
         if (c > 0 && idx < c) {
@@ -328,14 +335,29 @@ export function HQUserTable({
     setTotal(data.total)
   }
 
+  const isFirstMount = useRef(true)
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false
+      return
+    }
+
+    const timer = setTimeout(() => {
+      startTransition(() => {
+        handleSearch(search, roleFilter)
+      })
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [search, roleFilter])
+
   function onSearch(val: string) {
     setSearch(val)
-    startTransition(() => handleSearch(val, roleFilter))
   }
 
   function onRoleFilter(val: string) {
     setRoleFilter(val)
-    startTransition(() => handleSearch(search, val))
   }
 
   async function handleRoleUpdate(userId: string, newRole: string, username: string) {
@@ -529,7 +551,7 @@ export function HQUserTable({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.02 }}
-                  className="grid px-5 py-3.5 items-center hover:bg-white/[0.01] transition-colors"
+                  className="grid px-5 py-3.5 items-center hover:bg-white/[0.02] transition-colors group"
                   style={{ gridTemplateColumns: '2fr 2fr 0.8fr 1fr 1.2fr 0.8fr 1.2fr 0.8fr 180px' }}
                 >
                   {/* User Column */}
@@ -612,16 +634,15 @@ export function HQUserTable({
                         </button>
                       </>
                     ) : (
-                      <div className="flex items-center gap-2 pl-2">
-                        {user.is_verified ? (
-                          <span className="text-[10px] text-blue-400" title="Mavi Tik Aktif">✓</span>
-                        ) : (
-                          <span className="text-[10px] text-slate-700">-</span>
+                      <div className="flex items-center gap-1.5">
+                        {user.is_verified && (
+                          <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] font-black uppercase">Mavi Tik</span>
                         )}
-                        {user.is_gold ? (
-                          <span className="text-[10px] text-amber-400" title="Sarı Tik Aktif">★</span>
-                        ) : (
-                          <span className="text-[10px] text-slate-700">-</span>
+                        {user.is_gold && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[8px] font-black uppercase">Sarı Tik</span>
+                        )}
+                        {!user.is_verified && !user.is_gold && (
+                          <span className="text-[10px] text-slate-500 pl-2">-</span>
                         )}
                       </div>
                     )}
@@ -642,7 +663,7 @@ export function HQUserTable({
                   </div>
 
                   {/* Actions Column */}
-                  <div className="flex items-center justify-end gap-1.5">
+                  <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     {/* Warn User Button */}
                     {user.role !== 'founder' && (
                       <button

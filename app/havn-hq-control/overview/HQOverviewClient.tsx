@@ -156,13 +156,17 @@ export default function HQOverviewClient({
       dataPoints = dataPoints.slice(4, 18)
     }
     
-    return dataPoints.map(d => {
+    return dataPoints.map((d, index) => {
       let val = d.posts
       if (chartTab === 'comments') val = Math.round(d.posts * 0.45)
       if (chartTab === 'likes') val = Math.round(d.posts * 1.6)
+      const currentVal = Math.round(val * multiplier)
+      const factor = 0.85 + Math.sin((index + 2) * 1.2) * 0.18
+      const prevVal = Math.round(val * multiplier * factor)
       return {
         ...d,
-        posts: Math.round(val * multiplier)
+        posts: currentVal,
+        prevPosts: prevVal
       }
     })
   }, [timeRange, chartTab, hourlyData])
@@ -631,30 +635,42 @@ export default function HQOverviewClient({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* CPU card */}
-          <div className="rounded-2xl p-5 bg-card/45 border border-white/[0.04] relative overflow-hidden flex flex-col justify-between min-h-[125px]">
+          <div className={`rounded-2xl p-5 border relative overflow-hidden flex flex-col justify-between min-h-[125px] transition-all duration-350 ${
+            stats.cpuUsage >= 90
+              ? 'bg-rose-950/20 border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.12)]'
+              : stats.cpuUsage >= 80
+              ? 'bg-amber-950/20 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.12)]'
+              : 'bg-card/45 border-white/[0.04]'
+          }`}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">CPU Tüketimi</span>
-              <Cpu size={14} className="text-rose-500" />
+              <Cpu size={14} className={stats.cpuUsage >= 90 ? 'text-rose-400 animate-pulse' : stats.cpuUsage >= 80 ? 'text-amber-400 animate-pulse' : 'text-rose-500'} />
             </div>
             <div className="my-2">
-              <p className="text-2xl font-black text-white">{stats.cpuUsage}%</p>
+              <p className={`text-2xl font-black ${stats.cpuUsage >= 90 ? 'text-rose-400' : stats.cpuUsage >= 80 ? 'text-amber-400' : 'text-white'}`}>{stats.cpuUsage}%</p>
               <div className="w-full bg-white/5 rounded-full h-1 mt-2.5 overflow-hidden border border-white/5">
-                <div className="bg-rose-500 h-full rounded-full" style={{ width: `${stats.cpuUsage}%` }} />
+                <div className={`h-full rounded-full transition-all duration-500 ${stats.cpuUsage >= 90 ? 'bg-rose-500' : stats.cpuUsage >= 80 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${stats.cpuUsage}%` }} />
               </div>
             </div>
             <p className="text-[8px] text-slate-500 font-semibold uppercase tracking-wider">~4% vs. dün · Sunucu Toplam Yükü</p>
           </div>
 
           {/* RAM card */}
-          <div className="rounded-2xl p-5 bg-card/45 border border-white/[0.04] relative overflow-hidden flex flex-col justify-between min-h-[125px]">
+          <div className={`rounded-2xl p-5 border relative overflow-hidden flex flex-col justify-between min-h-[125px] transition-all duration-350 ${
+            stats.ramProgress >= 90
+              ? 'bg-rose-950/20 border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.12)]'
+              : stats.ramProgress >= 80
+              ? 'bg-amber-950/20 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.12)]'
+              : 'bg-card/45 border-white/[0.04]'
+          }`}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bellek (RAM)</span>
-              <HardDrive size={14} className="text-amber-500" />
+              <HardDrive size={14} className={stats.ramProgress >= 90 ? 'text-rose-400 animate-pulse' : stats.ramProgress >= 80 ? 'text-amber-400 animate-pulse' : 'text-amber-500'} />
             </div>
             <div className="my-2">
-              <p className="text-2xl font-black text-white">{stats.ramUsed} GB <span className="text-xs text-slate-500">/ {stats.ramTotal} GB</span></p>
+              <p className={`text-2xl font-black ${stats.ramProgress >= 90 ? 'text-rose-400' : stats.ramProgress >= 80 ? 'text-amber-400' : 'text-white'}`}>{stats.ramUsed} GB <span className="text-xs text-slate-500">/ {stats.ramTotal} GB</span></p>
               <div className="w-full bg-white/5 rounded-full h-1 mt-2.5 overflow-hidden border border-white/5">
-                <div className="bg-amber-500 h-full rounded-full" style={{ width: `${stats.ramProgress}%` }} />
+                <div className={`h-full rounded-full transition-all duration-500 ${stats.ramProgress >= 90 ? 'bg-rose-500' : stats.ramProgress >= 80 ? 'bg-amber-500' : 'bg-amber-500'}`} style={{ width: `${stats.ramProgress}%` }} />
               </div>
             </div>
             <p className="text-[8px] text-slate-500 font-semibold uppercase tracking-wider">Sanal bellek · Dynamic RAM</p>
@@ -709,8 +725,20 @@ export default function HQOverviewClient({
               <p className="text-[8px] text-slate-400">+100% haftalık aktif katılım</p>
             </div>
             <div className="rounded-xl p-4 border border-white/[0.04] bg-white/[0.01] flex flex-col justify-between min-h-[90px]">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Aktif & Çevrimiçi</span>
-              <p className="text-2xl font-black text-white mt-1">{stats.onlineUsers}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Aktif & Çevrimiçi</span>
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[8px] text-emerald-400 font-bold uppercase tracking-wider">Canlı</span>
+                </span>
+              </div>
+              <p className="text-2xl font-black text-white mt-1 flex items-center gap-2">
+                {stats.onlineUsers}
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </p>
               <p className="text-[8px] text-slate-400">%{stats.activeGrowthPct.toFixed(1)} anlık oran</p>
             </div>
             <div className="rounded-xl p-4 border border-white/[0.04] bg-white/[0.01] flex flex-col justify-between min-h-[90px]">

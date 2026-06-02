@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { MainLayout } from '@/components/layout/MainLayout'
+import { cookies } from 'next/headers'
 import { PostFeed } from '@/components/havn/PostFeed'
 import { FeedPostForm } from '@/components/havn/FeedPostForm'
 import { getFeedPosts, getFollowingFeedPosts, getPosts } from '@/lib/actions/posts'
@@ -78,8 +79,12 @@ export default async function FeedPage({ searchParams }: PageProps) {
     .map((m: any) => m.communities)
     .filter(Boolean) as { id: string; name: string }[]
 
+  const cookieStore = await cookies()
+  const onboardingActiveCookie = cookieStore.get('havn_onboarding_active')?.value
   const followingCount = followingCountResult?.count ?? 0
-  const isNewUserOnboarding = !!user && followingCount === 0 && userCommunities.length === 0
+  const isNewUserOnboarding = 
+    onboardingActiveCookie === 'true' || 
+    (onboardingActiveCookie !== 'false' && !!user && followingCount === 0 && userCommunities.length === 0)
 
   // Step 3: Fetch posts (personalized, community-based, or all)
   const posts = (communityId && !isNewUserOnboarding)

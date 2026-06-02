@@ -918,7 +918,7 @@ export function Sidebar({
                       <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} updatedAt={currentUser.updated_at} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <ProfileName profile={currentUser} layout="stacked" nameClassName="text-xs font-black" showHandle={true} />
+                      <ProfileName profile={currentUser} layout="stacked" nameClassName="text-xs font-black" showHandle={true} disableHoverCard={true} />
                     </div>
                   </div>
 
@@ -1049,7 +1049,7 @@ export function Sidebar({
                                       >
                                         <Avatar username={acc.profile.username} avatarUrl={acc.profile.avatar_url} updatedAt={acc.profile.updated_at} />
                                         <div className="flex-1 min-w-0">
-                                          <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} />
+                                          <ProfileName profile={acc.profile} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} disableHoverCard={true} />
                                         </div>
                                       </button>
                                       <button
@@ -1157,7 +1157,7 @@ export function Sidebar({
                   </div>
                   
                   {/* Name & Handle */}
-                  <ProfileName profile={currentUser} layout="stacked" nameClassName="text-sm font-black" showHandle={true} align="center" />
+                  <ProfileName profile={currentUser} layout="stacked" nameClassName="text-sm font-black" showHandle={true} align="center" disableHoverCard={true} />
                   
                   {/* Çevrimiçi Badge */}
                   <div className="flex items-center gap-1.5 text-[9px] text-green-500 font-black mt-1 uppercase tracking-wider select-none bg-green-500/5 px-2 py-0.5 rounded-full border border-green-500/10">
@@ -1224,7 +1224,7 @@ export function Sidebar({
                   <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} updatedAt={currentUser.updated_at} />
                 </div>
                 <div className="flex-1 min-w-0 pl-1">
-                  <ProfileName profile={currentUser} layout="stacked" nameClassName="text-sm font-bold" showHandle={true} />
+                  <ProfileName profile={currentUser} layout="stacked" nameClassName="text-sm font-bold" showHandle={true} disableHoverCard={true} />
                 </div>
                 {['founder', 'admin', 'moderator'].includes(currentUser.role || '') && (
                   <Link

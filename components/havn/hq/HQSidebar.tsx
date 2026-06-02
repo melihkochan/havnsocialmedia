@@ -17,6 +17,7 @@ import {
   Zap,
   ArrowLeft,
   LogOut,
+  UserCheck,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { signOut } from '@/lib/actions/auth'
@@ -46,6 +47,12 @@ const NAV = [
     icon: MessageSquare,
     label: 'Ekip Sohbet Odası',
     sub: '#ekip-koordinasyon @AI kanal',
+  },
+  {
+    href: '/havn-hq-control/team',
+    icon: UserCheck,
+    label: 'Ekip Yönetimi',
+    sub: 'Yetkili ekibi ve işlem sayıları',
   },
   {
     href: '/havn-hq-control/users',

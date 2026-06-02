@@ -2,7 +2,7 @@
 
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell,
+  Tooltip, ResponsiveContainer, Cell, ComposedChart, Line
 } from 'recharts'
 
 interface AreaChartData {
@@ -14,6 +14,7 @@ interface AreaChartData {
 interface BarChartData {
   hour: string
   posts: number
+  prevPosts?: number
 }
 
 const PURPLE = '#7c3aed'
@@ -92,7 +93,7 @@ export function HQBarChart({ data }: { data: BarChartData[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={200}>
-      <BarChart data={data} margin={{ top: 5, right: 10, left: -25, bottom: 0 }} barSize={6}>
+      <ComposedChart data={data} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
         <XAxis
           dataKey="hour"
@@ -107,15 +108,29 @@ export function HQBarChart({ data }: { data: BarChartData[] }) {
           tickLine={false}
         />
         <Tooltip content={<CustomTooltip />} />
-        <Bar dataKey="posts" name="Gönderi" radius={[3, 3, 0, 0]}>
-          {data.map((entry) => (
+        
+        {/* Ghost Line (Önceki Dönem) */}
+        <Line
+          type="monotone"
+          dataKey="prevPosts"
+          name="Önceki Dönem"
+          stroke="rgba(167, 139, 250, 0.25)"
+          strokeWidth={1.5}
+          strokeDasharray="4 4"
+          dot={false}
+          activeDot={false}
+        />
+
+        {/* Bugünün Verisi (Bar) */}
+        <Bar dataKey="posts" name="Aktif Dönem" radius={[3, 3, 0, 0]} barSize={6}>
+          {data.map((entry, idx) => (
             <Cell
-              key={entry.hour}
+              key={idx}
               fill={entry.hour === peakHour.hour ? '#f59e0b' : 'rgba(124,58,237,0.6)'}
             />
           ))}
         </Bar>
-      </BarChart>
+      </ComposedChart>
     </ResponsiveContainer>
   )
 }

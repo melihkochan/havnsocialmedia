@@ -18,6 +18,7 @@ import { toggleLike, deletePost, repostPost, toggleBookmark, editPost, togglePin
 import type { UserRole } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
 import { enrichProfile } from '@/lib/profile-enrich'
+import { ProfileHoverCard } from '@/components/havn/ProfileHoverCard'
 
 function Avatar({ username, avatarUrl, xp, isGold }: { username: string; avatarUrl: string | null; xp?: number; isGold?: boolean | null }) {
   const level = xp !== undefined ? Math.floor(Math.sqrt(xp / 100)) + 1 : 1
@@ -666,9 +667,11 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       {isRepost && (
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-3 font-semibold px-0.5">
           <Repeat size={12} className="text-emerald-500" />
-          <Link href={`/profile/${username}`} className="hover:underline text-foreground">
-            {getDisplayName(post.profiles ?? { username })}
-          </Link>
+          <ProfileHoverCard username={username}>
+            <Link href={`/profile/${username}`} className="hover:underline text-foreground">
+              {getDisplayName(post.profiles ?? { username })}
+            </Link>
+          </ProfileHoverCard>
           <span>yeniden paylaştı</span>
         </div>
       )}
@@ -676,9 +679,11 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
-          <Link href={`/profile/${displayUsername}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
-            <Avatar username={displayUsername} avatarUrl={displayAvatarUrl} xp={displayPost.profiles?.xp} isGold={isGoldAuthor} />
-          </Link>
+          <ProfileHoverCard username={displayUsername}>
+            <Link href={`/profile/${displayUsername}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
+              <Avatar username={displayUsername} avatarUrl={displayAvatarUrl} xp={displayPost.profiles?.xp} isGold={isGoldAuthor} />
+            </Link>
+          </ProfileHoverCard>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Link href={`/profile/${displayUsername}`} className="hover:opacity-80 transition-opacity">
