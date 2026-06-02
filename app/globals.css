@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+
 /* ─── HAVN Design Tokens ─── */
 :root {
   --background: oklch(0.99 0.002 240);

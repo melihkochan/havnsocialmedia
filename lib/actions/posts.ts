@@ -83,7 +83,17 @@ export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 
     .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
 
   if (tag) {
-    query = query.ilike('content', `%#${tag}%`)
+    const { data: postIdsData } = await supabase
+      .from('post_hashtags')
+      .select('post_id, hashtags!inner(name)')
+      .eq('hashtags.name', tag.toLowerCase())
+
+    const postIds = (postIdsData ?? []).map((item: any) => item.post_id)
+    if (postIds.length > 0) {
+      query = query.in('id', postIds)
+    } else {
+      return []
+    }
   }
 
   const { data: posts, error } = await query
@@ -748,7 +758,17 @@ export async function loadMorePosts(
         .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
 
       if (context.tag) {
-        query = query.ilike('content', `%#${context.tag}%`)
+        const { data: postIdsData } = await supabase
+          .from('post_hashtags')
+          .select('post_id, hashtags!inner(name)')
+          .eq('hashtags.name', context.tag.toLowerCase())
+
+        const postIds = (postIdsData ?? []).map((item: any) => item.post_id)
+        if (postIds.length > 0) {
+          query = query.in('id', postIds)
+        } else {
+          return { posts: [], hasMore: false }
+        }
       }
 
       const { data, error } = await query

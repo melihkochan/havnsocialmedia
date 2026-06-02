@@ -70,13 +70,12 @@ export async function getRightBarData() {
     .order('xp', { ascending: false })
     .limit(10)
 
-  // 3. Fetch latest 100 posts for hashtag extraction
-  const postsPromise = supabase
-    .from('posts')
-    .select('content')
-    .is('community_id', null) // only public posts to avoid private community leaking
-    .order('created_at', { ascending: false })
-    .limit(100)
+  // 3. Fetch top trending hashtags
+  const hashtagsPromise = supabase
+    .from('hashtags')
+    .select('name, posts_count')
+    .order('posts_count', { ascending: false })
+    .limit(5)
 
   // 4. Fetch latest announcement (latest post by 'havn' or containing '#duyuru')
   const announcementPromise = supabase
@@ -95,13 +94,13 @@ export async function getRightBarData() {
   const [
     teamRes,
     leaderboardRes,
-    postsRes,
+    hashtagsRes,
     announcementRes,
     communitiesRes
   ] = await Promise.all([
     teamPromise,
     leaderboardPromise,
-    postsPromise,
+    hashtagsPromise,
     announcementPromise,
     communitiesPromise
   ])
@@ -115,28 +114,11 @@ export async function getRightBarData() {
     .filter((u): u is EnrichedProfile => u !== null && u.show_xp !== false)
     .slice(0, 5) as unknown as LeaderboardUser[]
 
-  // Extract Trending Hashtags
-  const tagCounts: Record<string, number> = {}
-  const rawPosts = postsRes.data ?? []
-  
-  rawPosts.forEach(post => {
-    if (!post.content) return
-    // Strip HTML tags to get pure text and avoid matching color codes or attributes
-    const plainText = post.content.replace(/<[^>]*>/g, ' ')
-    // Extract hashtags matching standard Turkish/English word characters
-    const matches = plainText.match(/#[a-zA-Z0-9ığüşöçİĞÜŞÖÇ_]+/g)
-    if (matches) {
-      matches.forEach((tag: string) => {
-        const normalized = tag.toLowerCase()
-        tagCounts[normalized] = (tagCounts[normalized] || 0) + 1
-      })
-    }
-  })
-
-  const trendingTags: TrendingHashtag[] = Object.entries(tagCounts)
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
+  // Process Trending Hashtags
+  const trendingTags: TrendingHashtag[] = (hashtagsRes.data ?? []).map(t => ({
+    tag: `#${t.name}`,
+    count: t.posts_count
+  }))
 
   // Process Announcement
   let latestAnnouncement: AnnouncementData | null = null

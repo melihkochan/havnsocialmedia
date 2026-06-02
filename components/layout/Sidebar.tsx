@@ -680,13 +680,13 @@ export function Sidebar({
       <div className="px-1 mb-2 flex items-center justify-between w-full">
         <HavnLogo collapsed={isCollapsed} />
         {!isCollapsed && (
-          <button
-            onClick={() => setShowInfoModal(true)}
+          <Link
+            href="/help"
             className="p-1.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 hover:border-primary/20 border border-transparent transition-all cursor-pointer shadow-sm select-none flex items-center justify-center group/info"
             title="Kısayollar & Platform Rehberi"
           >
             <HelpCircle size={16} className="group-hover/info:rotate-12 transition-transform duration-200" />
-          </button>
+          </Link>
         )}
       </div>
 
@@ -1371,122 +1371,6 @@ export function Sidebar({
                     </Link>
                   ))
                 )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Platform Info & Shortcuts Modal */}
-      <AnimatePresence>
-        {showInfoModal && (
-          <>
-            {/* Backdrop Overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowInfoModal(false)}
-              className="fixed inset-0 z-[9999] bg-[#020205]/85 backdrop-blur-[8px]"
-            />
-
-            {/* Modal Dialog */}
-            <motion.div
-              initial={{ scale: 0.96, y: 15, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.96, y: 15, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="fixed inset-x-4 top-[10%] mx-auto max-w-lg z-[10000] bg-[#090912]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl shadow-black/90 flex flex-col gap-4 text-foreground text-left"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                    <Sparkles size={16} className="animate-pulse" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-black text-white uppercase tracking-wider">Havn Kısayolları & İpuçları</h2>
-                    <p className="text-[10px] text-slate-500">Platformu en verimli şekilde kullanın</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowInfoModal(false)}
-                  className="p-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="space-y-4 overflow-y-auto max-h-[360px] pr-1.5 scrollbar-thin scrollbar-thumb-white/5">
-                
-                {/* 1. Command Palette Section */}
-                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-2.5">
-                  <div className="flex items-center gap-2 text-primary">
-                    <Terminal size={14} className="stroke-[2.5]" />
-                    <span className="text-xs font-black uppercase tracking-wider">Küresel Komut Paleti</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Sitede gezinirken klavyenizle uçun! Herhangi bir sayfada komut paletini açarak hızlıca yönlenebilir, topluluklara geçiş yapabilir, tema değiştirebilir veya kullanıcı arayabilirsiniz.
-                  </p>
-                  <div className="flex items-center justify-between py-1.5 px-2.5 bg-black/40 rounded-xl border border-white/[0.03] flex-wrap gap-2">
-                    <span className="text-[10px] font-bold text-slate-300">Komut Paletini Aç</span>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <kbd className="px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[9px] font-black font-mono">Ctrl</kbd>
-                      <span className="text-slate-500 font-bold">+</span>
-                      <kbd className="px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[9px] font-black font-mono">K</kbd>
-                      <span className="text-[10px] text-slate-500 px-1">veya</span>
-                      <kbd className="px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[9px] font-black font-mono">⌘</kbd>
-                      <span className="text-slate-500 font-bold">+</span>
-                      <kbd className="px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[9px] font-black font-mono">K</kbd>
-                    </div>
-                  </div>
-                  {/* Navigation instructions */}
-                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400 pt-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-1 py-0.5 rounded border border-white/10 bg-white/5 font-mono text-[9px]">↑↓</span>
-                      <span>Listede Gezinme</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-1 py-0.5 rounded border border-white/10 bg-white/5 font-mono text-[9px]">ENTER</span>
-                      <span>Seçimi Aç/Onayla</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-1 py-0.5 rounded border border-white/10 bg-white/5 font-mono text-[9px]">/koyu</span>
-                      <span>Karanlık Mod (Komut)</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-1 py-0.5 rounded border border-white/10 bg-white/5 font-mono text-[9px]">ESC</span>
-                      <span>Paleti Kapat</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Markdown / Editor Section */}
-                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-2.5">
-                  <div className="flex items-center gap-2 text-violet-400">
-                    <Lightbulb size={14} className="stroke-[2.5]" />
-                    <span className="text-xs font-black uppercase tracking-wider">Gönderi Format İpuçları</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Gönderi yazarken veya yorum yaparken aşağıdaki markdown formatlarını kullanarak içeriğinizi zenginleştirebilirsiniz:
-                  </p>
-                  
-                  <div className="space-y-1.5 text-[10px]">
-                    <div className="flex items-center justify-between py-1.5 px-2 border-b border-white/[0.02] hover:bg-white/[0.01] transition-all rounded-lg">
-                      <span className="text-slate-300 font-medium">Kalın Yazı</span>
-                      <code className="text-violet-400 font-bold bg-white/5 px-1.5 py-0.5 rounded font-mono">**kalın**</code>
-                    </div>
-                    <div className="flex items-center justify-between py-1.5 px-2 border-b border-white/[0.02] hover:bg-white/[0.01] transition-all rounded-lg">
-                      <span className="text-slate-300 font-medium">İtalik Yazı</span>
-                      <code className="text-violet-400 font-bold bg-white/5 px-1.5 py-0.5 rounded font-mono">*italik*</code>
-                    </div>
-                    <div className="flex items-center justify-between py-1.5 px-2 hover:bg-white/[0.01] transition-all rounded-lg">
-                      <span className="text-slate-300 font-medium">Resmi Duyuru (Sistem)</span>
-                      <code className="text-violet-400 font-bold bg-white/5 px-1.5 py-0.5 rounded font-mono">/duyuru duyuru metni</code>
-                    </div>
-                  </div>
-                </div>
               </div>
             </motion.div>
           </>
