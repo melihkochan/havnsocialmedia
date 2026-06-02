@@ -130,6 +130,29 @@ function GlobalRightBar() {
       }
     }
     load()
+
+    const supabase = createClient()
+    const channelToken = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    const channel = supabase.channel(`global_rightbar_realtime_${channelToken}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'posts' },
+        () => {
+          load()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        () => {
+          load()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
   }, [])
 
   if (loading) {
@@ -482,6 +505,30 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
   useEffect(() => {
     setLoading(true)
     loadData()
+
+    if (!propCommunityId) return
+
+    const channelToken = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    const channel = supabase.channel(`community_rightbar_realtime_${propCommunityId}_${channelToken}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'community_members', filter: `community_id=eq.${propCommunityId}` },
+        () => {
+          loadData()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        () => {
+          loadData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
   }, [propCommunityId, propUserRole])
 
   async function handleToggleMod(member: Member) {

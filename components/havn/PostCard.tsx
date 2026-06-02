@@ -17,11 +17,12 @@ import { RichTextEditor } from '@/components/havn/RichTextEditor'
 import { toggleLike, deletePost, repostPost, toggleBookmark, editPost, togglePinPost } from '@/lib/actions/posts'
 import type { UserRole } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
-import { enrichProfile } from '@/lib/profile-enrich'
+import { enrichProfile, shouldShowXp } from '@/lib/profile-enrich'
 import { ProfileHoverCard } from '@/components/havn/ProfileHoverCard'
 
-function Avatar({ username, avatarUrl, xp, isGold }: { username: string; avatarUrl: string | null; xp?: number; isGold?: boolean | null }) {
-  const level = xp !== undefined ? Math.floor(Math.sqrt(xp / 100)) + 1 : 1
+function Avatar({ username, avatarUrl, xp, isGold, showXp = true }: { username: string; avatarUrl: string | null; xp?: number; isGold?: boolean | null; showXp?: boolean }) {
+  const isHavn = username.toLowerCase() === 'havn'
+  const level = (xp !== undefined && showXp && !isHavn) ? Math.floor(Math.sqrt(xp / 100)) + 1 : 1
 
   const ringClass = isGold
     ? 'ring-2 ring-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]'
@@ -681,7 +682,13 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
         <div className="flex items-center gap-3 min-w-0">
           <ProfileHoverCard username={displayUsername}>
             <Link href={`/profile/${displayUsername}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
-              <Avatar username={displayUsername} avatarUrl={displayAvatarUrl} xp={displayPost.profiles?.xp} isGold={isGoldAuthor} />
+              <Avatar
+                username={displayUsername}
+                avatarUrl={displayAvatarUrl}
+                xp={displayPost.profiles?.xp}
+                isGold={isGoldAuthor}
+                showXp={shouldShowXp(displayPost.profiles)}
+              />
             </Link>
           </ProfileHoverCard>
           <div className="min-w-0">

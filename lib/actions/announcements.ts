@@ -21,10 +21,29 @@ export async function getAnnouncements() {
     console.error('getAnnouncements error:', error)
     return []
   }
-  return data ?? []
+
+  const now = new Date()
+  return (data ?? []).map((post: any) => {
+    if (!post.content) return post
+    const parts = post.content.split('\u200B')
+    const cleanText = parts[0]
+    let meta: any = { expires_at: null }
+    if (parts.length > 1) {
+      try {
+        meta = JSON.parse(parts[1])
+      } catch (e) {}
+    }
+    const isExpired = meta.expires_at ? new Date(meta.expires_at) < now : false
+    return {
+      ...post,
+      content: cleanText,
+      expires_at: meta.expires_at,
+      is_expired: isExpired
+    }
+  })
 }
 
-export async function createAnnouncement(content: string) {
+export async function createAnnouncement(content: string, duration: string = 'forever') {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Yetkisiz.' }
@@ -41,12 +60,59 @@ export async function createAnnouncement(content: string) {
 
   // Use service client to post as system user
   const serviceClient = await createServiceClient()
+  const now = new Date()
+
+  let expiresAt: string | null = null
+  if (duration === '1h') {
+    expiresAt = new Date(now.getTime() + 60 * 60 * 1000).toISOString()
+  } else if (duration === '12h') {
+    expiresAt = new Date(now.getTime() + 12 * 60 * 60 * 1000).toISOString()
+  } else if (duration === '1d') {
+    expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
+  } else if (duration === '1w') {
+    expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  } else if (duration === '1m') {
+    expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  }
+
+  // Deactivate all previous announcements by setting their expires_at to now
+  const { data: existingActive } = await serviceClient
+    .from('posts')
+    .select('id, content')
+    .eq('user_id', HAVN_SYSTEM_USER_ID)
+
+  if (existingActive) {
+    for (const post of existingActive) {
+      if (!post.content) continue
+      const parts = post.content.split('\u200B')
+      const cleanText = parts[0]
+      let meta: any = {}
+      if (parts.length > 1) {
+        try {
+          meta = JSON.parse(parts[1])
+        } catch (e) {}
+      }
+      
+      if (!meta.expires_at || new Date(meta.expires_at) > now) {
+        meta.expires_at = now.toISOString()
+        const serialized = JSON.stringify(meta)
+        await serviceClient
+          .from('posts')
+          .update({ content: `${cleanText}\u200B${serialized}` })
+          .eq('id', post.id)
+      }
+    }
+  }
+
+  const metaObj = { expires_at: expiresAt }
+  const serializedMeta = JSON.stringify(metaObj)
+  const finalContent = `${content}\u200B${serializedMeta}`
   
   const { data, error } = await serviceClient
     .from('posts')
     .insert({
       user_id: HAVN_SYSTEM_USER_ID,
-      content: content,
+      content: finalContent,
     })
     .select()
     .single()
@@ -59,7 +125,15 @@ export async function createAnnouncement(content: string) {
   const contentSnippet = content.length > 50 ? `${content.slice(0, 50)}...` : content
   await logHQModAction('announcement_create', 'Havn Sistem', `Yeni resmi duyuru oluşturuldu: "${contentSnippet}"`)
 
-  return { success: true, post: data }
+  // Return the parsed announcement post
+  const parsedPost = {
+    ...data,
+    content: content,
+    expires_at: expiresAt,
+    is_expired: false
+  }
+
+  return { success: true, post: parsedPost }
 }
 
 export async function deleteAnnouncement(postId: string) {

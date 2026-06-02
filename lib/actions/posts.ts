@@ -651,6 +651,7 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
     .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
     .in('user_id', targetUserIds)
     .is('community_id', null)
+    .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
     .order(orderCol, { ascending: false })
     .range(0, 9)
 
@@ -738,6 +739,7 @@ export async function loadMorePosts(
         .from('posts')
         .select(FEED_SELECT)
         .is('community_id', null)
+        .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
         .order(orderCol, { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) throw error
@@ -762,6 +764,7 @@ export async function loadMorePosts(
         .select(FEED_SELECT)
         .in('user_id', targetIds)
         .is('community_id', null)
+        .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
         .order(orderCol, { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) throw error
@@ -798,6 +801,7 @@ export async function loadMorePosts(
         .from('posts')
         .select(FEED_SELECT)
         .eq('user_id', context.profileUserId)
+        .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
         .or('community_id.is.null,parent_post_id.not.is.null')
         .order('is_pinned', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })

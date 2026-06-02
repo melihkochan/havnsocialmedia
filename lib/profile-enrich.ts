@@ -26,12 +26,36 @@ export interface EnrichedProfile {
   accent_theme?: string
   last_session_id?: string
   is_setup_completed?: boolean
+  show_xp?: boolean
 }
 
 
 export function cleanBio(bio: string | null): string {
   if (!bio) return ''
   return bio.split('\u200B')[0].trim()
+}
+
+export function shouldShowXp(profile: any): boolean {
+  if (!profile) return false
+  if (profile.username?.toLowerCase() === 'havn') return false
+  
+  if (profile.show_xp !== undefined) {
+    return !!profile.show_xp
+  }
+
+  if (profile.bio) {
+    const parts = profile.bio.split('\u200B')
+    if (parts.length > 1) {
+      try {
+        const meta = JSON.parse(parts[1])
+        if (meta.show_xp !== undefined) {
+          return !!meta.show_xp
+        }
+      } catch (e) {}
+    }
+  }
+
+  return true
 }
 
 export function enrichProfile(profile: any): EnrichedProfile | null {
@@ -51,6 +75,7 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
   let accent_theme = 'purple'
   let last_session_id = undefined
   let is_setup_completed = true
+  let show_xp = profile.show_xp !== undefined ? profile.show_xp !== false : true
   
   let cleanBioText = cleanBio(bio)
 
@@ -72,6 +97,7 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
       if (meta.accent_theme !== undefined) accent_theme = meta.accent_theme
       if (meta.last_session_id !== undefined) last_session_id = meta.last_session_id
       if (meta.is_setup_completed !== undefined) is_setup_completed = !!meta.is_setup_completed
+      if (profile.show_xp === undefined && meta.show_xp !== undefined) show_xp = !!meta.show_xp
     } catch (e) {
       // ignore
     }
@@ -92,5 +118,6 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
     accent_theme,
     last_session_id,
     is_setup_completed,
+    show_xp,
   }
 }

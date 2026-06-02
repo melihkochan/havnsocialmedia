@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Megaphone, Trash2, Loader2, Sparkles, Volume2, Info, AlertTriangle, Send } from 'lucide-react'
 import { createAnnouncement, deleteAnnouncement } from '@/lib/actions/announcements'
@@ -17,6 +17,8 @@ interface Announcement {
     last_name: string | null
     avatar_url: string | null
   } | null
+  expires_at?: string | null
+  is_expired?: boolean
 }
 
 interface HQAnnouncementsClientProps {
@@ -26,9 +28,79 @@ interface HQAnnouncementsClientProps {
 export function HQAnnouncementsClient({ initialAnnouncements }: HQAnnouncementsClientProps) {
   const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements)
   const [content, setContent] = useState('')
+  const [duration, setDuration] = useState('forever')
   const [isPending, startTransition] = useTransition()
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
+  const [now, setNow] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date())
+    }, 10000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const insertFormatText = (formatType: 'bold' | 'italic' | 'tag') => {
+    const textarea = document.getElementById('content') as HTMLTextAreaElement
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const currentText = textarea.value
+
+    let insertText = ''
+    let cursorOffset = 0
+    let placeholderLen = 0
+
+    if (formatType === 'bold') {
+      insertText = '**kalın metin**'
+      cursorOffset = 2
+      placeholderLen = 11
+    } else if (formatType === 'italic') {
+      insertText = '*italik metin*'
+      cursorOffset = 1
+      placeholderLen = 12
+    } else if (formatType === 'tag') {
+      insertText = '#duyuru'
+      cursorOffset = 7
+      placeholderLen = 0
+    }
+
+    const newText = currentText.substring(0, start) + insertText + currentText.substring(end)
+    setContent(newText)
+
+    setTimeout(() => {
+      textarea.focus()
+      const newCursorPos = start + cursorOffset
+      if (formatType === 'tag') {
+        textarea.setSelectionRange(newCursorPos, newCursorPos)
+      } else {
+        textarea.setSelectionRange(start + cursorOffset, start + cursorOffset + placeholderLen)
+      }
+    }, 0)
+  }
+
+  const getRemainingTimeText = (expiresAt: string | null | undefined) => {
+    if (!expiresAt) return 'Süresiz'
+    const expiry = new Date(expiresAt)
+    const diffMs = expiry.getTime() - now.getTime()
+    if (diffMs <= 0) return 'Süresi Doldu'
+
+    const diffMins = Math.floor(diffMs / (60 * 1000))
+    const diffHours = Math.floor(diffMs / (60 * 60 * 1000))
+    const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000))
+
+    if (diffDays > 0) {
+      const hoursPart = diffHours % 24
+      return `${diffDays} gün ${hoursPart} saat kaldı`
+    }
+    if (diffHours > 0) {
+      const minsPart = diffMins % 60
+      return `${diffHours} saat ${minsPart} dakika kaldı`
+    }
+    return `${diffMins} dakika kaldı`
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,12 +110,13 @@ export function HQAnnouncementsClient({ initialAnnouncements }: HQAnnouncementsC
     setActionSuccess(null)
 
     startTransition(async () => {
-      const res = await createAnnouncement(content)
+      const res = await createAnnouncement(content, duration)
       if (res.error) {
         setActionError(res.error)
       } else {
         setActionSuccess('Resmi duyuru başarıyla yayınlandı.')
         setContent('')
+        setDuration('forever')
         if (res.post) {
           const newAnn = {
             ...res.post,
@@ -54,7 +127,10 @@ export function HQAnnouncementsClient({ initialAnnouncements }: HQAnnouncementsC
               avatar_url: null
             }
           } as Announcement
-          setAnnouncements(prev => [newAnn, ...prev])
+          setAnnouncements(prev => {
+            const updated = prev.map(ann => ({ ...ann, is_expired: true }))
+            return [newAnn, ...updated]
+          })
         }
       }
     })
@@ -100,6 +176,25 @@ export function HQAnnouncementsClient({ initialAnnouncements }: HQAnnouncementsC
                 placeholder="Duyuru metnini buraya yazın..."
                 className="w-full h-32 px-4 py-3 rounded-xl border border-white/[0.06] bg-white/[0.02] text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all resize-none"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="duration" className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                Duyuru Süresi
+              </label>
+              <select
+                id="duration"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all cursor-pointer"
+              >
+                <option value="forever" className="bg-[#090912] text-slate-300">Süresiz (Forever)</option>
+                <option value="1h" className="bg-[#090912] text-slate-300">1 Saat</option>
+                <option value="12h" className="bg-[#090912] text-slate-300">12 Saat</option>
+                <option value="1d" className="bg-[#090912] text-slate-300">1 Gün</option>
+                <option value="1w" className="bg-[#090912] text-slate-300">1 Hafta</option>
+                <option value="1m" className="bg-[#090912] text-slate-300">1 Ay</option>
+              </select>
             </div>
 
             {/* Error / Success feedback */}
@@ -155,18 +250,30 @@ export function HQAnnouncementsClient({ initialAnnouncements }: HQAnnouncementsC
             <span>Format İpuçları</span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 font-mono">
-            <div className="p-2 rounded bg-white/[0.01] border border-white/[0.02]">
-              <span className="text-slate-400 font-bold">**Kalın Yazı**</span>
-            </div>
-            <div className="p-2 rounded bg-white/[0.01] border border-white/[0.02]">
-              <span className="text-slate-400 italic">*İtalik Yazı*</span>
-            </div>
-            <div className="p-2 rounded bg-white/[0.01] border border-white/[0.02]">
-              <span className="text-slate-400">#duyuru (Etiket)</span>
-            </div>
-            <div className="p-2 rounded bg-white/[0.01] border border-white/[0.02]">
-              <span className="text-slate-400">||spoiler||</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => insertFormatText('bold')}
+              className="p-2 rounded bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.04] hover:border-violet-500/20 active:scale-[0.98] transition-all text-left cursor-pointer group border-none outline-none"
+              title="Mesaja kalın metin ekle"
+            >
+              <span className="text-slate-400 font-bold group-hover:text-violet-400 transition-colors">**Kalın Yazı**</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormatText('italic')}
+              className="p-2 rounded bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.04] hover:border-violet-500/20 active:scale-[0.98] transition-all text-left cursor-pointer group border-none outline-none"
+              title="Mesaja italik metin ekle"
+            >
+              <span className="text-slate-400 italic group-hover:text-violet-400 transition-colors">*İtalik Yazı*</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormatText('tag')}
+              className="p-2 rounded bg-white/[0.01] border border-white/[0.02] col-span-2 hover:bg-white/[0.04] hover:border-violet-500/20 active:scale-[0.98] transition-all text-center cursor-pointer group border-none outline-none"
+              title="Mesaja #duyuru etiketi ekle"
+            >
+              <span className="text-slate-400 group-hover:text-violet-400 transition-colors">#duyuru (Etiket)</span>
+            </button>
           </div>
           <p className="text-[10px] text-slate-500 leading-relaxed">
             Not: Gönderilen duyurular anasayfa ve duyuru akışında anında güncellenir.
@@ -189,6 +296,9 @@ export function HQAnnouncementsClient({ initialAnnouncements }: HQAnnouncementsC
               : 'Havn Official'
             const authorUsername = ann.profiles?.username || 'havn'
             
+            const isExpired = ann.expires_at ? new Date(ann.expires_at) <= now : !!ann.is_expired
+            const remainingText = getRemainingTimeText(ann.expires_at)
+            
             return (
               <div
                 key={ann.id}
@@ -204,11 +314,20 @@ export function HQAnnouncementsClient({ initialAnnouncements }: HQAnnouncementsC
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-white leading-tight flex items-center gap-1">
+                      <p className="text-xs font-bold text-white leading-tight flex items-center gap-1 flex-wrap">
                         <span>{authorName}</span>
                         <span className="text-[8px] bg-violet-500/10 text-violet-400 border border-violet-500/20 px-1 py-0.2 rounded font-black uppercase">
                           Sistem
                         </span>
+                        {isExpired ? (
+                          <span className="text-[8px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1 py-0.2 rounded font-black uppercase">
+                            Süresi Doldu
+                          </span>
+                        ) : (
+                          <span className="text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1 py-0.2 rounded font-black uppercase">
+                            Aktif ({remainingText})
+                          </span>
+                        )}
                       </p>
                       <p className="text-[9px] text-slate-500 font-mono">
                         @{authorUsername} • {new Date(ann.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}

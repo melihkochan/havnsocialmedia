@@ -8,7 +8,7 @@ import type { FeedContext } from '@/lib/actions/posts'
 import { RoleBadge } from '@/components/havn/RoleBadge'
 import { ProfileViewTracker } from '@/components/havn/ViewTracker'
 import { CalendarDays, Users, Eye, Heart, MessageSquare, Lock, BadgeCheck } from 'lucide-react'
-import { enrichProfile } from '@/lib/profile-enrich'
+import { enrichProfile, shouldShowXp } from '@/lib/profile-enrich'
 import { MuteProfileButton } from '@/components/havn/MuteProfileButton'
 import { getDisplayName, getFullName, getInitials, getOnlineStatus } from '@/lib/profile-display'
 import { cn, getSafeTimestamp } from '@/lib/utils'
@@ -286,7 +286,7 @@ export default async function ProfilePage({
                   updatedAt={profile.updated_at}
                   size="lg"
                   showStatus={onlineStatus.status === 'online'}
-                  level={rank.level}
+                  level={shouldShowXp(profile) ? rank.level : 1}
                 />
                 
                 {/* Real-time Online/Offline status badge next to avatar */}
@@ -368,7 +368,7 @@ export default async function ProfilePage({
             </div>
 
             {/* Gamification Level & XP Progress Card */}
-            {profile.xp !== undefined && (
+            {profile.xp !== undefined && shouldShowXp(profile) && (
               <div className={cn(
                 "mt-5 p-4 rounded-2xl border shadow-sm backdrop-blur-md relative overflow-hidden group transition-all duration-300",
                 rank.level >= 31 ? "level-card-gold text-amber-900 dark:text-amber-100" :

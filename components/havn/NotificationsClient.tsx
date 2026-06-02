@@ -985,7 +985,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       {(() => {
                         const stripped = displayPreview.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
                         const snippet = stripped.length > 80 ? `${stripped.slice(0, 80)}...` : stripped
-                        return <FormattedMessage text={snippet} />
+                        return <FormattedMessage text={snippet} disableLinks={true} />
                       })()}
                     </Link>
                   )}

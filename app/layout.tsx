@@ -9,6 +9,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ensureHavnOfficialProfile } from "@/lib/actions/system-init";
 import { GlobalStoreProvider } from "@/components/providers/GlobalStoreProvider";
+import Script from "next/script";
+
 
 const inter = Inter({
   subsets: ["latin"],
@@ -98,7 +100,9 @@ export default async function RootLayout({
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
-        <script
+        <Script
+          id="accent-theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               try {

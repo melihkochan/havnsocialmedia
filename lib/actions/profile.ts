@@ -31,6 +31,7 @@ export async function getUserPosts(userId: string) {
     .from('posts')
     .select(`*, profiles(*), likes(user_id), comments(id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))`)
     .eq('user_id', userId)
+    .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
     .order('created_at', { ascending: false })
 
   if (error) return []
@@ -83,6 +84,7 @@ export async function updateProfile(formData: FormData) {
   // New settings fields for metadata
   const isPrivate = formData.get('is_private') === 'true'
   const showStatus = formData.get('show_status') === 'true'
+  const showXp = formData.get('show_xp') === 'true'
   const twitter = (formData.get('twitter') as string | null)?.trim() || null
   const instagram = (formData.get('instagram') as string | null)?.trim() || null
   const github = (formData.get('github') as string | null)?.trim() || null
@@ -199,6 +201,7 @@ export async function updateProfile(formData: FormData) {
   const metaUpdates: any = {
     is_private: isPrivate,
     show_status: showStatus,
+    show_xp: showXp,
     social_links: {
       twitter,
       instagram,
@@ -639,4 +642,51 @@ export async function completeProfileSetup(formData: FormData) {
 
   return { success: true }
 }
+
+export async function updatePreferences(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Giriş yapmalısınız.' }
+
+  if (await checkLockdown()) {
+    return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
+  }
+
+  const isPrivate = formData.get('is_private') === 'true'
+  const showStatus = formData.get('show_status') === 'true'
+  const showXp = formData.get('show_xp') === 'true'
+
+  // Get current profile
+  const { data: currentProfile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (!currentProfile) return { error: 'Profil bulunamadı.' }
+
+  const enriched = enrichProfile(currentProfile)
+  if (!enriched) return { error: 'Profil çözümlenemedi.' }
+
+  let cleanBioText = (enriched.bio || '')
+
+  const metaUpdates: any = {
+    is_private: isPrivate,
+    show_status: showStatus,
+    show_xp: showXp,
+  }
+  if (!showStatus) {
+    metaUpdates.last_seen_at = null
+  }
+
+  const metaRes = await saveProfileMetadata(user.id, metaUpdates, cleanBioText)
+  if (metaRes.error) return { error: metaRes.error }
+
+  revalidatePath('/profile')
+  revalidatePath('/settings')
+  revalidatePath(`/profile/${currentProfile.username}`)
+  revalidatePath('/', 'layout')
+  return { success: true }
+}
+
 

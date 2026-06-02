@@ -2,8 +2,8 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Lock, Palette, Loader2, Check, AlertCircle, Camera, LogOut, ArrowLeft, HelpCircle, Send, Bell, Volume2, VolumeX, Undo } from 'lucide-react'
-import { updateProfile, changePassword, updateAccentTheme } from '@/lib/actions/profile'
+import { User, Lock, Palette, Loader2, Check, AlertCircle, Camera, LogOut, ArrowLeft, HelpCircle, Send, Bell, Volume2, VolumeX, Undo, Sliders } from 'lucide-react'
+import { updateProfile, changePassword, updateAccentTheme, updatePreferences } from '@/lib/actions/profile'
 import { signOut } from '@/lib/actions/auth'
 import { ThemeToggle } from '@/components/havn/ThemeToggle'
 import { AvatarUpload } from '@/components/havn/AvatarUpload'
@@ -105,7 +105,7 @@ function Switch({ checked, onChange, label, description }: { checked: boolean; o
 
 
 export function SettingsClient({ profile, email }: SettingsClientProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'appearance' | 'notifications' | 'support' | 'account'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'appearance' | 'preferences' | 'notifications' | 'support' | 'account'>('profile')
   const [notifPrefs, setNotifPrefs] = useState({
     all: true,
     support: true,
@@ -120,6 +120,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   // Enriched profile states
   const [isPrivate, setIsPrivate] = useState((profile as any).is_private || false)
   const [showStatus, setShowStatus] = useState((profile as any).show_status !== false)
+  const [showXp, setShowXp] = useState((profile as any).show_xp !== false)
   const [twitter, setTwitter] = useState((profile as any).social_links?.twitter || '')
   const [instagram, setInstagram] = useState((profile as any).social_links?.instagram || '')
   const [github, setGithub] = useState((profile as any).social_links?.github || '')
@@ -291,6 +292,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   const [profileResult, setProfileResult] = useState<{ error?: string; success?: boolean } | null>(null)
   const [passwordResult, setPasswordResult] = useState<{ error?: string; success?: boolean } | null>(null)
   const [supportResult, setSupportResult] = useState<{ error?: string; success?: boolean } | null>(null)
+  const [preferencesResult, setPreferencesResult] = useState<{ error?: string; success?: boolean } | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [bannerFile, setBannerFile] = useState<File | null>(null)
   const [bannerPreview, setBannerPreview] = useState<string | null>(profile.banner_url)
@@ -301,6 +303,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   const [profilePending, startProfileTransition] = useTransition()
   const [passwordPending, startPasswordTransition] = useTransition()
   const [supportPending, startSupportTransition] = useTransition()
+  const [preferencesPending, startPreferencesTransition] = useTransition()
 
   useEffect(() => {
     if (profile.banner_url) {
@@ -347,12 +350,26 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
     fd.set('delete_banner', isBannerDeleted.toString())
     fd.set('is_private', isPrivate.toString())
     fd.set('show_status', showStatus.toString())
+    fd.set('show_xp', showXp.toString())
     fd.set('twitter', twitter)
     fd.set('instagram', instagram)
     fd.set('github', github)
     startProfileTransition(async () => {
       const res = await updateProfile(fd)
       setProfileResult(res)
+    })
+  }
+
+  async function handlePreferencesSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setPreferencesResult(null)
+    startPreferencesTransition(async () => {
+      const fd = new FormData()
+      fd.set('is_private', isPrivate.toString())
+      fd.set('show_status', showStatus.toString())
+      fd.set('show_xp', showXp.toString())
+      const res = await updatePreferences(fd)
+      setPreferencesResult(res)
     })
   }
 
@@ -386,6 +403,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
     { id: 'profile' as const, label: 'Profil Bilgileri', icon: User },
     { id: 'password' as const, label: 'Şifre Değiştir', icon: Lock },
     { id: 'appearance' as const, label: 'Görünüm', icon: Palette },
+    { id: 'preferences' as const, label: 'Tercihler', icon: Sliders },
     { id: 'notifications' as const, label: 'Bildirim Tercihleri', icon: Bell },
     { id: 'support' as const, label: 'Destek Talebi', icon: HelpCircle },
     { id: 'account' as const, label: 'Hesap Yönetimi', icon: LogOut },
@@ -594,27 +612,6 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                       </div>
                     </div>
 
-
-                    {/* Profil Gizliliği */}
-                    <div className="pt-2 border-t border-border/40">
-                      <Switch
-                        checked={isPrivate}
-                        onChange={setIsPrivate}
-                        label="Gizli Profil"
-                        description="Hesabını gizlediğinde gönderilerini yalnızca takipçilerin görebilir."
-                      />
-                    </div>
-
-                    {/* Çevrimiçi Durumu */}
-                    <div className="pt-2 border-t border-border/40">
-                      <Switch
-                        checked={showStatus}
-                        onChange={setShowStatus}
-                        label="Çevrimiçi Durumunu Paylaş"
-                        description="Açık olduğunda, diğer kullanıcılar çevrimiçi veya en son aktif olduğunuz zamanı görebilir."
-                      />
-                    </div>
-
                     {/* Sosyal Medya Bağlantıları */}
                     <div className="pt-4 border-t border-border/40 space-y-4">
                       <h3 className="text-xs font-bold text-foreground">Sosyal Medya Bağlantıları</h3>
@@ -809,6 +806,79 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                         ))}
                       </div>
                     </div>
+                  </div>
+                </Section>
+              </motion.div>
+            )}
+
+            {activeTab === 'preferences' && (
+              <motion.div
+                key="preferences"
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Section title="Tercihler" icon={Sliders}>
+                  <div className="relative">
+                    {preferencesPending && (
+                      <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center rounded-2xl gap-3">
+                        <div className="flex items-center gap-2 bg-card border border-border/80 px-4 py-3 rounded-2xl shadow-lg">
+                          <Loader2 size={16} className="animate-spin text-primary" />
+                          <span className="text-xs font-bold text-foreground">Değişiklikler Kaydediliyor...</span>
+                        </div>
+                      </div>
+                    )}
+                    <form onSubmit={handlePreferencesSubmit} className="space-y-6">
+                      <p className="text-xs text-muted-foreground">
+                        Hesap gizliliğini, çevrimiçi görünürlüğünü ve XP seviyesi gösterim tercihlerini buradan yönetebilirsin.
+                      </p>
+                      
+                      <div className="bg-muted/10 border border-border/60 rounded-2xl px-5 py-1">
+                        {/* Profil Gizliliği */}
+                        <Switch
+                          checked={isPrivate}
+                          onChange={setIsPrivate}
+                          label="Gizli Profil"
+                          description="Hesabını gizlediğinde gönderilerini yalnızca takipçilerin görebilir."
+                        />
+
+                        {/* Çevrimiçi Durumu */}
+                        <Switch
+                          checked={showStatus}
+                          onChange={setShowStatus}
+                          label="Çevrimiçi Durumunu Paylaş"
+                          description="Açık olduğunda, diğer kullanıcılar çevrimiçi veya en son aktif olduğunuz zamanı görebilir."
+                        />
+
+                        {/* XP ve Seviye Gösterimi */}
+                        <Switch
+                          checked={showXp}
+                          onChange={setShowXp}
+                          label="XP ve Seviyeyi Göster"
+                          description="Açık olduğunda, profilinizde ve gönderilerinizde XP seviyeniz diğer kullanıcılara gösterilir."
+                        />
+                      </div>
+
+                      {preferencesResult && (
+                        <StatusMsg
+                          type={preferencesResult.error ? 'error' : 'success'}
+                          msg={preferencesResult.error ?? 'Tercihleriniz başarıyla güncellendi!'}
+                        />
+                      )}
+
+                      <motion.button
+                        type="submit"
+                        disabled={preferencesPending}
+                        whileTap={{ scale: 0.98 }}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                        style={{
+                          background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
+                          color: 'var(--primary-foreground)',
+                        }}
+                      >
+                        {preferencesPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                        Kaydet
+                      </motion.button>
+                    </form>
                   </div>
                 </Section>
               </motion.div>

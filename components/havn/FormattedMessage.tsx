@@ -10,6 +10,7 @@ import { getDisplayName } from '@/lib/profile-display'
 interface FormattedMessageProps {
   text: string
   className?: string
+  disableLinks?: boolean
 }
 
 // Custom Interactive Spoiler Component
@@ -261,14 +262,179 @@ function HavnPostEmbed({ postId, url }: { postId: string; url: string }) {
   )
 }
 
+// Parsers for simple markdown: bold (**...**), italic (*...*), bold-italic (***...***)
+function parseMarkdown(text: string): React.ReactNode[] {
+  let keyCounter = 0
+
+  function parseRange(str: string, options = { canBold: true, canItalic: true }): React.ReactNode[] {
+    let result: React.ReactNode[] = []
+    let i = 0
+    
+    while (i < str.length) {
+      let nextDelim = -1
+      let delimType = ''
+      
+      let nextTriple = (options.canBold && options.canItalic) ? str.indexOf('***', i) : -1
+      let nextBold = options.canBold ? str.indexOf('**', i) : -1
+      let nextItalic = options.canItalic ? str.indexOf('*', i) : -1
+      
+      // Adjust bold and italic indices if they overlap with triple
+      if (nextTriple !== -1) {
+        if (nextBold === nextTriple) {
+          nextBold = str.indexOf('**', nextTriple + 3)
+        }
+        if (nextItalic === nextTriple || nextItalic === nextTriple + 1 || nextItalic === nextTriple + 2) {
+          nextItalic = str.indexOf('*', nextTriple + 3)
+        }
+      }
+      
+      if (nextItalic !== -1 && nextBold !== -1) {
+        if (nextItalic === nextBold || nextItalic === nextBold + 1) {
+          nextItalic = str.indexOf('*', nextBold + 2)
+        }
+      }
+      
+      // Find the first delimiter
+      if (nextTriple !== -1 && 
+          (nextBold === -1 || nextTriple < nextBold) && 
+          (nextItalic === -1 || nextTriple < nextItalic)) {
+        nextDelim = nextTriple
+        delimType = 'triple'
+      } else if (nextBold !== -1 && (nextItalic === -1 || nextBold < nextItalic)) {
+        nextDelim = nextBold
+        delimType = 'bold'
+      } else if (nextItalic !== -1) {
+        nextDelim = nextItalic
+        delimType = 'italic'
+      }
+      
+      if (nextDelim === -1) {
+        result.push(str.slice(i))
+        break
+      }
+      
+      if (nextDelim > i) {
+        result.push(str.slice(i, nextDelim))
+      }
+      
+      let isValidOpen = false
+      let closeDelimIdx = -1
+      
+      if (delimType === 'triple') {
+        const nextChar = str[nextDelim + 3]
+        if (nextChar && nextChar !== ' ' && nextChar !== '\t' && nextChar !== '\n') {
+          let searchIdx = nextDelim + 3
+          while (true) {
+            let nextClose = str.indexOf('***', searchIdx)
+            if (nextClose === -1) break
+            
+            const prevChar = str[nextClose - 1]
+            if (prevChar && prevChar !== ' ' && prevChar !== '\t' && prevChar !== '\n') {
+              closeDelimIdx = nextClose
+              isValidOpen = true
+              break
+            }
+            searchIdx = nextClose + 1
+          }
+        }
+      } else if (delimType === 'bold') {
+        const nextChar = str[nextDelim + 2]
+        if (nextChar && nextChar !== ' ' && nextChar !== '\t' && nextChar !== '\n') {
+          let searchIdx = nextDelim + 2
+          while (true) {
+            let nextClose = str.indexOf('**', searchIdx)
+            if (nextClose === -1) break
+            
+            const prevChar = str[nextClose - 1]
+            if (prevChar && prevChar !== ' ' && prevChar !== '\t' && prevChar !== '\n') {
+              closeDelimIdx = nextClose
+              isValidOpen = true
+              break
+            }
+            searchIdx = nextClose + 1
+          }
+        }
+      } else if (delimType === 'italic') {
+        const nextChar = str[nextDelim + 1]
+        if (nextChar && nextChar !== '*' && nextChar !== ' ' && nextChar !== '\t' && nextChar !== '\n') {
+          let searchIdx = nextDelim + 1
+          while (true) {
+            let nextClose = str.indexOf('*', searchIdx)
+            if (nextClose === -1) break
+            
+            if (str[nextClose + 1] === '*' || str[nextClose - 1] === '*') {
+              if (str[nextClose + 1] === '*') {
+                searchIdx = nextClose + 2
+              } else {
+                searchIdx = nextClose + 1
+              }
+              continue
+            }
+            
+            const prevChar = str[nextClose - 1]
+            if (prevChar && prevChar !== ' ' && prevChar !== '\t' && prevChar !== '\n') {
+              closeDelimIdx = nextClose
+              isValidOpen = true
+              break
+            }
+            searchIdx = nextClose + 1
+          }
+        }
+      }
+      
+      if (isValidOpen && closeDelimIdx !== -1) {
+        const delimLen = delimType === 'triple' ? 3 : delimType === 'bold' ? 2 : 1
+        const innerContent = str.slice(nextDelim + delimLen, closeDelimIdx)
+        const nodeKey = `md-${keyCounter++}`
+        
+        if (delimType === 'triple') {
+          const parsedInner = parseRange(innerContent, { canBold: false, canItalic: false })
+          result.push(
+            <strong key={`b-${nodeKey}`} className="font-black text-foreground">
+              <em key={`i-${nodeKey}`} className="italic text-foreground/90 font-medium" style={{ fontStyle: 'italic' }}>
+                {parsedInner}
+              </em>
+            </strong>
+          )
+          i = closeDelimIdx + 3
+        } else if (delimType === 'bold') {
+          const parsedInner = parseRange(innerContent, { canBold: false, canItalic: options.canItalic })
+          result.push(
+            <strong key={`b-${nodeKey}`} className="font-black text-foreground">
+              {parsedInner}
+            </strong>
+          )
+          i = closeDelimIdx + 2
+        } else {
+          const parsedInner = parseRange(innerContent, { canBold: options.canBold, canItalic: false })
+          result.push(
+            <em key={`i-${nodeKey}`} className="italic text-foreground/90 font-medium" style={{ fontStyle: 'italic' }}>
+              {parsedInner}
+            </em>
+          )
+          i = closeDelimIdx + 1
+        }
+      } else {
+        const delimLen = delimType === 'triple' ? 3 : delimType === 'bold' ? 2 : 1
+        result.push(str.slice(nextDelim, nextDelim + delimLen))
+        i = nextDelim + delimLen
+      }
+    }
+    
+    return result.filter(x => x !== '')
+  }
+  
+  return parseRange(text)
+}
+
 // Convert plain text with flags into React nodes
 function renderTextWithFlags(text: string): React.ReactNode[] {
   const parts = splitMessageParts(text)
-  return parts.map((part, i) => {
+  return parts.flatMap((part, i) => {
     if (part.type === 'text') {
-      return <span key={i}>{part.value}</span>
+      return parseMarkdown(part.value)
     }
-    return (
+    return [
       <img
         key={i}
         src={getFlagImageUrl(part.iso, 40)}
@@ -280,12 +446,15 @@ function renderTextWithFlags(text: string): React.ReactNode[] {
         loading="lazy"
         decoding="async"
       />
-    )
+    ]
   })
 }
 
 // Parse text for plain text URLs and flags
-function renderTextWithFlagsAndLinks(text: string): React.ReactNode {
+function renderTextWithFlagsAndLinks(text: string, disableLinks = false): React.ReactNode {
+  if (disableLinks) {
+    return <>{renderTextWithFlags(text)}</>
+  }
   // Regex to match URLs (including truncated ones ending in ...)
   const urlRegex = /(https?:\/\/[^\s]+)/gi
   const parts = text.split(urlRegex)
@@ -336,7 +505,7 @@ function renderTextWithFlagsAndLinks(text: string): React.ReactNode {
   )
 }
 
-export function FormattedMessage({ text, className }: FormattedMessageProps) {
+export function FormattedMessage({ text, className, disableLinks = false }: FormattedMessageProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -350,13 +519,13 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
     // SSR / First-load plain text fallback
     const stripped = text.replace(/<[^>]*>/g, '')
     if (isHtml) {
-      return <div className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlagsAndLinks(stripped)}</div>
+      return <div className={cn('whitespace-pre-wrap', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(stripped, disableLinks)}</div>
     }
-    return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlagsAndLinks(stripped)}</span>
+    return <span className={cn('whitespace-pre-wrap', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(stripped, disableLinks)}</span>
   }
 
   if (!isHtml) {
-    return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlagsAndLinks(text)}</span>
+    return <span className={cn('whitespace-pre-wrap', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(text, disableLinks)}</span>
   }
 
   // Parse HTML client-side
@@ -367,7 +536,7 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
     // Recursive converter from DOM nodes to React nodes
     const convertNode = (node: Node, index: number): React.ReactNode => {
       if (node.nodeType === Node.TEXT_NODE) {
-        return <React.Fragment key={index}>{renderTextWithFlagsAndLinks(node.nodeValue || '')}</React.Fragment>
+        return <React.Fragment key={index}>{renderTextWithFlagsAndLinks(node.nodeValue || '', disableLinks)}</React.Fragment>
       }
 
       if (node.nodeType === Node.ELEMENT_NODE) {
@@ -378,40 +547,11 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
         switch (tagName) {
           case 'p':
             return <div key={index} className="mb-2.5 last:mb-0 leading-relaxed break-words">{children}</div>
-          case 'h1':
-            return <h1 key={index} className="text-xl sm:text-2xl font-black text-foreground mt-4 mb-2 leading-snug">{children}</h1>
-          case 'h2':
-            return <h2 key={index} className="text-lg sm:text-xl font-bold text-foreground mt-3 mb-1.5 leading-snug">{children}</h2>
-          case 'blockquote':
-            return (
-              <blockquote key={index} className="border-l-4 border-primary bg-primary/5 pl-4 pr-3 py-2 rounded-r-xl italic my-3 text-muted-foreground leading-relaxed break-words">
-                {children}
-              </blockquote>
-            )
-          case 'pre':
-            return (
-              <pre key={index} className="bg-zinc-950 dark:bg-zinc-900 border border-border/80 rounded-xl p-3.5 my-3 overflow-x-auto text-xs font-mono text-zinc-100 shadow-inner">
-                {children}
-              </pre>
-            )
-          case 'code':
-            // Inline code or code inside pre block
-            const isInsidePre = element.parentElement?.tagName.toLowerCase() === 'pre'
-            if (isInsidePre) {
-              return <code key={index} className="block select-all whitespace-pre leading-normal">{children}</code>
-            }
-            return (
-              <code key={index} className="bg-accent px-1.5 py-0.5 rounded-md text-xs font-mono text-primary font-bold border border-border/20">
-                {children}
-              </code>
-            )
-          case 'span':
-            if (element.getAttribute('data-spoiler') === 'true') {
-              return <Spoiler key={index}>{children}</Spoiler>
-            }
-            return <span key={index}>{children}</span>
-          case 'a':
+          case 'a': {
             const href = element.getAttribute('href') || ''
+            if (disableLinks) {
+              return <span key={index} className="underline decoration-dotted text-slate-300 font-medium">{children}</span>
+            }
             
             // Check YouTube link
             const ytUrlRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
@@ -470,6 +610,45 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
                 <ExternalLink size={8} className="opacity-50" />
               </a>
             )
+          }
+          case 'h1':
+            return <h1 key={index} className="text-xl sm:text-2xl font-black text-foreground mt-4 mb-2 leading-snug">{children}</h1>
+          case 'h2':
+            return <h2 key={index} className="text-lg sm:text-xl font-bold text-foreground mt-3 mb-1.5 leading-snug">{children}</h2>
+          case 'blockquote':
+            return (
+              <blockquote key={index} className="border-l-4 border-primary bg-primary/5 pl-4 pr-3 py-2 rounded-r-xl italic my-3 text-muted-foreground leading-relaxed break-words">
+                {children}
+              </blockquote>
+            )
+          case 'pre':
+            return (
+              <pre key={index} className="bg-zinc-950 dark:bg-zinc-900 border border-border/80 rounded-xl p-3.5 my-3 overflow-x-auto text-xs font-mono text-zinc-100 shadow-inner">
+                {children}
+              </pre>
+            )
+          case 'code':
+            // Inline code or code inside pre block
+            const isInsidePre = element.parentElement?.tagName.toLowerCase() === 'pre'
+            if (isInsidePre) {
+              return <code key={index} className="block select-all whitespace-pre leading-normal">{children}</code>
+            }
+            return (
+              <code key={index} className="bg-accent px-1.5 py-0.5 rounded-md text-xs font-mono text-primary font-bold border border-border/20">
+                {children}
+              </code>
+            )
+          case 'span':
+            if (element.getAttribute('data-spoiler') === 'true') {
+              return <Spoiler key={index}>{children}</Spoiler>
+            }
+            return <span key={index}>{children}</span>
+          case 'strong':
+          case 'b':
+            return <strong key={index} className="font-black text-foreground">{children}</strong>
+          case 'em':
+          case 'i':
+            return <em key={index} className="italic text-foreground/90" style={{ fontStyle: 'italic' }}>{children}</em>
           default:
             return <span key={index}>{children}</span>
         }
@@ -479,9 +658,9 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
     }
 
     const reactElements = Array.from(doc.body.childNodes).map((node, i) => convertNode(node, i))
-    return <div className={className}>{reactElements}</div>
+    return <div className={className} suppressHydrationWarning>{reactElements}</div>
   } catch (err) {
     // fallback
-    return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlagsAndLinks(text)}</span>
+    return <span className={cn('whitespace-pre-wrap', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(text, disableLinks)}</span>
   }
 }

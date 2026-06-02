@@ -10,7 +10,7 @@ import { FollowButton } from '@/components/havn/FollowButton'
 import { Compass, Users, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { FeedTypeSwitcher } from '@/components/havn/FeedTypeSwitcher'
-import { enrichProfile } from '@/lib/profile-enrich'
+import { enrichProfile, shouldShowXp } from '@/lib/profile-enrich'
 import { ProfileName } from '@/components/havn/ProfileName'
 import { getCommunities } from '@/lib/actions/communities'
 import { FeedOnboarding } from '@/components/havn/FeedOnboarding'
@@ -289,12 +289,14 @@ export default async function FeedPage({ searchParams }: PageProps) {
                                   </div>
                                 )}
                                 {/* Level indicator absolute bubble */}
-                                <span 
-                                  className="absolute -bottom-1.5 -right-1.5 px-1.5 py-0.5 rounded border border-white/5 bg-slate-900 text-[8px] font-mono font-bold text-slate-400"
-                                  title={`Seviye ${lvl}`}
-                                >
-                                  Lv.{lvl}
-                                </span>
+                                {shouldShowXp(sUser) && (
+                                  <span 
+                                    className="absolute -bottom-1.5 -right-1.5 px-1.5 py-0.5 rounded border border-white/5 bg-slate-900 text-[8px] font-mono font-bold text-slate-400"
+                                    title={`Seviye ${lvl}`}
+                                  >
+                                    Lv.{lvl}
+                                  </span>
+                                )}
                               </div>
 
                               {/* Info block */}

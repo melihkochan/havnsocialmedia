@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { enrichProfile } from '@/lib/profile-enrich'
+import { enrichProfile, EnrichedProfile } from '@/lib/profile-enrich'
 
 interface PopularCommunity {
   id: string
@@ -62,13 +62,13 @@ export async function getRightBarData() {
     .select('id, username, first_name, last_name, avatar_url, bio, is_gold, is_verified, role, updated_at')
     .in('username', ['melih', 'havn'])
 
-  // 2. Fetch top 5 XP leaderboard users (excluding core team)
+  // 2. Fetch top 10 XP leaderboard users (excluding havn official system account)
   const leaderboardPromise = supabase
     .from('profiles')
-    .select('id, username, first_name, last_name, avatar_url, xp, is_gold, is_verified, role')
-    .not('username', 'in', '("melih","havn")')
+    .select('id, username, first_name, last_name, avatar_url, xp, is_gold, is_verified, role, bio')
+    .neq('username', 'havn')
     .order('xp', { ascending: false })
-    .limit(5)
+    .limit(10)
 
   // 3. Fetch latest 100 posts for hashtag extraction
   const postsPromise = supabase
@@ -109,8 +109,11 @@ export async function getRightBarData() {
   // Process Team
   const teamList = (teamRes.data ?? []).map(p => enrichProfile(p) as TeamMember)
 
-  // Process Leaderboard
-  const leaderboardList = (leaderboardRes.data ?? []).map(p => enrichProfile(p) as LeaderboardUser)
+  // Process Leaderboard (filtering out users who chose to hide their XP)
+  const leaderboardList = (leaderboardRes.data ?? [])
+    .map(p => enrichProfile(p))
+    .filter((u): u is EnrichedProfile => u !== null && u.show_xp !== false)
+    .slice(0, 5) as unknown as LeaderboardUser[]
 
   // Extract Trending Hashtags
   const tagCounts: Record<string, number> = {}
@@ -139,9 +142,25 @@ export async function getRightBarData() {
   let latestAnnouncement: AnnouncementData | null = null
   if (announcementRes.data && announcementRes.data.length > 0) {
     const rawAnn = announcementRes.data[0]
-    // Only use if contains content
     if (rawAnn.content) {
-      latestAnnouncement = rawAnn as unknown as AnnouncementData
+      const parts = rawAnn.content.split('\u200B')
+      const cleanContent = parts[0]
+      let meta: any = { expires_at: null }
+      if (parts.length > 1) {
+        try {
+          meta = JSON.parse(parts[1])
+        } catch (e) {}
+      }
+      
+      const now = new Date()
+      const isExpired = meta.expires_at ? new Date(meta.expires_at) < now : false
+      
+      if (!isExpired) {
+        latestAnnouncement = {
+          ...rawAnn,
+          content: cleanContent,
+        } as unknown as AnnouncementData
+      }
     }
   }
 
