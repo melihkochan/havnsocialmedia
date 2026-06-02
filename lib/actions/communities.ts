@@ -81,6 +81,10 @@ export async function createCommunity(formData: FormData) {
 
   if (existing) return { error: 'Bu isimde veya benzer bir isimde bir topluluk zaten var.' }
 
+  const { generateEmbedding } = await import('@/lib/embedding')
+  const embeddingText = `${name} ${description || ''}`
+  const embedding = await generateEmbedding(embeddingText)
+
   const { data: community, error } = await supabase
     .from('communities')
     .insert({ 
@@ -89,7 +93,8 @@ export async function createCommunity(formData: FormData) {
       description, 
       type, 
       created_by: user.id,
-      status: isApproved ? 'approved' : 'pending'
+      status: isApproved ? 'approved' : 'pending',
+      embedding
     })
     .select()
     .single()
@@ -275,6 +280,14 @@ export async function updateCommunitySettings(communityId: string, formData: For
 
   if (accentColor !== null) {
     updates.accent_color = accentColor === 'default' ? null : accentColor
+  }
+
+  if (updates.name !== undefined || updates.description !== undefined) {
+    const nextName = updates.name !== undefined ? updates.name : currentComm.name
+    const nextDesc = updates.description !== undefined ? updates.description : currentComm.description
+    const { generateEmbedding } = await import('@/lib/embedding')
+    const embeddingText = `${nextName} ${nextDesc || ''}`
+    updates.embedding = await generateEmbedding(embeddingText)
   }
 
   // Perform metadata updates

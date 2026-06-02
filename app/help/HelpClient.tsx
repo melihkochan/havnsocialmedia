@@ -204,6 +204,26 @@ export default function HelpClient({ currentUser }: HelpClientProps) {
           answer: 'Sitede gezinirken klavyenizle uçmanızı sağlayan arama ve yönetim konsoludur. Sayfa geçişleri yapabilir, tema değiştirebilir veya hızlıca kullanıcı arayabilirsiniz.'
         },
         {
+          id: 'ai-semantic-search',
+          question: 'Yapay Zeka Destekli (Anlamsal) Arama nasıl çalışır?',
+          answer: (
+            <div className="space-y-3 text-foreground/80 dark:text-slate-200">
+              <p>
+                Havn'da klasik kelime eşleşmesi aramaları yerine modern bir <strong>Yapay Zeka Destekli (Semantic Search)</strong> teknolojisi kullanılır. Supabase pgvector entegrasyonu sayesinde arama kutusuna yazdığınız ifadelerin sadece kelime anlamları değil, arka plandaki konseptsel anlamları da çözümlenir.
+              </p>
+              <div className="p-3 bg-muted border border-border/60 rounded-xl">
+                <p className="font-bold text-foreground mb-1 text-xs">✨ Nasıl Deneyimlersiniz?</p>
+                <p className="text-[11px] leading-relaxed">
+                  Örneğin, arama çubuğuna doğrudan "GTA 5" yazmak yerine <em>"arkadaşlarla takılmalık rol yapma mekanı"</em> veya <em>"araba sürdüğümüz oyun grubu"</em> yazdığınızda bile, yapay zeka arkadaki anlam ilişkisini kurarak ilgili FiveM veya oyun topluluklarını ve gönderileri benzerlik oranları (%85 gibi) ile birlikte önünüze getirir.
+                </p>
+              </div>
+              <p className="text-xs">
+                Bu özellik şu anda <strong>Ctrl + K</strong> komut paletine tam entegre çalışmaktadır ve tamamen lokal altyapıda barındırılan modelimiz sayesinde ücretsiz, hızlı ve gizlilik dostudur.
+              </p>
+            </div>
+          )
+        },
+        {
           id: 'how-to-use-palette',
           question: 'Komut Paletini nasıl kullanırım ve hangi kısayollar vardır?',
           answer: (

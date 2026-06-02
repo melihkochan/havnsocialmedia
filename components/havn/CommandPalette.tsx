@@ -24,6 +24,8 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [users, setUsers] = useState<any[]>([])
+  const [semanticCommunities, setSemanticCommunities] = useState<any[]>([])
+  const [semanticPosts, setSemanticPosts] = useState<any[]>([])
   const [allCommunities, setAllCommunities] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -58,27 +60,38 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
     fetchCommunities()
   }, [isOpen])
 
-  // Search users with debounce
+  // Search users and semantic items with debounce
   useEffect(() => {
     if (!isOpen) return
     const cleanSearchVal = query.startsWith('/') ? query.slice(1) : query
     if (!cleanSearchVal.trim()) {
       setUsers([])
+      setSemanticCommunities([])
+      setSemanticPosts([])
       return
     }
 
-    const searchUsers = async () => {
+    const performSearch = async () => {
       setLoading(true)
       try {
         const supabase = createClient()
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, username, first_name, last_name, avatar_url, xp, role')
-          .or(`username.ilike.%${cleanSearchVal}%,first_name.ilike.%${cleanSearchVal}%,last_name.ilike.%${cleanSearchVal}%`)
-          .limit(5)
         
-        if (!error && data) {
-          setUsers(data)
+        // Parallel keyword search (users) and AI semantic search (posts/communities)
+        const [usersRes, semanticRes] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url, xp, role')
+            .or(`username.ilike.%${cleanSearchVal}%,first_name.ilike.%${cleanSearchVal}%,last_name.ilike.%${cleanSearchVal}%`)
+            .limit(5),
+          import('@/lib/actions/search').then(m => m.searchSemantic(cleanSearchVal))
+        ])
+
+        if (!usersRes.error && usersRes.data) {
+          setUsers(usersRes.data)
+        }
+        if (semanticRes) {
+          setSemanticCommunities(semanticRes.communities)
+          setSemanticPosts(semanticRes.posts)
         }
       } catch (err) {
         console.error(err)
@@ -87,7 +100,7 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
       }
     }
 
-    const timer = setTimeout(searchUsers, 200)
+    const timer = setTimeout(performSearch, 300) // 300ms debounce for semantic model input
     return () => clearTimeout(timer)
   }, [query, isOpen])
 
@@ -163,6 +176,26 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
       category: 'Topluluklar',
       avatar_url: undefined
     })),
+    ...semanticCommunities.map(c => ({
+      id: `sem-comm-${c.id}`,
+      type: 'community',
+      label: c.name,
+      desc: `@${c.slug} • Yapay Zeka Eşleşmesi (%${Math.round(c.similarity * 100)})`,
+      icon: Sparkles,
+      perform: () => router.push(`/feed?communityId=${c.id}`),
+      category: 'Yapay Zeka Sonuçları',
+      avatar_url: undefined
+    })),
+    ...semanticPosts.map(p => ({
+      id: `sem-post-${p.id}`,
+      type: 'post',
+      label: p.content ? p.content.replace(/<[^>]*>/g, ' ').slice(0, 45) + (p.content.replace(/<[^>]*>/g, ' ').length > 45 ? '...' : '') : 'Gönderi',
+      desc: `@${p.profiles?.username} • Yapay Zeka Eşleşmesi (%${Math.round(p.similarity * 100)})`,
+      avatar_url: p.profiles?.avatar_url,
+      icon: Sparkles,
+      perform: () => router.push(`/post/${p.id}`),
+      category: 'Yapay Zeka Sonuçları'
+    })),
     ...users.map(u => ({
       id: `user-${u.id}`,
       type: 'user',
@@ -178,7 +211,7 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
   // Adjust selection range when list changes
   useEffect(() => {
     setSelectedIndex(0)
-  }, [query, users.length, filteredCommunities.length])
+  }, [query, users.length, filteredCommunities.length, semanticCommunities.length, semanticPosts.length])
 
   // Handle arrow and enter navigation
   useEffect(() => {

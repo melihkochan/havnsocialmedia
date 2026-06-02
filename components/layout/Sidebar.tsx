@@ -190,32 +190,48 @@ export function Sidebar({
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<{
+    users: any[];
+    communities: any[];
+  }>({ users: [], communities: [] });
   const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
     if (!showSearchModal) {
       setSearchQuery("");
-      setSearchResults([]);
+      setSearchResults({ users: [], communities: [] });
       return;
     }
     if (searchQuery.trim().length < 2) {
-      setSearchResults([]);
+      setSearchResults({ users: [], communities: [] });
       return;
     }
     const delayDebounce = setTimeout(async () => {
       setSearchLoading(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold")
-        .or(`username.ilike.%${searchQuery}%,first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`)
-        .limit(6);
-      if (!error && data) {
-        setSearchResults(data);
-      } else {
-        setSearchResults([]);
+      try {
+        const [profilesRes, communitiesRes] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold")
+            .or(`username.ilike.%${searchQuery}%,first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`)
+            .limit(6),
+          supabase
+            .from("communities")
+            .select("id, name, slug, description, type")
+            .or(`name.ilike.%${searchQuery}%,slug.ilike.%${searchQuery}%`)
+            .limit(6)
+        ]);
+
+        const users = !profilesRes.error && profilesRes.data ? profilesRes.data : [];
+        const communities = !communitiesRes.error && communitiesRes.data ? communitiesRes.data : [];
+
+        setSearchResults({ users, communities });
+      } catch (err) {
+        console.error("Search failed:", err);
+        setSearchResults({ users: [], communities: [] });
+      } finally {
+        setSearchLoading(false);
       }
-      setSearchLoading(false);
     }, 300);
     return () => clearTimeout(delayDebounce);
   }, [searchQuery, showSearchModal]);
@@ -699,7 +715,7 @@ export function Sidebar({
             }
             setShowSearchModal(true);
           }}
-          title={isCollapsed ? "Kullanıcı Ara" : undefined}
+          title={isCollapsed ? "Kullanıcı/Topluluk Ara" : undefined}
           className={cn(
             "flex items-center transition-all border border-border bg-accent/30 hover:bg-accent/60 text-muted-foreground hover:text-foreground cursor-pointer",
             isCollapsed
@@ -708,7 +724,7 @@ export function Sidebar({
           )}
         >
           <Search size={14} className="text-muted-foreground flex-shrink-0" />
-          {!isCollapsed && <span>Kullanıcı Ara...</span>}
+          {!isCollapsed && <span>Kullanıcı/Topluluk Ara...</span>}
         </button>
       </div>
 
@@ -1301,7 +1317,7 @@ export function Sidebar({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Kullanıcı adı veya ad soyad..."
+                  placeholder="Kullanıcı veya topluluk ara..."
                   className="flex-1 bg-transparent border-0 outline-none text-xs text-foreground placeholder:text-muted-foreground focus:ring-0"
                   autoFocus
                 />
@@ -1327,49 +1343,111 @@ export function Sidebar({
 
               {/* Results List */}
               <div className="flex-1 flex flex-col gap-1 overflow-y-auto pr-1">
-                {searchResults.length === 0 ? (
+                {searchResults.users.length === 0 && searchResults.communities.length === 0 ? (
                   <div className="text-center py-12 text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
                     <Search size={24} className="opacity-30 text-muted-foreground" />
                     <span>
                       {searchQuery.trim().length < 2
                         ? "Arama yapmak için en az 2 karakter yazın."
-                        : "Eşleşen kullanıcı bulunamadı."}
+                        : "Eşleşen sonuç bulunamadı."}
                     </span>
                   </div>
                 ) : (
-                  searchResults.map((user) => (
-                    <Link
-                      key={user.id}
-                      href={`/profile/${user.username}`}
-                      onClick={() => setShowSearchModal(false)}
-                      className="flex items-center gap-3 p-3 rounded-2xl hover:bg-accent/60 transition-all border border-transparent hover:border-border/50 text-left group"
-                    >
-                      {user.avatar_url ? (
-                        <img
-                          src={user.avatar_url}
-                          alt={user.username}
-                          className="w-10 h-10 rounded-full object-cover ring-1 ring-border group-hover:ring-primary/40 transition-all"
-                        />
-                      ) : (
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs group-hover:ring-1 group-hover:ring-primary/40 transition-all"
-                          style={{
-                            background: "linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))",
-                            filter: `hue-rotate(${(user.username.charCodeAt(0) * 17) % 360}deg)`,
-                            color: "var(--primary-foreground)",
-                          }}
-                        >
-                          {user.username.slice(0, 2).toUpperCase()}
+                  <>
+                    {/* Users Category */}
+                    {searchResults.users.length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <div className="text-[10px] font-black tracking-widest text-muted-foreground/80 uppercase px-3.5 py-2 mt-2 first:mt-1 select-none border-b border-border/20">
+                          Kullanıcılar
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <ProfileName profile={user} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} disableHoverCard={true} />
-                        {user.bio && (
-                          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{cleanBio(user.bio)}</p>
-                        )}
+                        {searchResults.users.map((user) => (
+                          <Link
+                            key={user.id}
+                            href={`/profile/${user.username}`}
+                            onClick={() => setShowSearchModal(false)}
+                            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-accent/60 transition-all border border-transparent hover:border-border/50 text-left group"
+                          >
+                            {user.avatar_url ? (
+                              <img
+                                src={user.avatar_url}
+                                alt={user.username}
+                                className="w-10 h-10 rounded-full object-cover ring-1 ring-border group-hover:ring-primary/40 transition-all"
+                              />
+                            ) : (
+                              <div
+                                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs group-hover:ring-1 group-hover:ring-primary/40 transition-all"
+                                style={{
+                                  background: "linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))",
+                                  filter: `hue-rotate(${(user.username.charCodeAt(0) * 17) % 360}deg)`,
+                                  color: "var(--primary-foreground)",
+                                }}
+                              >
+                                {user.username.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <ProfileName profile={user} layout="stacked" nameClassName="text-xs font-bold" showHandle={true} disableHoverCard={true} />
+                              {user.bio && (
+                                <p className="text-[10px] text-muted-foreground truncate mt-0.5">{cleanBio(user.bio)}</p>
+                              )}
+                            </div>
+                          </Link>
+                        ))}
                       </div>
-                    </Link>
-                  ))
+                    )}
+
+                    {/* Communities Category */}
+                    {searchResults.communities.length > 0 && (
+                      <div className="flex flex-col gap-1 mt-3 animate-in fade-in duration-200">
+                        <div className="text-[10px] font-black tracking-widest text-muted-foreground/80 uppercase px-3.5 py-2 select-none border-b border-border/20">
+                          Topluluklar
+                        </div>
+                        {searchResults.communities.map((community) => {
+                          const commAvatarUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/communities/${community.id}/avatar`;
+                          return (
+                            <Link
+                              key={community.id}
+                              href={`/communities/${community.slug}`}
+                              onClick={() => setShowSearchModal(false)}
+                              className="flex items-center gap-3 p-3 rounded-2xl hover:bg-accent/60 transition-all border border-transparent hover:border-border/50 text-left group"
+                            >
+                              <div className="w-10 h-10 rounded-full flex-shrink-0 relative overflow-hidden ring-1 ring-border group-hover:ring-primary/40 transition-all">
+                                <img
+                                  src={commAvatarUrl}
+                                  alt={community.name}
+                                  className="w-full h-full object-cover absolute inset-0 z-10"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                                <div
+                                  className="w-full h-full flex items-center justify-center font-bold text-xs"
+                                  style={{
+                                    background: "linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))",
+                                    filter: `hue-rotate(${(community.slug.charCodeAt(0) * 17) % 360}deg)`,
+                                    color: "var(--primary-foreground)",
+                                  }}
+                                >
+                                  {community.name.slice(0, 2).toUpperCase()}
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                                  {community.name}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground mt-0.5">
+                                  @{community.slug} • {community.type === 'private' ? 'Özel' : 'Açık'}
+                                </div>
+                                {community.description && (
+                                  <p className="text-[10px] text-muted-foreground truncate mt-0.5">{community.description}</p>
+                                )}
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </motion.div>

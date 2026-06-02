@@ -183,11 +183,16 @@ export async function createPost(formData: FormData) {
     imageUrl = publicUrl
   }
 
+  const { generateEmbedding } = await import('@/lib/embedding')
+  const plainText = content ? content.replace(/<[^>]*>/g, ' ') : ''
+  const embedding = await generateEmbedding(plainText)
+
   const { error } = await supabase.from('posts').insert({
     content,
     community_id: communityId || null,
     user_id: user.id,
     image_url: imageUrl,
+    embedding,
   })
 
   if (error) return { error: error.message }
