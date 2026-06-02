@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { Play, ExternalLink, Globe } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getDisplayName } from '@/lib/profile-display'
+import Link from 'next/link'
 
 interface FormattedMessageProps {
   text: string
@@ -266,6 +267,26 @@ function HavnPostEmbed({ postId, url }: { postId: string; url: string }) {
 function parseMarkdown(text: string): React.ReactNode[] {
   let keyCounter = 0
 
+  function parseHashtags(str: string): React.ReactNode[] {
+    const hashtagRegex = /(#[a-zA-Z0-9İıŞşÇçĞğÜüÖö_]+)/g
+    const parts = str.split(hashtagRegex)
+    return parts.map((part, i) => {
+      if (part.startsWith('#') && part.length > 1) {
+        const tag = part.slice(1)
+        return (
+          <Link
+            key={`hashtag-${tag}-${i}`}
+            href={`/feed?tag=${tag}`}
+            className="text-primary hover:underline font-mono font-bold"
+          >
+            {part}
+          </Link>
+        )
+      }
+      return part
+    })
+  }
+
   function parseRange(str: string, options = { canBold: true, canItalic: true }): React.ReactNode[] {
     let result: React.ReactNode[] = []
     let i = 0
@@ -309,12 +330,12 @@ function parseMarkdown(text: string): React.ReactNode[] {
       }
       
       if (nextDelim === -1) {
-        result.push(str.slice(i))
+        result.push(...parseHashtags(str.slice(i)))
         break
       }
       
       if (nextDelim > i) {
-        result.push(str.slice(i, nextDelim))
+        result.push(...parseHashtags(str.slice(i, nextDelim)))
       }
       
       let isValidOpen = false
@@ -416,7 +437,7 @@ function parseMarkdown(text: string): React.ReactNode[] {
         }
       } else {
         const delimLen = delimType === 'triple' ? 3 : delimType === 'bold' ? 2 : 1
-        result.push(str.slice(nextDelim, nextDelim + delimLen))
+        result.push(...parseHashtags(str.slice(nextDelim, nextDelim + delimLen)))
         i = nextDelim + delimLen
       }
     }
@@ -430,7 +451,7 @@ function parseMarkdown(text: string): React.ReactNode[] {
 // Convert plain text with flags into React nodes
 function renderTextWithFlags(text: string): React.ReactNode[] {
   const parts = splitMessageParts(text)
-  return parts.flatMap((part, i) => {
+  return (parts as any).flatMap((part: any, i: number) => {
     if (part.type === 'text') {
       return parseMarkdown(part.value)
     }

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { followUser, unfollowUser } from '@/lib/actions/follows'
 import { enrichProfile } from '@/lib/profile-enrich'
 import { getDisplayName, getFullName } from '@/lib/profile-display'
+import { cn } from '@/lib/utils'
 
 interface ProfileHoverCardProps {
   username: string
@@ -32,12 +33,28 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [actionLoading, setActionLoading] = useState(false)
+  const [positionMode, setPositionMode] = useState<'top' | 'bottom'>('top')
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
 
   const handleMouseEnter = () => {
     if (isCurrentProfilePage) return
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
     setIsOpen(true)
+
+    // Check viewport space to decide if the card should render downwards or upwards
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      // If the top of the element is less than 280px from the top of the viewport,
+      // position the card downwards ('bottom') to prevent clipping.
+      if (rect.top < 280) {
+        setPositionMode('bottom')
+      } else {
+        setPositionMode('top')
+      }
+    }
+
     if (!profile && !loading) {
       loadProfile()
     }
@@ -55,6 +72,9 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+      }
       
       const { data: rawProfile } = await supabase
         .from('profiles')
@@ -112,6 +132,7 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
 
   return (
     <div 
+      ref={triggerRef}
       className="relative inline-block"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -121,15 +142,18 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            initial={{ opacity: 0, y: positionMode === 'top' ? 8 : -8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            exit={{ opacity: 0, y: positionMode === 'top' ? 8 : -8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
             onMouseEnter={() => {
               if (timeoutRef.current) clearTimeout(timeoutRef.current)
             }}
             onMouseLeave={handleMouseLeave}
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 z-[999] w-72 p-4 bg-card/95 border border-border/80 rounded-2xl shadow-xl backdrop-blur-md text-foreground pointer-events-auto"
+            className={cn(
+              "absolute left-1/2 -translate-x-1/2 z-[999] w-72 p-4 bg-card/95 border border-border/80 rounded-2xl shadow-xl backdrop-blur-md text-foreground pointer-events-auto",
+              positionMode === 'top' ? "bottom-full mb-2.5" : "top-full mt-2.5"
+            )}
           >
             {loading && !profile ? (
               <div className="flex items-center justify-center py-6">
@@ -159,23 +183,25 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
                     )}
                   </Link>
 
-                  <button
-                    onClick={handleFollowToggle}
-                    disabled={actionLoading}
-                    className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center min-w-[80px] gap-1 cursor-pointer active:scale-95 disabled:opacity-50 ${
-                      isFollowing
-                        ? 'bg-muted hover:bg-muted/80 text-foreground border border-border/80'
-                        : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md'
-                    }`}
-                  >
-                    {actionLoading ? (
-                      <Loader2 size={10} className="animate-spin" />
-                    ) : isFollowing ? (
-                      'Takipte'
-                    ) : (
-                      'Takip et'
-                    )}
-                  </button>
+                  {currentUserId && profile.id !== currentUserId && (
+                    <button
+                      onClick={handleFollowToggle}
+                      disabled={actionLoading}
+                      className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center min-w-[80px] gap-1 cursor-pointer active:scale-95 disabled:opacity-50 ${
+                        isFollowing
+                          ? 'bg-muted hover:bg-muted/80 text-foreground border border-border/80'
+                          : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md'
+                      }`}
+                    >
+                      {actionLoading ? (
+                        <Loader2 size={10} className="animate-spin" />
+                      ) : isFollowing ? (
+                        'Takipte'
+                      ) : (
+                        'Takip et'
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {/* Identity */}

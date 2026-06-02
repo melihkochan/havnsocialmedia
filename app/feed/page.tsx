@@ -25,11 +25,11 @@ export const metadata = {
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  searchParams: Promise<{ sortBy?: string; communityId?: string; feedType?: 'for_you' | 'following' }>
+  searchParams: Promise<{ sortBy?: string; communityId?: string; feedType?: 'for_you' | 'following'; tag?: string }>
 }
 
 export default async function FeedPage({ searchParams }: PageProps) {
-  const { sortBy = 'new', communityId, feedType } = await searchParams
+  const { sortBy = 'new', communityId, feedType, tag } = await searchParams
   const activeSort = sortBy === 'popular' ? 'popular' : 'new'
 
   const supabase = await createClient()
@@ -91,9 +91,11 @@ export default async function FeedPage({ searchParams }: PageProps) {
     ? await getPosts(communityId, activeSort)
     : (isNewUserOnboarding
         ? []
-        : (user && activeFeedType === 'following'
-            ? await getFollowingFeedPosts(user.id, activeSort)
-            : await getFeedPosts(undefined, activeSort)))
+        : (tag
+            ? await getFeedPosts(undefined, activeSort, tag)
+            : (user && activeFeedType === 'following'
+                ? await getFollowingFeedPosts(user.id, activeSort)
+                : await getFeedPosts(undefined, activeSort))))
 
 
   return (
@@ -112,9 +114,23 @@ export default async function FeedPage({ searchParams }: PageProps) {
               <Compass size={20} />
             </div>
             <div className="flex flex-col min-w-0">
-              <h1 className="text-lg font-black text-foreground truncate">Anasayfa</h1>
-              <p className="text-xs text-muted-foreground truncate sm:whitespace-normal">
-                {user ? 'Topluluklarından ve arkadaşlarından gelen son gönderiler' : 'Herkese açık gönderiler'}
+              <h1 className="text-lg font-black text-foreground truncate">
+                {tag ? `#${tag}` : 'Anasayfa'}
+              </h1>
+              <p className="text-xs text-muted-foreground truncate sm:whitespace-normal flex items-center gap-2">
+                {tag ? (
+                  <>
+                    <span>Etiketine sahip gönderiler listeleniyor</span>
+                    <Link 
+                      href="/feed" 
+                      className="text-[10px] bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 px-2 py-0.5 rounded-full font-black uppercase transition-all select-none cursor-pointer"
+                    >
+                      Temizle
+                    </Link>
+                  </>
+                ) : (
+                  user ? 'Topluluklarından ve arkadaşlarından gelen son gönderiler' : 'Herkese açık gönderiler'
+                )}
               </p>
             </div>
           </div>
@@ -201,6 +217,32 @@ export default async function FeedPage({ searchParams }: PageProps) {
           />
         ) : (
           <>
+            {/* Active Tag Filter Banner */}
+            {tag && (
+              <div className="relative overflow-hidden bg-primary/5 border border-primary/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fade-in flex-shrink-0">
+                {/* Background decorative elements */}
+                <div className="absolute -top-12 -right-12 w-24 h-24 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-12 -left-12 w-24 h-24 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="flex items-center gap-3.5 z-10 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-inner font-mono font-black text-lg">
+                    #
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black text-primary/70 uppercase tracking-widest">Aktif Etiket Filtresi</p>
+                    <h2 className="text-sm font-black text-foreground truncate mt-0.5">#{tag} etiketine sahip paylaşımlar listeleniyor</h2>
+                  </div>
+                </div>
+
+                <Link 
+                  href="/feed"
+                  className="relative z-10 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-md flex-shrink-0 cursor-pointer"
+                >
+                  Filtreyi Temizle ❌
+                </Link>
+              </div>
+            )}
+
             {/* Post Form */}
             {profile && (
               <FeedPostForm
@@ -229,6 +271,8 @@ export default async function FeedPage({ searchParams }: PageProps) {
                 feedContext={
                   communityId
                     ? ({ type: 'community', communityId, sortBy: activeSort } satisfies FeedContext)
+                    : tag
+                    ? ({ type: 'feed', sortBy: activeSort, tag } satisfies FeedContext)
                     : activeFeedType === 'following' && user
                     ? ({ type: 'following', userId: user.id, sortBy: activeSort } satisfies FeedContext)
                     : ({ type: 'feed', sortBy: activeSort } satisfies FeedContext)

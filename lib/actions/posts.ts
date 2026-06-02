@@ -9,7 +9,7 @@ import { checkLockdown, checkMediaUploadLock } from '@/lib/actions/hq-auth'
 const PAGE_SIZE = 10
 
 export type FeedContext =
-  | { type: 'feed'; sortBy?: 'new' | 'popular' }
+  | { type: 'feed'; sortBy?: 'new' | 'popular'; tag?: string }
   | { type: 'following'; userId: string; sortBy?: 'new' | 'popular' }
   | { type: 'community'; communityId: string; sortBy?: 'new' | 'popular' }
   | { type: 'profile'; profileUserId: string }
@@ -70,17 +70,23 @@ export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 
 }
 
 // Get only personal posts (no community posts) for the home feed
-export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 'new') {
+export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 'new', tag?: string) {
   const supabase = await createClient()
 
   // DB-level ordering: likes_count DESC for popular, created_at DESC for new
   const orderCol = sortBy === 'popular' ? 'likes_count' : 'created_at'
 
-  const { data: posts, error } = await supabase
+  let query = supabase
     .from('posts')
     .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
     .is('community_id', null)
     .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
+
+  if (tag) {
+    query = query.ilike('content', `%#${tag}%`)
+  }
+
+  const { data: posts, error } = await query
     .order(orderCol, { ascending: false })
     .range(0, 9)
 
@@ -735,11 +741,17 @@ export async function loadMorePosts(
   try {
     if (context.type === 'feed') {
       const orderCol = getOrderCol(context.sortBy)
-      const { data, error } = await supabase
+      let query = supabase
         .from('posts')
         .select(FEED_SELECT)
         .is('community_id', null)
         .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
+
+      if (context.tag) {
+        query = query.ilike('content', `%#${context.tag}%`)
+      }
+
+      const { data, error } = await query
         .order(orderCol, { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) throw error

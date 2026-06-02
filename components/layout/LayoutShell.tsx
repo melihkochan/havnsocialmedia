@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, ChevronLeft, ChevronRight, ArrowUp } from "lucide-react";
 import { QuickChat } from "@/components/havn/QuickChat";
+import { CommandPalette } from "@/components/havn/CommandPalette";
 import { cn } from "@/lib/utils";
 
 interface LayoutShellProps {
@@ -23,6 +24,18 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
   const pathname = usePathname();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (currentUser?.accent_theme) {
@@ -214,6 +227,13 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
 
       {/* Floating Quick Chat Widget */}
       {currentUser && pathname !== "/messages" && <QuickChat currentUser={currentUser} />}
+
+      {/* Global Command Palette */}
+      <CommandPalette 
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        currentUser={currentUser}
+      />
     </div>
   );
 }

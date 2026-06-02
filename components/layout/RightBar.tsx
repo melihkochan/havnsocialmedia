@@ -285,17 +285,23 @@ function GlobalRightBar() {
             <h2 className="text-xs font-black text-foreground uppercase tracking-wider">Havn Gündemi</h2>
           </div>
           <div className="flex flex-col gap-2">
-            {data.trendingTags.map((t: any) => (
-              <div
-                key={t.tag}
-                className="flex items-center justify-between p-2 rounded-xl bg-accent/10 border border-border/30 hover:border-primary/20 transition-all select-none"
-              >
-                <span className="text-xs font-black text-primary font-mono">{t.tag}</span>
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-muted/65 text-muted-foreground border border-border/40 font-mono">
-                  {t.count} paylaşım
-                </span>
-              </div>
-            ))}
+            {data.trendingTags.map((t: any) => {
+              const cleanTagName = t.tag.replace('#', '')
+              return (
+                <Link
+                  key={t.tag}
+                  href={`/feed?tag=${cleanTagName}`}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-accent/10 border border-border/30 hover:border-primary/45 hover:bg-primary/[0.02] active:scale-[0.98] transition-all cursor-pointer group"
+                >
+                  <span className="text-xs font-black text-primary font-mono group-hover:text-primary transition-colors">
+                    {t.tag}
+                  </span>
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/40 group-hover:bg-primary/20 group-hover:border-primary/30 group-hover:text-primary transition-all font-mono">
+                    {t.count} paylaşım
+                  </span>
+                </Link>
+              )
+            })}
           </div>
         </div>
       )}
