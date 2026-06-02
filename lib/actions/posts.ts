@@ -233,6 +233,13 @@ export async function deletePost(postId: string, reason?: string | null) {
     ? (post.content.length > 120 ? `${post.content.slice(0, 120)}…` : post.content)
     : null
 
+  // Use service client to bypass RLS for moderator/admin deletion
+  const { createServiceClient } = await import('@/lib/supabase/server')
+  const supabaseAdmin = await createServiceClient()
+  const { error } = await supabaseAdmin.from('posts').delete().eq('id', postId)
+
+  if (error) return { error: error.message }
+
   if (isModeratorRemoval) {
     const { createNotification } = await import('@/lib/actions/notifications')
     await createNotification(
@@ -247,14 +254,17 @@ export async function deletePost(postId: string, reason?: string | null) {
         postPreview,
       }
     )
+
+    try {
+      const { logHQModAction } = await import('@/lib/actions/hq-chat')
+      const targetProf = await supabaseAdmin.from('profiles').select('username').eq('id', post.user_id).single()
+      const targetName = targetProf.data ? `@${targetProf.data.username}` : 'Bilinmeyen Kullanıcı'
+      const snippet = postPreview ? `"${postPreview}"` : 'gönderi'
+      await logHQModAction('post_delete', targetName, `Kullanıcının ${snippet} içerikli gönderisini sildi. Gerekçe: "${trimmedReason || 'Belirtilmedi'}"`)
+    } catch (e) {
+      console.error('Failed to log post deletion:', e)
+    }
   }
-
-  // Use service client to bypass RLS for moderator/admin deletion
-  const { createServiceClient } = await import('@/lib/supabase/server')
-  const supabaseAdmin = await createServiceClient()
-  const { error } = await supabaseAdmin.from('posts').delete().eq('id', postId)
-
-  if (error) return { error: error.message }
 
   revalidatePath('/feed')
   revalidatePath('/notifications')

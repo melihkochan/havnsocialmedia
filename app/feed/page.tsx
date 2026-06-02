@@ -11,6 +11,10 @@ import Link from 'next/link'
 import { FeedTypeSwitcher } from '@/components/havn/FeedTypeSwitcher'
 import { enrichProfile } from '@/lib/profile-enrich'
 import { ProfileName } from '@/components/havn/ProfileName'
+import { getCommunities } from '@/lib/actions/communities'
+import { FeedOnboarding } from '@/components/havn/FeedOnboarding'
+
+import { getRankInfo } from '@/lib/gamification'
 
 export const metadata = {
   title: 'Anasayfa — HAVN',
@@ -33,7 +37,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Step 2: Parallel fetch user data (profile, community memberships joined with community details, and suggested users)
-  const [profileResult, membershipsResult, suggestedUsers] = user
+  const [profileResult, membershipsResult, suggestedUsers, followingCountResult, communitiesList] = user
     ? await Promise.all([
         supabase
           .from('profiles')
@@ -42,12 +46,17 @@ export default async function FeedPage({ searchParams }: PageProps) {
           .single(),
         supabase
           .from('community_members')
-          .select('community_id, role, communities(id, name)')
+          .select('community_id, role, communities(id, name, slug, description, type)')
           .eq('user_id', user.id)
           .eq('status', 'approved'),
         getSuggestedUsers(),
+        supabase
+          .from('follows')
+          .select('*', { count: 'exact', head: true })
+          .eq('follower_id', user.id),
+        getCommunities(),
       ])
-    : [{ data: null }, { data: [] }, []]
+    : [{ data: null }, { data: [] }, [], { count: 0 }, []]
 
   const profileRaw = profileResult.data
   const profile = enrichProfile(profileRaw)
@@ -69,12 +78,17 @@ export default async function FeedPage({ searchParams }: PageProps) {
     .map((m: any) => m.communities)
     .filter(Boolean) as { id: string; name: string }[]
 
+  const followingCount = followingCountResult?.count ?? 0
+  const isNewUserOnboarding = !!user && followingCount === 0 && userCommunities.length === 0
+
   // Step 3: Fetch posts (personalized, community-based, or all)
-  const posts = communityId
+  const posts = (communityId && !isNewUserOnboarding)
     ? await getPosts(communityId, activeSort)
-    : (user && activeFeedType === 'following'
-        ? await getFollowingFeedPosts(user.id, activeSort)
-        : await getFeedPosts(undefined, activeSort))
+    : (isNewUserOnboarding
+        ? []
+        : (user && activeFeedType === 'following'
+            ? await getFollowingFeedPosts(user.id, activeSort)
+            : await getFeedPosts(undefined, activeSort)))
 
 
   return (
@@ -175,100 +189,169 @@ export default async function FeedPage({ searchParams }: PageProps) {
           </div>
         )}
 
-        {/* Post Form */}
-        {profile && (
-          <FeedPostForm
-            communities={userCommunities}
-            currentUser={{ username: profile.username, avatar_url: profile.avatar_url }}
-            defaultCommunityId={communityId}
-          />
-        )}
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 mt-1">
-          <div className="flex-1 border-t border-border" />
-          <span className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">
-            {activeSort === 'popular' ? 'Popüler Gönderiler' : 'Son Gönderiler'}
-          </span>
-          <div className="flex-1 border-t border-border" />
-        </div>
-
-        {/* Post Feed or Empty State */}
-        {posts.length > 0 ? (
-          <PostFeed
-            posts={posts as Parameters<typeof PostFeed>[0]['posts']}
-            currentUserId={user?.id}
-            rolesByCommunityId={user ? rolesByCommunityId : undefined}
-            communityId={communityId}
-            feedContext={
-              communityId
-                ? ({ type: 'community', communityId, sortBy: activeSort } satisfies FeedContext)
-                : activeFeedType === 'following' && user
-                ? ({ type: 'following', userId: user.id, sortBy: activeSort } satisfies FeedContext)
-                : ({ type: 'feed', sortBy: activeSort } satisfies FeedContext)
-            }
-            initialHasMore={posts.length >= 10}
+        {isNewUserOnboarding ? (
+          <FeedOnboarding
+            suggestedUsers={suggestedUsers as any}
+            suggestedCommunities={communitiesList as any}
           />
         ) : (
           <>
-            {/* Suggested Users Fallback for Empty Main Feed */}
-            {user && !communityId && (
-              <div className="bg-card/40 border border-border/60 rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center gap-5 shadow-sm backdrop-blur-md">
-                <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg text-white"
-                  style={{
-                    background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
-                  }}
-                >
-                  <Sparkles size={28} className="animate-pulse" />
-                </div>
-                
-                <div className="space-y-2 max-w-sm">
-                  <h2 className="text-base font-bold text-foreground">Akışınız Boş Görünüyor</h2>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Kişisel akışınızda gönderi görebilmek için yeni insanları takip etmeye başlayın! Aşağıdaki önerilen profillere göz atabilirsiniz.
-                  </p>
-                </div>
-
-                {suggestedUsers.length > 0 && (
-                  <div className="w-full max-w-md border border-border/40 rounded-2xl overflow-hidden bg-card/25 divide-y divide-border/20 mt-2">
-                    {suggestedUsers.map((sUser) => (
-                      <div key={sUser.id} className="flex items-center justify-between p-3.5 hover:bg-card/30 transition-colors">
-                        <Link href={`/profile/${sUser.username}`} className="flex items-center gap-3 text-left hover:opacity-85 transition-opacity">
-                          {sUser.avatar_url ? (
-                            <img src={sUser.avatar_url} alt={sUser.username} className="w-9 h-9 rounded-full object-cover ring-1 ring-border" />
-                          ) : (
-                            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                              {sUser.username.slice(0, 2).toUpperCase()}
-                            </div>
-                          )}
-                          <ProfileName
-                            profile={sUser}
-                            layout="stacked"
-                            nameClassName="text-xs font-bold"
-                            showHandle={true}
-                          />
-                        </Link>
-
-                        <FollowButton targetUserId={sUser.id} initialIsFollowing={false} className="py-1 px-3.5 text-[10px]" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            {/* Post Form */}
+            {profile && (
+              <FeedPostForm
+                communities={userCommunities}
+                currentUser={{ username: profile.username, avatar_url: profile.avatar_url }}
+                defaultCommunityId={communityId}
+              />
             )}
 
-            {/* Empty Community Feed Notice */}
-            {communityId && (
-              <div className="bg-card/40 border border-border/60 rounded-3xl p-8 flex flex-col items-center text-center gap-3.5 shadow-sm backdrop-blur-md">
-                <Users size={32} className="text-muted-foreground/60" />
-                <div className="space-y-1">
-                  <h2 className="text-sm font-bold text-foreground">Henüz Gönderi Yok</h2>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-                    Bu toplulukta henüz paylaşım yapılmamış. İlk paylaşımı yukarıdaki panelden yapabilirsiniz!
-                  </p>
-                </div>
-              </div>
+            {/* Divider */}
+            <div className="flex items-center gap-3 mt-1">
+              <div className="flex-1 border-t border-border" />
+              <span className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">
+                {activeSort === 'popular' ? 'Popüler Gönderiler' : 'Son Gönderiler'}
+              </span>
+              <div className="flex-1 border-t border-border" />
+            </div>
+
+            {/* Post Feed or Empty State */}
+            {posts.length > 0 ? (
+              <PostFeed
+                posts={posts as Parameters<typeof PostFeed>[0]['posts']}
+                currentUserId={user?.id}
+                rolesByCommunityId={user ? rolesByCommunityId : undefined}
+                communityId={communityId}
+                feedContext={
+                  communityId
+                    ? ({ type: 'community', communityId, sortBy: activeSort } satisfies FeedContext)
+                    : activeFeedType === 'following' && user
+                    ? ({ type: 'following', userId: user.id, sortBy: activeSort } satisfies FeedContext)
+                    : ({ type: 'feed', sortBy: activeSort } satisfies FeedContext)
+                }
+                initialHasMore={posts.length >= 10}
+              />
+            ) : (
+              <>
+                {/* Suggested Users Fallback for Empty Main Feed */}
+                {user && !communityId && (
+                  <div className="w-full bg-[#090912]/65 border border-border/60 rounded-3xl p-6 sm:p-8 flex flex-col items-center gap-6 shadow-xl backdrop-blur-md relative overflow-hidden">
+                    {/* Background decorative blob */}
+                    <div className="absolute -top-24 -left-24 w-48 h-48 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+
+                    <div
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg text-white relative z-10"
+                      style={{
+                        background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
+                      }}
+                    >
+                      <Sparkles size={28} className="animate-pulse" />
+                    </div>
+                    
+                    <div className="space-y-2 max-w-md relative z-10 text-center">
+                      <h2 className="text-lg font-black text-white tracking-tight">Akışınız Boş Görünüyor</h2>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Kişisel akışınızda gönderi görebilmek için yeni insanları takip etmeye başlayın! Topluluğumuzda aktif olan bazı profilleri aşağıda bulabilirsiniz.
+                      </p>
+                    </div>
+
+                    {suggestedUsers.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-4 relative z-10">
+                        {suggestedUsers.map((sUser) => {
+                          const initials = sUser.username.slice(0, 2).toUpperCase()
+                          const followsYou = sUser.relation === 'follows_you'
+                          const lvl = getRankInfo(sUser.xp ?? 0).level
+
+                          return (
+                            <div 
+                              key={sUser.id} 
+                              className="relative overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-4 flex flex-col items-center text-center transition-all duration-300 hover:border-violet-500/25 hover:bg-white/[0.04] group min-h-[190px] justify-between"
+                            >
+                              {/* Banner card-top gradient simulation */}
+                              <div className="absolute top-0 inset-x-0 h-12 bg-gradient-to-r from-violet-600/10 via-indigo-600/10 to-violet-600/10 opacity-60 group-hover:opacity-100 transition-opacity" />
+
+                              {/* Avatar block */}
+                              <div className="relative mt-2 z-10">
+                                {sUser.avatar_url ? (
+                                  <img 
+                                    src={sUser.avatar_url} 
+                                    alt={sUser.username} 
+                                    className="w-14 h-14 rounded-xl object-cover ring-2 ring-white/10 group-hover:ring-violet-500/30 transition-all duration-300 shadow-md" 
+                                  />
+                                ) : (
+                                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center font-black text-base ring-2 ring-white/10 group-hover:ring-violet-500/30 transition-all duration-300 shadow-md">
+                                    {initials}
+                                  </div>
+                                )}
+                                {/* Level indicator absolute bubble */}
+                                <span 
+                                  className="absolute -bottom-1.5 -right-1.5 px-1.5 py-0.5 rounded border border-white/5 bg-slate-900 text-[8px] font-mono font-bold text-slate-400"
+                                  title={`Seviye ${lvl}`}
+                                >
+                                  Lv.{lvl}
+                                </span>
+                              </div>
+
+                              {/* Info block */}
+                              <div className="space-y-1 mt-3 w-full flex-1">
+                                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-bold text-white group-hover:text-violet-300 transition-colors">
+                                    {sUser.first_name ? `${sUser.first_name} ${sUser.last_name || ''}` : sUser.username}
+                                  </span>
+                                  {sUser.is_verified && (
+                                    <span className="text-blue-400 text-[10px] flex-shrink-0" title="Doğrulanmış Hesap">✓</span>
+                                  )}
+                                  {sUser.is_gold && (
+                                    <span className="text-amber-400 text-[10px] flex-shrink-0" title="İş Ortağı Hesap">★</span>
+                                  )}
+                                </div>
+
+                                <p className="text-[10px] text-slate-500 font-mono">@{sUser.username}</p>
+
+                                {followsYou && (
+                                  <div className="pt-0.5">
+                                    <span className="inline-block px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/25 text-[8px] font-black uppercase tracking-wider select-none">
+                                      Sizi Takip Ediyor
+                                    </span>
+                                  </div>
+                                )}
+
+                                {sUser.bio && (
+                                  <p className="text-[10px] text-slate-400 leading-snug line-clamp-2 px-2 max-w-[220px] mx-auto select-none mt-1.5 break-words">
+                                    {sUser.bio.split('\u200B')[0]}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Action Button */}
+                              <div className="w-full mt-3.5 flex justify-center">
+                                <FollowButton 
+                                  targetUserId={sUser.id} 
+                                  initialIsFollowing={sUser.relation === 'requested' ? 'requested' : 'none'} 
+                                  className="w-full max-w-[140px] py-1.5 text-[9px] font-black uppercase tracking-wider justify-center" 
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Empty Community Feed Notice */}
+                {communityId && (
+                  <div className="bg-card/40 border border-border/60 rounded-3xl p-8 flex flex-col items-center text-center gap-3.5 shadow-sm backdrop-blur-md">
+                    <Users size={32} className="text-muted-foreground/60" />
+                    <div className="space-y-1">
+                      <h2 className="text-sm font-bold text-foreground">Henüz Gönderi Yok</h2>
+                      <p className="text-xs text-muted-foreground max-w-xs">
+                        Bu toplulukta henüz paylaşım yapılmamış. İlk paylaşımı yukarıdaki panelden yapabilirsiniz!
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

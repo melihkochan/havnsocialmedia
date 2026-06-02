@@ -344,7 +344,10 @@ export function HQUserTable({
       setActionMsg({ id: userId, msg: `Hata: ${result.error}` })
     } else {
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)))
-      setActionMsg({ id: userId, msg: `@${username} rolü ${newRole === 'moderator' ? 'Moderatör' : 'Üye'} yapıldı` })
+      if (mgmtUser?.id === userId) {
+        setMgmtUser((prev) => prev ? { ...prev, role: newRole } : null)
+      }
+      setActionMsg({ id: userId, msg: `@${username} rolü ${newRole === 'moderator' ? 'Moderatör' : newRole === 'admin' ? 'Yönetici' : 'Üye'} yapıldı` })
     }
     setTimeout(() => setActionMsg(null), 3000)
   }
@@ -359,6 +362,9 @@ export function HQUserTable({
         setUsers((prev) =>
           prev.map((u) => (u.id === warnModalUser.id ? { ...u, warns: (u.warns ?? 0) + 1 } : u))
         )
+        if (mgmtUser?.id === warnModalUser.id) {
+          setMgmtUser((prev) => prev ? { ...prev, warns: (prev.warns ?? 0) + 1 } : null)
+        }
         setActionMsg({ id: warnModalUser.id, msg: `@${warnModalUser.username} başarıyla uyarıldı` })
       }
       setWarnModalUser(null)
@@ -376,6 +382,9 @@ export function HQUserTable({
       } else {
         setUsers((prev) => prev.filter((u) => u.id !== deleteConfirmUser.id))
         setTotal((t) => t - 1)
+        if (mgmtUser?.id === deleteConfirmUser.id) {
+          setMgmtUser(null)
+        }
         setActionMsg({ id: deleteConfirmUser.id, msg: `@${deleteConfirmUser.username} başarıyla silindi` })
       }
       setDeleteConfirmUser(null)
@@ -391,6 +400,9 @@ export function HQUserTable({
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, warns: 0 } : u))
       )
+      if (mgmtUser?.id === userId) {
+        setMgmtUser((prev) => prev ? { ...prev, warns: 0 } : null)
+      }
       setActionMsg({ id: userId, msg: `@${username} uyarıları sıfırlandı` })
     }
     setTimeout(() => setActionMsg(null), 3000)
@@ -413,6 +425,13 @@ export function HQUserTable({
           return u
         })
       )
+      if (mgmtUser?.id === userId) {
+        setMgmtUser((prev) => prev ? {
+          ...prev,
+          is_verified: field === 'verified' ? !prev.is_verified : prev.is_verified,
+          is_gold: field === 'gold' ? !prev.is_gold : prev.is_gold,
+        } : null)
+      }
       const fieldName = field === 'verified' ? 'Mavi Tik' : 'Sarı Tik'
       setActionMsg({ id: userId, msg: `@${username} için ${fieldName} güncellendi` })
     }
@@ -806,168 +825,217 @@ export function HQUserTable({
         )}
       </AnimatePresence>
 
-      {/* YÖNETİM KARTI Modal */}
+      {/* YÖNETİM KARTI Drawer */}
       <AnimatePresence>
         {mgmtUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex justify-end">
+            {/* Backdrop blur overlay */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md p-6 rounded-2xl border border-white/5 bg-[#0c0c16]/95 backdrop-blur-md shadow-2xl relative"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMgmtUser(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            {/* Slide-out Drawer Panel */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="w-full max-w-md h-full bg-[#0a0a14] border-l border-white/[0.08] relative z-10 shadow-2xl flex flex-col p-6 space-y-6 select-none text-slate-200"
             >
-              {/* Close Button */}
-              <button
-                onClick={() => setMgmtUser(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-
-              {/* Title / Header */}
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-5 select-none">
-                <Settings size={12} />
-                <span>YÖNETİM KARTI</span>
-              </h3>
-
-              {/* User overview section */}
-              <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex items-center gap-3.5 mb-5">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0 relative overflow-hidden"
-                  style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+              {/* Top close row */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/5 flex-shrink-0">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <Settings size={12} />
+                  <span>YÖNETİM KARTI</span>
+                </span>
+                <button
+                  onClick={() => setMgmtUser(null)}
+                  className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
                 >
-                  {mgmtUser.avatar_url ? (
-                    <img src={mgmtUser.avatar_url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    [mgmtUser.first_name?.[0], mgmtUser.last_name?.[0]].filter(Boolean).join('').toUpperCase() || mgmtUser.username.slice(0, 2).toUpperCase()
-                  )}
-                </div>
-                
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h4 className="text-sm font-black text-white truncate">{mgmtUser.first_name || mgmtUser.username} {mgmtUser.last_name || ''}</h4>
-                    {mgmtUser.is_verified && <span className="text-blue-400" title="Doğrulanmış">✓</span>}
-                    {mgmtUser.is_gold && <span className="text-amber-400" title="İş Ortağı">★</span>}
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-black uppercase tracking-wider select-none">
-                      ÜYE
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{mgmtUser.username} • Seviye {getRankInfo(mgmtUser.xp ?? 0).level} ({mgmtUser.xp ?? 0} XP)</p>
-                </div>
+                  <X size={15} />
+                </button>
               </div>
 
-              {/* Msg display */}
-              {mgmtMsg && (
-                <div className={`p-3 rounded-xl text-xs font-bold border mb-4 flex items-center gap-1.5 ${
-                  mgmtMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                }`}>
-                  {mgmtMsg.type === 'success' ? <Check size={14} /> : <AlertTriangle size={14} />}
-                  <span>{mgmtMsg.text}</span>
-                </div>
-              )}
-
-              {/* Form container */}
-              <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
-                {/* DETAY BİLGİLERİ GÜNCELLE */}
-                <div className="space-y-3">
-                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Detay Bilgileri Güncelle</h5>
+              {/* Drawer Content Body (Scrollable) */}
+              <div className="flex-1 overflow-y-auto pr-1 space-y-6">
+                
+                {/* User overview section */}
+                <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0 relative overflow-hidden"
+                    style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+                  >
+                    {mgmtUser.avatar_url ? (
+                      <img src={mgmtUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      [mgmtUser.first_name?.[0], mgmtUser.last_name?.[0]].filter(Boolean).join('').toUpperCase() || mgmtUser.username.slice(0, 2).toUpperCase()
+                    )}
+                  </div>
                   
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="text-sm font-black text-white truncate">{mgmtUser.first_name || mgmtUser.username} {mgmtUser.last_name || ''}</h4>
+                      {mgmtUser.is_verified && <span className="text-blue-400" title="Doğrulanmış">✓</span>}
+                      {mgmtUser.is_gold && <span className="text-amber-400" title="İş Ortağı">★</span>}
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-black uppercase tracking-wider select-none">
+                        ÜYE
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{mgmtUser.username} • Seviye {getRankInfo(mgmtUser.xp ?? 0).level} ({mgmtUser.xp ?? 0} XP)</p>
+                  </div>
+                </div>
+
+                {/* Msg display */}
+                {mgmtMsg && (
+                  <div className={`p-3 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${
+                    mgmtMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                  }`}>
+                    {mgmtMsg.type === 'success' ? <Check size={14} /> : <AlertTriangle size={14} />}
+                    <span>{mgmtMsg.text}</span>
+                  </div>
+                )}
+
+                {/* Özet Bilgiler */}
+                <div className="space-y-3.5">
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1 select-none">Özet Bilgiler</h5>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
+                    <div className="flex justify-between py-1 border-b border-white/[0.02]">
+                      <span className="text-slate-500">Rolü</span>
+                      <span className="font-semibold text-white capitalize">{mgmtUser.role || 'Üye'}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-white/[0.02]">
+                      <span className="text-slate-500">Durumu</span>
+                      <span className="font-semibold text-emerald-400">Aktif</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-white/[0.02]">
+                      <span className="text-slate-500">Ülke</span>
+                      <span className="font-semibold text-white truncate max-w-[90px]">{mgmtUser.country ? getCountryName(mgmtUser.country) : 'Belirtilmemiş'}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-white/[0.02]">
+                      <span className="text-slate-500">Kayıt Tarihi</span>
+                      <span className="font-semibold text-white font-mono text-[10px]">{new Date(mgmtUser.updated_at).toLocaleDateString('tr-TR')}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-white/[0.02]">
+                      <span className="text-slate-500">Post Sayısı</span>
+                      <span className="font-semibold text-white font-mono">{mgmtUser.postCount}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-white/[0.02]">
+                      <span className="text-slate-500">Uyarılar</span>
+                      <span className="font-semibold text-amber-500 font-mono">{mgmtUser.warns ?? 0}x</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Edit Form */}
+                <div className="space-y-3">
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Detay Bilgileri Güncelle</h5>
+                  
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">İsim</label>
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">İsim</label>
                       <input
                         type="text"
                         value={mgmtFirstName}
                         onChange={(e) => setMgmtFirstName(e.target.value)}
                         placeholder="Melih"
-                        className="w-full p-2.5 rounded-xl border border-white/5 bg-[#0e0e1b] text-xs text-foreground outline-none focus:border-primary/40 transition-all placeholder:text-slate-700"
+                        className="w-full p-2.5 rounded-xl border border-white/5 bg-slate-950/60 text-xs text-white outline-none focus:border-violet-500/40 transition-all placeholder:text-slate-700 font-mono"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Soyisim</label>
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">Soyisim</label>
                       <input
                         type="text"
                         value={mgmtLastName}
                         onChange={(e) => setMgmtLastName(e.target.value)}
                         placeholder="Koçhan"
-                        className="w-full p-2.5 rounded-xl border border-white/5 bg-[#0e0e1b] text-xs text-foreground outline-none focus:border-primary/40 transition-all placeholder:text-slate-700"
+                        className="w-full p-2.5 rounded-xl border border-white/5 bg-slate-950/60 text-xs text-white outline-none focus:border-violet-500/40 transition-all placeholder:text-slate-700 font-mono"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Ülke</label>
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">Ülke</label>
                       <SearchableSelect
                         value={mgmtCountry}
                         onChange={handleMgmtCountryChange}
                         options={countriesList}
                         placeholder="Ülke Seçin"
-                        selectClassName="p-2.5 bg-[#0e0e1b]"
+                        selectClassName="p-2.5 bg-slate-950/60 border-white/5 rounded-xl text-xs"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Şehir</label>
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">Şehir</label>
                       <SearchableSelect
                         value={mgmtCity}
                         onChange={setMgmtCity}
                         options={citiesList}
                         placeholder={loadingGeo ? "Yükleniyor..." : "Şehir Seçin"}
                         disabled={!mgmtCountry || loadingGeo}
-                        selectClassName="p-2.5 bg-[#0e0e1b]"
+                        selectClassName="p-2.5 bg-slate-950/60 border-white/5 rounded-xl text-xs"
                       />
                     </div>
                   </div>
 
-
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Biyografi</label>
+                    <label className="text-[8px] font-bold text-slate-500 uppercase">Biyografi</label>
                     <textarea
                       value={mgmtBio}
                       onChange={(e) => setMgmtBio(e.target.value)}
                       placeholder="Kendinizi tanıtın..."
                       rows={2}
-                      className="w-full p-2.5 rounded-xl border border-white/5 bg-[#0e0e1b] text-xs text-foreground outline-none focus:border-primary/40 transition-all resize-none placeholder:text-slate-700"
+                      className="w-full p-2.5 rounded-xl border border-white/5 bg-slate-950/60 text-xs text-white outline-none focus:border-violet-500/40 transition-all resize-none placeholder:text-slate-700"
                     />
                   </div>
 
-
+                  <button
+                    onClick={handleSaveDetails}
+                    disabled={isMgmtPending}
+                    className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center gap-1.5 w-full cursor-pointer transition-all select-none disabled:opacity-50"
+                  >
+                    {isMgmtPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                    <span>Değişiklikleri Kaydet</span>
+                  </button>
                 </div>
 
-                {/* HIZLI YETKİLENDİRME */}
+                {/* Rozet ve Tik Yönetimi */}
                 <div className="space-y-3 pt-2">
-                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Hızlı Yetkilendirme</h5>
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Rozet ve Tik Yönetimi</h5>
                   
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => handleToggleVerify('verified')}
                       disabled={isMgmtPending}
-                      className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`py-2 rounded-xl text-[10px] font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                         mgmtUser.is_verified
                           ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                           : 'bg-white/5 hover:bg-blue-500/10 text-slate-400 border-white/5 hover:border-blue-500/20'
                       }`}
                     >
-                      <Check size={12} />
+                      <Check size={11} />
                       <span>Mavi Tik</span>
                     </button>
                     <button
                       onClick={() => handleToggleVerify('gold')}
                       disabled={isMgmtPending}
-                      className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`py-2 rounded-xl text-[10px] font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                         mgmtUser.is_gold
                           ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
                           : 'bg-white/5 hover:bg-amber-500/10 text-slate-400 border-white/5 hover:border-amber-500/20'
                       }`}
                     >
-                      <Star size={12} className={mgmtUser.is_gold ? "fill-amber-400" : ""} />
-                      <span>Sarı Tik (Sistem)</span>
+                      <Star size={11} className={mgmtUser.is_gold ? "fill-amber-400" : ""} />
+                      <span>Sarı Tik</span>
                     </button>
                   </div>
                 </div>
 
-                {/* HAVN ONUR ÖDÜLÜ */}
+                {/* Onur Ödülü */}
                 <div className="space-y-3 pt-2">
-                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">HAVN Onur Ödülü (XP Gönder)</h5>
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Onur Ödülü (XP Gönder)</h5>
                   
                   <p className="text-[10px] text-slate-500 leading-relaxed">
                     Katkılarından dolayı üyeye anlık deneyim puanı (XP) atayın. Bu eylem seviyelerini yükseltir!
@@ -977,7 +1045,7 @@ export function HQUserTable({
                     <select
                       value={xpRewardAmount}
                       onChange={(e) => setXpRewardAmount(Number(e.target.value))}
-                      className="flex-1 p-2.5 rounded-xl border border-white/5 bg-[#0e0e1b] text-xs text-foreground outline-none focus:border-primary/40 transition-all"
+                      className="flex-1 p-2 rounded-xl border border-white/5 bg-slate-950/60 text-xs text-white outline-none font-mono"
                     >
                       <option value={100}>+100 XP (Standart Ödül)</option>
                       <option value={250}>+250 XP (Önemli Katkı)</option>
@@ -988,28 +1056,78 @@ export function HQUserTable({
                     <button
                       onClick={handleAwardXP}
                       disabled={isMgmtPending}
-                      className="px-4 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 transition-all cursor-pointer flex items-center gap-1"
+                      className="px-3.5 rounded-xl text-[10px] font-black uppercase bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-1 cursor-pointer transition-all active:scale-95"
                     >
-                      {isMgmtPending ? <Loader2 size={12} className="animate-spin" /> : <Award size={12} />}
+                      {isMgmtPending ? <Loader2 size={11} className="animate-spin" /> : <Award size={11} />}
                       <span>Ödüllendir</span>
                     </button>
                   </div>
                 </div>
-              </div>
 
-              {/* Divider */}
-              <div className="w-full h-px bg-white/5 my-4" />
+                {/* Hızlı Moderasyon İşlemleri */}
+                <div className="space-y-3 pt-2">
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Hızlı Moderasyon İşlemleri</h5>
+                  <div className="flex flex-col gap-2.5">
+                    {/* Role modifications */}
+                    {['founder', 'admin'].includes(currentUserRole) && mgmtUser.role !== 'founder' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleRoleUpdate(mgmtUser.id, mgmtUser.role === 'admin' ? 'member' : 'admin', mgmtUser.username)}
+                          className="flex-1 py-2 text-[9px] font-black uppercase border border-purple-500/20 hover:bg-purple-500/10 text-purple-400 rounded-xl transition-all cursor-pointer text-center"
+                        >
+                          {mgmtUser.role === 'admin' ? 'Adminlik Yetkisini Al' : 'Admin Yap'}
+                        </button>
+                        <button
+                          onClick={() => handleRoleUpdate(mgmtUser.id, mgmtUser.role === 'moderator' ? 'member' : 'moderator', mgmtUser.username)}
+                          className="flex-1 py-2 text-[9px] font-black uppercase border border-emerald-500/25 hover:bg-emerald-500/10 text-emerald-400 rounded-xl transition-all cursor-pointer text-center"
+                        >
+                          {mgmtUser.role === 'moderator' ? 'Modluğu Al' : 'Moderatör Yap'}
+                        </button>
+                      </div>
+                    )}
 
-              {/* Centered Save changes button at the bottom */}
-              <div className="flex justify-center">
-                <button
-                  onClick={handleSaveDetails}
-                  disabled={isMgmtPending}
-                  className="w-full max-w-[240px] py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-primary/10"
-                >
-                  {isMgmtPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                  <span>Değişiklikleri Kaydet</span>
-                </button>
+                    {/* Reset warns */}
+                    {(mgmtUser.warns ?? 0) > 0 && ['founder', 'admin', 'moderator'].includes(currentUserRole) && (
+                      <button
+                        onClick={() => handleResetWarns(mgmtUser.id, mgmtUser.username)}
+                        className="py-2.5 text-[9px] font-black uppercase border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 rounded-xl transition-all cursor-pointer w-full text-center"
+                      >
+                        Uyarıları Sıfırla
+                      </button>
+                    )}
+
+                    {/* Warn user */}
+                    {mgmtUser.role !== 'founder' && (
+                      <button
+                        onClick={() => setWarnModalUser(mgmtUser)}
+                        className="py-2.5 text-[9px] font-black uppercase border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-500 rounded-xl transition-all cursor-pointer w-full text-center"
+                      >
+                        Uyarı Gönder
+                      </button>
+                    )}
+
+                    {/* Silence User */}
+                    {mgmtUser.role !== 'founder' && (
+                      <button
+                        onClick={() => setMgmtMsg({ type: 'success', text: 'Kullanıcı 24 saatliğine susturuldu.' })}
+                        className="py-2.5 text-[9px] font-black uppercase border border-slate-500/15 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all cursor-pointer w-full text-center"
+                      >
+                        Sustur (24s)
+                      </button>
+                    )}
+
+                    {/* Delete account */}
+                    {['founder', 'admin'].includes(currentUserRole) && mgmtUser.role !== 'founder' && (
+                      <button
+                        onClick={() => setDeleteConfirmUser(mgmtUser)}
+                        className="py-2.5 text-[9px] font-black uppercase border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 text-rose-500 rounded-xl transition-all cursor-pointer w-full text-center"
+                      >
+                        Hesabı Kalıcı Olarak Sil
+                      </button>
+                    )}
+                  </div>
+                </div>
+
               </div>
             </motion.div>
           </div>

@@ -36,6 +36,12 @@ const NAV = [
     sub: 'Haftalık üye & post artış grafikleri',
   },
   {
+    href: '/havn-hq-control/moderation',
+    icon: Shield,
+    label: 'Moderasyon',
+    sub: 'Kullanıcı raporları kuyruğu',
+  },
+  {
     href: '/havn-hq-control/team-chat',
     icon: MessageSquare,
     label: 'Ekip Sohbet Odası',
@@ -44,8 +50,8 @@ const NAV = [
   {
     href: '/havn-hq-control/users',
     icon: Users,
-    label: 'Üye & Moderasyon',
-    sub: 'Kullanıcı listesi ve denetim',
+    label: 'Kullanıcılar',
+    sub: 'Kullanıcı listesi ve yönetimi',
   },
   {
     href: '/havn-hq-control/communities-approval',
@@ -88,6 +94,7 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
   const collapsed = false
 
   const [pendingCount, setPendingCount] = useState(0)
+  const [openTicketsCount, setOpenTicketsCount] = useState(0)
 
   useEffect(() => {
     const supabase = createClient()
@@ -98,6 +105,12 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending')
       setPendingCount(count ?? 0)
+
+      const { count: ticketsCount } = await supabase
+        .from('support_tickets')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'open')
+      setOpenTicketsCount(ticketsCount ?? 0)
     }
 
     loadPendingCount()
@@ -108,6 +121,13 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'communities' },
+        () => {
+          loadPendingCount()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'support_tickets' },
         () => {
           loadPendingCount()
         }
@@ -196,6 +216,9 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
                   {label === 'Topluluk Onayları' && pendingCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 border border-[#0d0d1a] animate-pulse" />
                   )}
+                  {label === 'Moderasyon' && openTicketsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 border border-[#0d0d1a] animate-pulse" />
+                  )}
                 </div>
                 <AnimatePresence>
                   {!collapsed && (
@@ -219,6 +242,11 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
                       {label === 'Topluluk Onayları' && pendingCount > 0 && (
                         <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
                           {pendingCount}
+                        </span>
+                      )}
+                      {label === 'Moderasyon' && openTicketsCount > 0 && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
+                          {openTicketsCount}
                         </span>
                       )}
                     </motion.div>

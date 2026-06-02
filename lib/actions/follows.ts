@@ -394,15 +394,46 @@ export async function getRightBarSuggestions() {
     return list.sort((a, b) => (a.username ?? '').localeCompare(b.username ?? '', 'tr'))
   }
 
-  // Fetch recent profiles excluding current user
-  const { data: profiles, error } = await supabase
+  // Get current followings to exclude them
+  const { data: followsData } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', user.id)
+  const followingIds = (followsData ?? []).map(f => f.following_id)
+
+  let query = supabase
     .from('profiles')
     .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at, role')
     .neq('id', user.id)
+
+  if (followingIds.length > 0) {
+    query = query.not('id', 'in', `(${followingIds.join(',')})`)
+  }
+
+  let { data: profiles, error } = await query
     .order('updated_at', { ascending: false })
     .limit(5)
 
   if (error || !profiles) return []
+
+  // Fallback to followed users if we have fewer than 3 suggestions, to prevent empty UI
+  if (profiles.length < 3) {
+    const { data: fallbackProfiles } = await supabase
+      .from('profiles')
+      .select('id, username, first_name, last_name, avatar_url, bio, is_verified, is_gold, updated_at, role')
+      .neq('id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(10)
+    
+    const seenIds = new Set(profiles.map(p => p.id))
+    for (const p of fallbackProfiles ?? []) {
+      if (profiles.length >= 5) break
+      if (!seenIds.has(p.id)) {
+        profiles.push(p)
+        seenIds.add(p.id)
+      }
+    }
+  }
 
   const targetIds = profiles.map(p => p.id)
   const [followingResult, followersResult] = await Promise.all([

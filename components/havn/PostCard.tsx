@@ -17,17 +17,20 @@ import { RichTextEditor } from '@/components/havn/RichTextEditor'
 import { toggleLike, deletePost, repostPost, toggleBookmark, editPost, togglePinPost } from '@/lib/actions/posts'
 import type { UserRole } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
+import { enrichProfile } from '@/lib/profile-enrich'
 
-function Avatar({ username, avatarUrl, xp }: { username: string; avatarUrl: string | null; xp?: number }) {
+function Avatar({ username, avatarUrl, xp, isGold }: { username: string; avatarUrl: string | null; xp?: number; isGold?: boolean | null }) {
   const level = xp !== undefined ? Math.floor(Math.sqrt(xp / 100)) + 1 : 1
 
-  const ringClass = level >= 31 
-    ? 'ring-2 ring-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.45)]' 
-    : level >= 16 
-      ? 'ring-2 ring-purple-500/80 shadow-[0_0_6px_rgba(139,92,246,0.35)]' 
-      : level >= 6 
-        ? 'ring-2 ring-emerald-500/70 shadow-[0_0_4px_rgba(16,185,129,0.25)]' 
-        : 'ring-1 ring-border'
+  const ringClass = isGold
+    ? 'ring-2 ring-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]'
+    : level >= 31 
+      ? 'ring-2 ring-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.45)]' 
+      : level >= 16 
+        ? 'ring-2 ring-purple-500/80 shadow-[0_0_6px_rgba(139,92,246,0.35)]' 
+        : level >= 6 
+          ? 'ring-2 ring-emerald-500/70 shadow-[0_0_4px_rgba(16,185,129,0.25)]' 
+          : 'ring-1 ring-border'
 
   if (avatarUrl) {
     return (
@@ -83,7 +86,7 @@ interface PostCardProps {
     user_id: string
     community_id?: string | null
     is_pinned?: boolean
-    profiles: { username: string; first_name?: string | null; last_name?: string | null; avatar_url: string | null; xp?: number } | null
+    profiles: { username: string; first_name?: string | null; last_name?: string | null; avatar_url: string | null; xp?: number; is_gold?: boolean | null } | null
     likes: { user_id: string }[]
     bookmarks?: { user_id: string }[]
     comments: { id: string }[]
@@ -94,7 +97,7 @@ interface PostCardProps {
       image_url: string | null
       created_at: string
       user_id: string
-      profiles: { username: string; first_name?: string | null; last_name?: string | null; avatar_url: string | null; xp?: number } | null
+      profiles: { username: string; first_name?: string | null; last_name?: string | null; avatar_url: string | null; xp?: number; is_gold?: boolean | null } | null
       likes?: { user_id: string }[]
       bookmarks?: { user_id: string }[]
       comments?: { id: string }[]
@@ -120,6 +123,20 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   const isDeletedRepost = hasParentId && !post.parent_post
   const displayPost = post.parent_post || post
   const isOwn = currentUserId === post.user_id
+
+  const authorProfile = displayPost.profiles ? enrichProfile(displayPost.profiles) : null
+  const isGoldAuthor = !!(
+    authorProfile?.is_gold ||
+    displayPost.profiles?.is_gold ||
+    (displayPost.profiles as any)?.role === 'founder' ||
+    (displayPost.profiles as any)?.role === 'admin' ||
+    authorProfile?.role === 'founder' ||
+    authorProfile?.role === 'admin' ||
+    displayPost.profiles?.username?.toLowerCase() === 'melih' ||
+    displayPost.profiles?.username?.toLowerCase() === 'havn' ||
+    displayPost.user_id === 'ea58c495-0c6c-49a7-bfc6-30ae3ed253a9' ||
+    displayPost.user_id === '33843a93-27a7-46af-af8a-27cd92404022'
+  )
 
   const [liked, setLiked] = useState(
     currentUserId ? (displayPost.likes || []).some(l => l.user_id === currentUserId) : false
@@ -626,9 +643,18 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       }}
       whileHover={{ y: -2 }}
       className={cn(
-        'bg-card/70 backdrop-blur-md border rounded-2xl p-5 hover:border-primary/25 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group relative',
-        isPinned ? 'border-primary/40 ring-1 ring-primary/15' : 'border-border/80'
+        'bg-card/70 backdrop-blur-md rounded-2xl p-5 transition-all duration-300 group relative',
+        isGoldAuthor
+          ? 'hover:shadow-lg hover:shadow-primary/5'
+          : isPinned
+            ? 'border border-primary/40 ring-1 ring-primary/15 hover:border-primary/25 hover:shadow-lg hover:shadow-primary/5'
+            : 'border border-border/80 hover:border-primary/25 hover:shadow-lg hover:shadow-primary/5'
       )}
+      style={{
+        borderColor: isGoldAuthor ? 'var(--gold-border)' : undefined,
+        borderWidth: isGoldAuthor ? '2px' : undefined,
+        borderStyle: isGoldAuthor ? 'solid' : undefined
+      }}
     >
       {isPinned && (
         <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary mb-3 -mt-1">
@@ -651,13 +677,17 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <Link href={`/profile/${displayUsername}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
-            <Avatar username={displayUsername} avatarUrl={displayAvatarUrl} xp={displayPost.profiles?.xp} />
+            <Avatar username={displayUsername} avatarUrl={displayAvatarUrl} xp={displayPost.profiles?.xp} isGold={isGoldAuthor} />
           </Link>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Link href={`/profile/${displayUsername}`} className="hover:opacity-80 transition-opacity">
                 <ProfileName
-                  profile={displayPost.profiles ?? { username: displayUsername }}
+                  profile={{
+                    ...(displayPost.profiles ?? { username: displayUsername }),
+                    is_gold: isGoldAuthor,
+                    is_verified: (displayPost.profiles as any)?.is_verified ?? false
+                  }}
                   role={isRepost ? 'member' : role}
                 />
               </Link>

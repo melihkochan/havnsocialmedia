@@ -37,6 +37,7 @@
   --mod-color: oklch(0.62 0.17 162);
   --havn-gradient-start: oklch(0.48 0.22 264);
   --havn-gradient-end: oklch(0.55 0.22 290);
+  --gold-border: #f59e0b;
 }
 
 .dark {
@@ -67,6 +68,7 @@
   --border: oklch(0.22 0.025 264);
   --input: oklch(0.22 0.025 264);
   --ring: oklch(0.65 0.22 264);
+  --gold-border: #fbbf24;
 }
 
 @theme inline {
