@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { splitMessageParts, getFlagImageUrl } from '@/lib/flags'
 import { cn } from '@/lib/utils'
-import { Play, ExternalLink } from 'lucide-react'
+import { Play, ExternalLink, Globe } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getDisplayName } from '@/lib/profile-display'
 
@@ -284,6 +284,58 @@ function renderTextWithFlags(text: string): React.ReactNode[] {
   })
 }
 
+// Parse text for plain text URLs and flags
+function renderTextWithFlagsAndLinks(text: string): React.ReactNode {
+  // Regex to match URLs (including truncated ones ending in ...)
+  const urlRegex = /(https?:\/\/[^\s]+)/gi
+  const parts = text.split(urlRegex)
+
+  if (parts.length === 1) {
+    return <>{renderTextWithFlags(text)}</>
+  }
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (i % 2 === 0) {
+          // Regular text part - render flags
+          return <span key={i}>{renderTextWithFlags(part)}</span>
+        } else {
+          // URL part
+          let cleanUrl = part
+          // Remove trailing ellipsis if truncated
+          if (cleanUrl.endsWith('...')) {
+            cleanUrl = cleanUrl.slice(0, -3)
+          }
+
+          let displayLabel = cleanUrl
+          try {
+            const urlObj = new URL(cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`)
+            displayLabel = urlObj.hostname.replace('www.', '')
+          } catch {
+            displayLabel = cleanUrl
+          }
+
+          return (
+            <a
+              key={i}
+              href={cleanUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/15 hover:border-violet-500/30 transition-all font-bold align-baseline mx-0.5"
+            >
+              <Globe size={10} className="opacity-75" />
+              <span className="truncate max-w-[200px]">{displayLabel}</span>
+              <ExternalLink size={8} className="opacity-50" />
+            </a>
+          )
+        }
+      })}
+    </>
+  )
+}
+
 export function FormattedMessage({ text, className }: FormattedMessageProps) {
   const [mounted, setMounted] = useState(false)
 
@@ -298,13 +350,13 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
     // SSR / First-load plain text fallback
     const stripped = text.replace(/<[^>]*>/g, '')
     if (isHtml) {
-      return <div className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlags(stripped)}</div>
+      return <div className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlagsAndLinks(stripped)}</div>
     }
-    return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlags(stripped)}</span>
+    return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlagsAndLinks(stripped)}</span>
   }
 
   if (!isHtml) {
-    return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlags(text)}</span>
+    return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlagsAndLinks(text)}</span>
   }
 
   // Parse HTML client-side
@@ -315,7 +367,7 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
     // Recursive converter from DOM nodes to React nodes
     const convertNode = (node: Node, index: number): React.ReactNode => {
       if (node.nodeType === Node.TEXT_NODE) {
-        return <React.Fragment key={index}>{renderTextWithFlags(node.nodeValue || '')}</React.Fragment>
+        return <React.Fragment key={index}>{renderTextWithFlagsAndLinks(node.nodeValue || '')}</React.Fragment>
       }
 
       if (node.nodeType === Node.ELEMENT_NODE) {
@@ -393,6 +445,17 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
               return <HavnPostEmbed key={index} postId={havnPostMatch[1]} url={href} />
             }
 
+            const nodeText = element.textContent || ''
+            const isTextUrl = nodeText.startsWith('http://') || nodeText.startsWith('https://') || nodeText.includes('.')
+            const displayLabel = isTextUrl ? (() => {
+              try {
+                const urlObj = new URL(href.startsWith('http') ? href : `https://${href}`)
+                return urlObj.hostname.replace('www.', '')
+              } catch {
+                return nodeText
+              }
+            })() : nodeText
+
             return (
               <a
                 key={index}
@@ -400,10 +463,11 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-primary hover:underline font-bold inline-flex items-center gap-0.5 transition-all"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/15 hover:border-violet-500/30 transition-all font-bold align-baseline mx-0.5"
               >
-                {children}
-                <ExternalLink size={10} className="opacity-60 inline-block align-baseline" />
+                <Globe size={10} className="opacity-75" />
+                <span className="truncate max-w-[200px]">{displayLabel}</span>
+                <ExternalLink size={8} className="opacity-50" />
               </a>
             )
           default:
@@ -418,6 +482,6 @@ export function FormattedMessage({ text, className }: FormattedMessageProps) {
     return <div className={className}>{reactElements}</div>
   } catch (err) {
     // fallback
-    return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlags(text)}</span>
+    return <span className={cn('whitespace-pre-wrap', className)}>{renderTextWithFlagsAndLinks(text)}</span>
   }
 }
