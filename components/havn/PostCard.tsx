@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
@@ -124,6 +124,8 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   const isRepost = hasParentId && !!post.parent_post
   const isDeletedRepost = hasParentId && !post.parent_post
   const displayPost = post.parent_post || post
+  const hasHashtags = displayPost.content ? /#[a-zA-Z0-9İıŞşÇçĞğÜüÖö_]+/.test(displayPost.content) : false
+  const showRepostOption = !post.community_id && !hasHashtags
   const isOwn = currentUserId === post.user_id
 
   const authorProfile = displayPost.profiles ? enrichProfile(displayPost.profiles) : null
@@ -145,8 +147,10 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   )
   const [likeCount, setLikeCount] = useState(displayPost.likes?.length ?? 0)
   const [commentCount, setCommentCount] = useState(displayPost.comments?.length ?? 0)
-  const [reposted, setReposted] = useState(
-    isRepost && post.user_id === currentUserId
+  const [reposted, setReposted] = useState<boolean>(
+    currentUserId
+      ? (isRepost && post.user_id === currentUserId) || ((displayPost as any).reposts || []).some((r: any) => r.user_id === currentUserId)
+      : false
   )
   
   const [bookmarked, setBookmarked] = useState(
@@ -188,12 +192,12 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
         const supabase = createClient()
         const { data } = await supabase
           .from('profiles')
-          .select('username, is_gold')
+          .select('role, is_gold')
           .eq('id', currentUserId)
           .single()
         
         if (data) {
-          const isAdmin = data.is_gold || data.username === 'melih'
+          const isAdmin = data.is_gold || data.role === 'founder' || data.role === 'admin'
           setCurrentUserIsAdmin(isAdmin)
           localStorage.setItem(cacheKey, isAdmin ? 'true' : 'false')
         }
@@ -406,7 +410,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
     setCommentCount(displayPost.comments?.length ?? 0)
   }, [displayPost.comments])
 
-  // Real-time Likes & Comments Sync
+  // Real-time Likes, Comments & Reposts Sync
   useEffect(() => {
     const channel = supabase.channel(`post_interactions_${displayPost.id}_${channelToken.current}`)
       .on(
@@ -439,12 +443,39 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
           if (count !== null) setCommentCount(count)
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'posts', filter: `parent_post_id=eq.${displayPost.id}` },
+        async () => {
+          const { data } = await supabase
+            .from('posts')
+            .select('id')
+            .eq('parent_post_id', displayPost.id)
+            .eq('user_id', currentUserId || '')
+            .maybeSingle()
+          setReposted(!!data)
+        }
+      )
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
   }, [displayPost.id, currentUserId])
+
+  // Sync repost state client-side across multiple instances of the same post instantly
+  useEffect(() => {
+    const handleRepostUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (customEvent.detail && customEvent.detail.postId === displayPost.id) {
+        setReposted(customEvent.detail.reposted)
+      }
+    }
+    window.addEventListener('repost-updated', handleRepostUpdate)
+    return () => {
+      window.removeEventListener('repost-updated', handleRepostUpdate)
+    }
+  }, [displayPost.id])
 
   useEffect(() => {
     setPostContent((displayPost.content || '').replace('\u200B[anlar]', '').replace('\u200B[kadraj]', ''))
@@ -528,7 +559,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                 <MoreHorizontal size={14} />
               </button>
               {showMenu && (
-                  <div className="absolute right-0 top-8 z-[60] glass rounded-xl shadow-xl overflow-hidden w-36 border border-border">
+                  <div className="absolute right-0 top-8 z-[60] bg-popover/95 backdrop-blur-md rounded-xl shadow-xl overflow-hidden w-36 border border-border/80">
                     <button
                       type="button"
                       onClick={openDeleteDialog}
@@ -598,8 +629,20 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
     setReposted(r => !r)
     startTransition(async () => {
       const res = await repostPost(displayPost.id, post.community_id || null)
-      if (res && 'reposted' in res) {
-        setReposted(!!res.reposted)
+      if (res && 'error' in res && res.error) {
+        showToast(res.error, 'error')
+        setReposted(r => !r)
+      } else if (res && 'reposted' in res) {
+        const isCurrentlyReposted = !!res.reposted
+        setReposted(isCurrentlyReposted)
+        showToast(isCurrentlyReposted ? 'Yeniden paylaşıldı!' : 'Yeniden paylaşım geri alındı.', 'success')
+        
+        // Broadcast custom event to sync other PostCard instances of this post in the DOM instantly
+        window.dispatchEvent(new CustomEvent('repost-updated', {
+          detail: { postId: displayPost.id, reposted: isCurrentlyReposted }
+        }))
+        
+        router.refresh()
       }
     })
   }
@@ -736,7 +779,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
             <MoreHorizontal size={16} />
           </button>
           {showMenu && (
-              <div className="absolute right-0 top-8 z-[60] glass rounded-xl shadow-xl overflow-hidden w-44 border border-border">
+              <div className="absolute right-0 top-8 z-[60] bg-popover/95 backdrop-blur-md rounded-xl shadow-xl overflow-hidden w-44 border border-border/80">
                 <Link
                   href={`/post/${displayPost.id}`}
                   className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150"
@@ -997,13 +1040,19 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                 reposted && 'text-emerald-500 hover:text-emerald-600'
               )}
             >
-              {post.community_id ? <Share2 size={15} /> : <Repeat size={15} className={cn(reposted && 'text-emerald-500')} />}
-              <span>{post.community_id ? 'Paylaş' : 'Yeniden Paylaş'}</span>
+              {!showRepostOption ? <Share2 size={15} /> : <Repeat size={15} className={cn(reposted && 'text-emerald-500')} />}
+              <span>
+                {!showRepostOption 
+                  ? 'Paylaş' 
+                  : reposted 
+                    ? 'Yeniden Paylaşıldı' 
+                    : 'Yeniden Paylaş'}
+              </span>
             </button>
 
             {showShareMenu && (
-                <div className="absolute left-0 bottom-9 z-[60] glass rounded-xl shadow-xl overflow-hidden w-44 border border-border flex flex-col">
-                  {!post.community_id && (
+                <div className="absolute left-0 bottom-9 z-[60] bg-popover/95 backdrop-blur-md rounded-xl shadow-xl overflow-hidden w-44 border border-border/80 flex flex-col">
+                  {showRepostOption && (
                     <button
                       onClick={handleRepost}
                       disabled={isPending}

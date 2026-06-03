@@ -291,10 +291,13 @@ export function HQAnnouncementsClient({ initialAnnouncements }: HQAnnouncementsC
 
         <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
           {announcements.map((ann) => {
-            const authorName = ann.profiles
-              ? `${ann.profiles.first_name || ''} ${ann.profiles.last_name || ''}`.trim() || `@${ann.profiles.username}`
-              : 'Havn Official'
-            const authorUsername = ann.profiles?.username || 'havn'
+            const isSystemAnn = ann.content && ann.content.includes('\u200B')
+            const authorName = isSystemAnn
+              ? 'Havn Sistem'
+              : (ann.profiles
+                  ? `${ann.profiles.first_name || ''} ${ann.profiles.last_name || ''}`.trim() || `@${ann.profiles.username}`
+                  : 'Havn Official')
+            const authorUsername = isSystemAnn ? 'sistem' : (ann.profiles?.username || 'havn')
             
             const isExpired = ann.expires_at ? new Date(ann.expires_at) <= now : !!ann.is_expired
             const remainingText = getRemainingTimeText(ann.expires_at)
@@ -306,8 +309,8 @@ export function HQAnnouncementsClient({ initialAnnouncements }: HQAnnouncementsC
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-violet-600 flex items-center justify-center text-xs font-black text-white border border-white/10 shadow-inner">
-                      {ann.profiles?.avatar_url ? (
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#8b5cf6] via-[#ec4899] to-[#f97316] flex items-center justify-center text-xs font-black text-white border border-white/10 shadow-inner">
+                      {!isSystemAnn && ann.profiles?.avatar_url ? (
                         <img src={ann.profiles.avatar_url} alt="" className="w-full h-full object-cover rounded-xl" />
                       ) : (
                         'H'

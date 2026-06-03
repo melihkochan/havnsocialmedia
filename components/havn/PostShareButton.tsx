@@ -48,7 +48,7 @@ export function PostShareButton({ postId, communityId, className }: PostShareBut
       {!communityId && open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 bottom-full mb-2 z-20 glass rounded-xl shadow-xl overflow-hidden w-44 border border-border flex flex-col">
+          <div className="absolute right-0 bottom-full mb-2 z-20 bg-popover/95 backdrop-blur-md rounded-xl shadow-xl overflow-hidden w-44 border border-border/80 flex flex-col">
             <button
               type="button"
               onClick={copyLink}

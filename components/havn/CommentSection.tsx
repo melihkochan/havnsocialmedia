@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -85,12 +85,12 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
         const supabase = createClient()
         const { data } = await supabase
           .from('profiles')
-          .select('username, is_gold')
+          .select('role, is_gold')
           .eq('id', userId)
           .single()
         
         if (data) {
-          const isAdmin = data.is_gold || data.username === 'melih'
+          const isAdmin = data.is_gold || data.role === 'founder' || data.role === 'admin'
           setCurrentUserIsAdmin(isAdmin)
           localStorage.setItem(cacheKey, isAdmin ? 'true' : 'false')
         }

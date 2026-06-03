@@ -130,14 +130,21 @@ export default async function ProfilePage({
           .single()
       : Promise.resolve({ data: null }),
     // Posts inline — NO separate createClient (limit to first 20 for performance)
-    supabase
-      .from('posts')
-      .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
-      .eq('user_id', profile.id)
-      .or('community_id.is.null,parent_post_id.not.is.null')
-      .order('is_pinned', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false })
-      .range(0, 9),
+    (() => {
+      let q = supabase
+        .from('posts')
+        .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id), reposts:posts!parent_post_id(user_id)), reposts:posts!parent_post_id(user_id)')
+        .eq('user_id', profile.id)
+        .or('community_id.is.null,parent_post_id.not.is.null')
+      // Hide system announcement posts (contain zero-width space metadata) from profile feed
+      if (profile.username === 'havn') {
+        q = q.or('content.is.null,content.not.like.%\u200B%')
+      }
+      return q
+        .order('is_pinned', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .range(0, 9)
+    })(),
     // Memberships joined with communities directly to avoid waterfall
     supabase
       .from('community_members')
@@ -336,7 +343,7 @@ export default async function ProfilePage({
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-black text-foreground flex items-center gap-1.5">
                   {getDisplayName(profile)}
-                  {(profile.username === 'melih' || profile.username === 'havn') && (
+                  {(isFounder(profile) || profile.username === 'havn') && (
                     <Link
                       href="/profile/havn"
                       className="flex-shrink-0 align-middle inline-flex items-center justify-center w-5 h-5 rounded bg-gradient-to-tr from-yellow-400 via-amber-500 to-yellow-600 text-black border border-amber-400/30 shadow-[0_0_8px_rgba(245,158,11,0.55)] cursor-pointer hover:scale-110 active:scale-95 transition-all select-none"
@@ -345,12 +352,12 @@ export default async function ProfilePage({
                       <span className="text-[12px] font-black text-black leading-none font-mono">H</span>
                     </Link>
                   )}
-                  {(profile.username === 'melih' || profile.username === 'havn' || profile.is_gold || isFounder(profile)) && (
+                  {(isFounder(profile) || profile.username === 'havn' || profile.is_gold) && (
                     <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Özel Hesap / Sistem Ortağı: HAVN ekibine veya resmi iş ortaklarına aittir.">
                       <BadgeCheck size={18} className="fill-[#eab308] text-background drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
                     </span>
                   )}
-                  {!(profile.username === 'melih' || profile.username === 'havn') && !(profile.is_gold || isFounder(profile)) && profile.is_verified && (
+                  {!isFounder(profile) && profile.username !== 'havn' && !(profile.is_gold) && profile.is_verified && (
                     <span className="flex-shrink-0 align-middle inline-flex cursor-help" title="Doğrulanmış Üye: HAVN topluluğunun aktif ve onaylanmış bir üyesidir.">
                       <BadgeCheck size={18} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
                     </span>

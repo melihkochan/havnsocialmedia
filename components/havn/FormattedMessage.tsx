@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useState, useEffect } from 'react'
 import { splitMessageParts, getFlagImageUrl } from '@/lib/flags'
@@ -263,7 +263,7 @@ function HavnPostEmbed({ postId, url }: { postId: string; url: string }) {
 }
 
 // Parsers for simple markdown: bold (**...**), italic (*...*), bold-italic (***...***)
-function parseMarkdown(text: string): React.ReactNode[] {
+function parseMarkdown(text: string, disableLinks = false): React.ReactNode[] {
   let keyCounter = 0
 
   function parseHashtags(str: string): React.ReactNode[] {
@@ -272,6 +272,9 @@ function parseMarkdown(text: string): React.ReactNode[] {
     return parts.map((part, i) => {
       if (part.startsWith('#') && part.length > 1) {
         const tag = part.slice(1)
+        if (disableLinks) {
+          return part
+        }
         return (
           <Link
             key={`hashtag-${tag}-${i}`}
@@ -448,11 +451,11 @@ function parseMarkdown(text: string): React.ReactNode[] {
 }
 
 // Convert plain text with flags into React nodes
-function renderTextWithFlags(text: string): React.ReactNode[] {
+function renderTextWithFlags(text: string, disableLinks = false): React.ReactNode[] {
   const parts = splitMessageParts(text)
   return (parts as any).flatMap((part: any, i: number) => {
     if (part.type === 'text') {
-      return parseMarkdown(part.value)
+      return parseMarkdown(part.value, disableLinks)
     }
     return [
       <img
@@ -473,14 +476,14 @@ function renderTextWithFlags(text: string): React.ReactNode[] {
 // Parse text for plain text URLs and flags
 function renderTextWithFlagsAndLinks(text: string, disableLinks = false): React.ReactNode {
   if (disableLinks) {
-    return <>{renderTextWithFlags(text)}</>
+    return <>{renderTextWithFlags(text, disableLinks)}</>
   }
   // Regex to match URLs (including truncated ones ending in ...)
   const urlRegex = /(https?:\/\/[^\s]+)/gi
   const parts = text.split(urlRegex)
 
   if (parts.length === 1) {
-    return <>{renderTextWithFlags(text)}</>
+    return <>{renderTextWithFlags(text, disableLinks)}</>
   }
 
   return (
@@ -488,7 +491,7 @@ function renderTextWithFlagsAndLinks(text: string, disableLinks = false): React.
       {parts.map((part, i) => {
         if (i % 2 === 0) {
           // Regular text part - render flags
-          return <span key={i}>{renderTextWithFlags(part)}</span>
+          return <span key={i}>{renderTextWithFlags(part, disableLinks)}</span>
         } else {
           // URL part
           let cleanUrl = part

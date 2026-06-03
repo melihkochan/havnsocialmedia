@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { logHQModAction } from '@/lib/actions/hq-chat'
@@ -14,8 +14,9 @@ export async function getAnnouncements() {
       *,
       profiles(*)
     `)
-    .or(`user_id.eq.${HAVN_SYSTEM_USER_ID},content.ilike.%#duyuru%`)
+    .or('content.like.%\u200B%,content.ilike.%#duyuru%')
     .order('created_at', { ascending: false })
+
 
   if (error) {
     return []

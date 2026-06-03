@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -29,9 +29,9 @@ export async function getUserPosts(userId: string) {
 
   const { data, error } = await supabase
     .from('posts')
-    .select(`*, profiles(*), likes(user_id), comments(id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))`)
+    .select(`*, profiles(*), likes(user_id), comments(id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id), reposts:posts!parent_post_id(user_id)), reposts:posts!parent_post_id(user_id)`)
     .eq('user_id', userId)
-    .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
+    .or('content.is.null,content.not.like.%\u200B%')
     .order('created_at', { ascending: false })
 
   if (error) return []

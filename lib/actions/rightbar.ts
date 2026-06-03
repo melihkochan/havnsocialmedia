@@ -77,11 +77,11 @@ export async function getRightBarData() {
     .order('posts_count', { ascending: false })
     .limit(5)
 
-  // 4. Fetch latest announcement (latest post by 'havn' or containing '#duyuru')
+  // 4. Fetch latest announcement (containing zero-width space \u200B or containing '#duyuru')
   const announcementPromise = supabase
     .from('posts')
     .select('id, content, created_at, profiles(username, avatar_url, first_name, last_name)')
-    .or('user_id.eq.33843a93-27a7-46af-af8a-27cd92404022,content.ilike.%#duyuru%')
+    .or('content.like.%\u200B%,content.ilike.%#duyuru%')
     .order('created_at', { ascending: false })
     .limit(1)
 

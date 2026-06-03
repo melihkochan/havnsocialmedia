@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useRef } from 'react'
 import { useParams, usePathname } from 'next/navigation'
@@ -208,17 +208,17 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
                     <span className="font-bold text-sm truncate leading-none">
                       {getFullName(profile) ?? profile.username}
                     </span>
-                    {(profile.username === 'melih' || profile.username === 'havn') && (
+                    {(profile.role === 'founder' || profile.username === 'havn') && (
                       <span className="flex-shrink-0 align-middle inline-flex items-center justify-center w-3.5 h-3.5 rounded bg-gradient-to-tr from-yellow-400 via-amber-500 to-yellow-600 text-black border border-amber-400/30 shadow-[0_0_6px_rgba(245,158,11,0.55)]" title="HAVN Resmi Ortaklığı">
                         <span className="text-[8px] font-black text-black leading-none font-mono">H</span>
                       </span>
                     )}
-                    {(profile.username === 'melih' || profile.username === 'havn' || profile.is_gold || profile.role === 'founder') && (
+                    {(profile.role === 'founder' || profile.username === 'havn' || profile.is_gold) && (
                       <span className="flex-shrink-0 align-middle inline-flex" title="Özel Hesap / Sistem Ortağı">
                         <BadgeCheck size={14} className="fill-[#eab308] text-background drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
                       </span>
                     )}
-                    {!(profile.username === 'melih' || profile.username === 'havn') && !(profile.is_gold || profile.role === 'founder') && profile.is_verified && (
+                    {profile.role !== 'founder' && profile.username !== 'havn' && !(profile.is_gold) && profile.is_verified && (
                       <span className="flex-shrink-0 align-middle inline-flex" title="Doğrulanmış Üye">
                         <BadgeCheck size={14} className="fill-[#0ea5e9] text-background drop-shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
                       </span>

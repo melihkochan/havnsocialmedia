@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -77,9 +77,9 @@ export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 
 
   let query = supabase
     .from('posts')
-    .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
+    .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id), reposts:posts!parent_post_id(user_id)), reposts:posts!parent_post_id(user_id)')
     .is('community_id', null)
-    .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
+    .or('content.is.null,content.not.like.%\u200B%')
 
   if (tag) {
     const { data: postIdsData } = await supabase
@@ -670,10 +670,10 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
   // 2. Fetch posts
   const { data: personalResult, error } = await supabase
     .from('posts')
-    .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))')
+    .select('*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id), reposts:posts!parent_post_id(user_id)), reposts:posts!parent_post_id(user_id)')
     .in('user_id', targetUserIds)
     .is('community_id', null)
-    .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
+    .or('content.is.null,content.not.like.%\u200B%')
     .order(orderCol, { ascending: false })
     .range(0, 9)
 
@@ -704,7 +704,8 @@ export async function getSinglePost(postId: string) {
       comments(id),
       bookmarks(user_id),
       communities(name, slug),
-      parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))
+      parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id), reposts:posts!parent_post_id(user_id)),
+      reposts:posts!parent_post_id(user_id)
     `)
     .eq('id', postId)
     .single()
@@ -728,7 +729,7 @@ export async function getSinglePost(postId: string) {
 
 // ─── Unified Server Action for Infinite Scroll ─────────────────────────────
 
-const FEED_SELECT = '*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id))'
+const FEED_SELECT = '*, profiles(*), likes(user_id), comments(id), bookmarks(user_id), communities(name, slug), parent_post:parent_post_id(*, profiles(*), likes(user_id), comments(id), reposts:posts!parent_post_id(user_id)), reposts:posts!parent_post_id(user_id)'
 
 function normalizePosts(raw: any[]) {
   return raw
@@ -759,7 +760,7 @@ export async function loadMorePosts(
         .from('posts')
         .select(FEED_SELECT)
         .is('community_id', null)
-        .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
+        .or('content.is.null,content.not.like.%\u200B%')
 
       if (context.tag) {
         const { data: postIdsData } = await supabase
@@ -800,7 +801,7 @@ export async function loadMorePosts(
         .select(FEED_SELECT)
         .in('user_id', targetIds)
         .is('community_id', null)
-        .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
+        .or('content.is.null,content.not.like.%\u200B%')
         .order(orderCol, { ascending: false })
         .range(offset, offset + PAGE_SIZE - 1)
       if (error) throw error
@@ -837,7 +838,7 @@ export async function loadMorePosts(
         .from('posts')
         .select(FEED_SELECT)
         .eq('user_id', context.profileUserId)
-        .neq('user_id', '33843a93-27a7-46af-af8a-27cd92404022')
+        .or('content.is.null,content.not.like.%\u200B%')
         .or('community_id.is.null,parent_post_id.not.is.null')
         .order('is_pinned', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })

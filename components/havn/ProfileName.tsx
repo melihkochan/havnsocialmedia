@@ -95,7 +95,7 @@ export function ProfileName({
   const enriched = profile ? enrichProfile(profile) : null
   const isVerified = enriched?.is_verified ?? profile?.is_verified
   const isGold = (enriched?.is_gold ?? profile?.is_gold) || isFounder(profile)
-  const isHLogoUser = profile && (profile.username === 'melih' || profile.username === 'havn')
+  const isHLogoUser = profile && (isFounder(profile) || profile.username === 'havn')
 
   const contentInline = (
     <div className={cn('flex items-center gap-1 flex-nowrap min-w-0 flex-1', className)}>

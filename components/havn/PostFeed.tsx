@@ -138,7 +138,7 @@ export function PostFeed({
           if (!enrichedPost) return
 
           // Ignore system announcements from feed streams
-          if (enrichedPost.user_id === '33843a93-27a7-46af-af8a-27cd92404022') return
+          if (enrichedPost.content && enrichedPost.content.includes('\u200B')) return
 
           // Filter by feed context
           if (communityId) {

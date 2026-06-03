@@ -207,10 +207,7 @@ export function CommunityChat({
   }
 
   function renderUserBadge(userId: string, username: string) {
-    // 1. Founder badge takes precedence
-    if (username === 'melih') return null // ProfileName handles this automatically
-
-    // 2. Community role badge
+    // Community role badge
     const role = rolesByUserId[userId]
     if (role === 'owner') {
       return (
