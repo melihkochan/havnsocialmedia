@@ -372,10 +372,24 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   function handleTogglePin() {
     if (!pinContext) return
     setShowMenu(false)
+    showToast(
+      isPinned
+        ? (locale === 'tr' ? 'Sabitleme kaldırılıyor...' : 'Unpinning post...')
+        : (locale === 'tr' ? 'Gönderi sabitleniyor...' : 'Pinning post...')
+    )
     startTransition(async () => {
       const res = await togglePinPost(post.id, pinContext)
-      if (res.error) showToast(res.error, "error")
-      else router.refresh()
+      if (res.error) {
+        showToast(res.error, "error")
+      } else {
+        showToast(
+          isPinned
+            ? (locale === 'tr' ? 'Sabitleme kaldırıldı!' : 'Unpinned successfully!')
+            : (locale === 'tr' ? 'Gönderi sabitlendi!' : 'Pinned successfully!'),
+          "success"
+        )
+        router.refresh()
+      }
     })
   }
 
@@ -702,7 +716,8 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
           ? 'hover:shadow-lg hover:shadow-primary/5'
           : isPinned
             ? 'border border-primary/40 ring-1 ring-primary/15 hover:border-primary/25 hover:shadow-lg hover:shadow-primary/5'
-            : 'border border-border/80 hover:border-primary/25 hover:shadow-lg hover:shadow-primary/5'
+            : 'border border-border/80 hover:border-primary/25 hover:shadow-lg hover:shadow-primary/5',
+        isPending && 'opacity-65 pointer-events-none'
       )}
       style={{
         borderColor: isGoldAuthor ? 'var(--gold-border)' : undefined,
