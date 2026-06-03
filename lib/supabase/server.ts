@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import nodeFetch from 'node-fetch'
 import http from 'node:http'
@@ -10,7 +10,6 @@ try {
   dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"])
   dns.setDefaultResultOrder("ipv4first")
 } catch (e) {
-  console.warn("Failed to set custom DNS servers:", e)
 }
 
 // DNS cache to speed up lookups and bypass Windows getaddrinfo DNS timeouts

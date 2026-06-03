@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -42,7 +42,6 @@ export async function followUser(targetUserId: string) {
         'follow'
       )
     } catch (e) {
-      console.warn('Could not create notification for follow request:', e)
     }
 
     revalidatePath('/feed')
@@ -60,7 +59,6 @@ export async function followUser(targetUserId: string) {
     })
 
   if (error) {
-    console.error('followUser error:', error)
     return { error: error.message }
   }
 
@@ -73,7 +71,6 @@ export async function followUser(targetUserId: string) {
       'follow'
     )
   } catch (e) {
-    console.warn('Could not create notification for follow:', e)
   }
 
   revalidatePath('/feed')
@@ -184,7 +181,6 @@ export async function approveFollowRequest(followerId: string) {
     })
 
   if (followErr) {
-    console.error('approveFollowRequest follow insert error:', followErr)
   }
 
   // 3. Notify follower that follow request was approved
@@ -196,7 +192,6 @@ export async function approveFollowRequest(followerId: string) {
       'approved'
     )
   } catch (e) {
-    console.warn('Could not create notification for follow approval:', e)
   }
 
   // Mark all follow notifications from followerId to current user as read
@@ -298,7 +293,6 @@ export async function getFollowingProfiles(userId: string) {
     .eq('follower_id', userId)
 
   if (error) {
-    console.error('getFollowingProfiles error:', error)
     return []
   }
 
@@ -315,7 +309,6 @@ export async function getFollowersProfiles(userId: string) {
     .eq('following_id', userId)
 
   if (error) {
-    console.error('getFollowersProfiles error:', error)
     return []
   }
 
@@ -364,7 +357,6 @@ export async function getSuggestedUsers() {
   const { data: normalProfiles, error } = await normalQuery.limit(8)
 
   if (error) {
-    console.error('getSuggestedUsers error:', error)
     return []
   }
 

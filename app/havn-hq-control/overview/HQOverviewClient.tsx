@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -118,7 +118,6 @@ export default function HQOverviewClient({
           image: c.flag
         })))
       } catch (err) {
-        console.error('Failed to load countries:', err)
       }
     }
     loadCountries()
@@ -135,7 +134,6 @@ export default function HQOverviewClient({
         const list = await getCitiesAction(mgmtCountry)
         setCitiesList(list.map(city => ({ value: city, label: city })))
       } catch (err) {
-        console.error('Failed to load cities:', err)
       } finally {
         setLoadingGeo(false)
       }
@@ -184,7 +182,6 @@ export default function HQOverviewClient({
         const res = await getHQOverviewStatsForRange(val)
         setStats(res as any)
       } catch (err) {
-        console.error('Failed to reload range stats:', err)
       }
     })
   }
@@ -511,7 +508,6 @@ export default function HQOverviewClient({
       const updatedLogs = await getHQModLogs()
       setLogs(updatedLogs)
     } catch (e) {
-      console.error(e)
     }
   }
 

@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -23,7 +23,6 @@ export async function getNotifications() {
     .limit(50)
 
   if (error) {
-    console.error('getNotifications error:', error)
     return []
   }
 
@@ -58,7 +57,6 @@ export async function getNotifications() {
         })
       }
     } catch (err) {
-      console.warn('Could not fetch support ticket statuses for notifications:', err)
     }
   }
 
@@ -78,7 +76,6 @@ export async function getUnreadNotificationCount() {
     .eq('is_read', false)
 
   if (error) {
-    console.error('getUnreadNotificationCount error:', error)
     return 0
   }
 
@@ -98,7 +95,6 @@ export async function markNotificationsAsRead() {
     .eq('is_read', false)
 
   if (error) {
-    console.error('markNotificationsAsRead error:', error)
     return { error: error.message }
   }
 
@@ -140,7 +136,6 @@ export async function createNotification(
   let { error } = await supabaseAdmin.from('notifications').insert(row)
 
   if (error) {
-    console.error('createNotification original insert error:', error)
   }
 
   // Yeni sütunlar yoksa temel alanlarla tekrar dene
@@ -157,7 +152,6 @@ export async function createNotification(
   }
 
   if (error) {
-    console.error('createNotification final error:', error)
   }
 }
 
@@ -173,7 +167,6 @@ export async function clearAllNotifications() {
     .eq('user_id', user.id)
 
   if (error) {
-    console.error('clearAllNotifications error:', error)
     return { error: error.message }
   }
 
@@ -194,7 +187,6 @@ export async function deleteNotification(notificationId: string) {
     .eq('user_id', user.id)
 
   if (error) {
-    console.error('deleteNotification error:', error)
     return { error: error.message }
   }
 
@@ -217,7 +209,6 @@ export async function getSingleNotification(notificationId: string) {
     .single()
 
   if (error || !data) {
-    console.error('getSingleNotification error:', error)
     return null
   }
 

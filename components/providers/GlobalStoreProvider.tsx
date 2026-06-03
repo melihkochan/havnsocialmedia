@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -58,7 +58,6 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
         setUnreadNotificationsCount(notifsCountRes.count ?? 0)
         setUnreadDMsCount(dmsCountRes.count ?? 0)
       } catch (err) {
-        console.error('Error refreshing counts on route change:', err)
       }
     }
 
@@ -94,7 +93,6 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
         setUnreadNotificationsCount(notifsCountRes.count ?? 0)
         setUnreadDMsCount(dmsCountRes.count ?? 0)
       } catch (err) {
-        console.error('Error fetching unread counts in provider:', err)
       }
     }
 

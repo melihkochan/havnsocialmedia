@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { generateEmbedding } from '@/lib/embedding'
@@ -37,10 +37,8 @@ export async function searchSemantic(query: string) {
     ])
 
     if (communitiesRes.error) {
-      console.error('match_communities error:', communitiesRes.error)
     }
     if (postsRes.error) {
-      console.error('match_posts error:', postsRes.error)
     }
 
     const communities = communitiesRes.data ?? []
@@ -72,7 +70,6 @@ export async function searchSemantic(query: string) {
       posts
     }
   } catch (error) {
-    console.error('Semantic search error:', error)
     return { communities: [], posts: [] }
   }
 }

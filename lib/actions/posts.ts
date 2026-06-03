@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -36,7 +36,6 @@ export async function getPosts(communityId: string, sortBy: 'new' | 'popular' = 
     .range(0, 9)
 
   if (error) {
-    console.error('getPosts error:', error)
     return []
   }
 
@@ -101,7 +100,6 @@ export async function getFeedPosts(userId?: string, sortBy: 'new' | 'popular' = 
     .range(0, 9)
 
   if (error) {
-    console.error('getFeedPosts error:', error)
     return []
   }
 
@@ -206,7 +204,6 @@ export async function createPost(formData: FormData) {
     const { checkAllBadgesForUser } = await import('@/lib/actions/badges')
     checkAllBadgesForUser(user.id)
   } catch (err) {
-    console.error('Badge trigger error in createPost:', err)
   }
 
   revalidatePath('/feed')
@@ -292,7 +289,6 @@ export async function deletePost(postId: string, reason?: string | null) {
       const snippet = postPreview ? `"${postPreview}"` : 'gönderi'
       await logHQModAction('post_delete', targetName, `Kullanıcının ${snippet} içerikli gönderisini sildi. Gerekçe: "${trimmedReason || 'Belirtilmedi'}"`)
     } catch (e) {
-      console.error('Failed to log post deletion:', e)
     }
   }
 
@@ -453,7 +449,6 @@ export async function toggleLike(postId: string, reaction: string = 'like', forc
           .eq('type', 'like')
           .eq('post_id', postId)
       } catch (err) {
-        console.error('Error deleting like notification:', err)
       }
     }
     return { liked: false }
@@ -461,7 +456,6 @@ export async function toggleLike(postId: string, reaction: string = 'like', forc
     if (!existing) {
       const { error: insertErr } = await supabaseAdmin.from('likes').insert({ post_id: postId, user_id: user.id })
       if (insertErr) {
-        console.error('Error inserting like:', insertErr)
         return { error: insertErr.message }
       }
       // Reward user with +2 XP
@@ -609,7 +603,6 @@ export async function getBookmarkedPosts() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('getBookmarkedPosts error:', error)
     return []
   }
 
@@ -685,7 +678,6 @@ export async function getFollowingFeedPosts(userId: string, sortBy: 'new' | 'pop
     .range(0, 9)
 
   if (error) {
-    console.error('getFollowingFeedPosts error:', error)
     return []
   }
 
@@ -718,7 +710,6 @@ export async function getSinglePost(postId: string) {
     .single()
 
   if (error || !post) {
-    console.error('getSinglePost error:', error)
     return null
   }
 
@@ -856,7 +847,6 @@ export async function loadMorePosts(
       return { posts, hasMore: (data ?? []).length === PAGE_SIZE }
     }
   } catch (err) {
-    console.error('[loadMorePosts] error:', err)
   }
 
   return { posts: [], hasMore: false }

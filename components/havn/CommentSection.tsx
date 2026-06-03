@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -95,7 +95,6 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
           localStorage.setItem(cacheKey, isAdmin ? 'true' : 'false')
         }
       } catch (err) {
-        console.error(err)
       }
     }
     checkAdmin()

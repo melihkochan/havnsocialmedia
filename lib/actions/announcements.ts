@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { logHQModAction } from '@/lib/actions/hq-chat'
@@ -18,7 +18,6 @@ export async function getAnnouncements() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('getAnnouncements error:', error)
     return []
   }
 
@@ -118,7 +117,6 @@ export async function createAnnouncement(content: string, duration: string = 'fo
     .single()
 
   if (error) {
-    console.error('createAnnouncement error:', error)
     return { error: error.message }
   }
 
@@ -166,7 +164,6 @@ export async function deleteAnnouncement(postId: string) {
     .eq('id', postId)
 
   if (error) {
-    console.error('deleteAnnouncement error:', error)
     return { error: error.message }
   }
 

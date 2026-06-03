@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -143,7 +143,6 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
           image: c.flag
         })))
       } catch (err) {
-        console.error('Failed to load countries:', err)
       }
     }
     loadCountries()
@@ -171,7 +170,6 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
           isFirstLoad.current = false
         }
       } catch (err) {
-        console.error('Failed to load cities:', err)
       } finally {
         setLoadingGeo(false)
       }

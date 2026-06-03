@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -73,7 +73,6 @@ export async function sendSupportRequest(formData: FormData) {
       .single()
 
     if (dbError) {
-      console.warn('Could not save support ticket to DB:', dbError.message)
     } else {
       dbSaved = true
       insertedId = insertedData?.id
@@ -97,11 +96,9 @@ export async function sendSupportRequest(formData: FormData) {
           }
         }
       } catch (notifErr) {
-        console.warn('Could not create notification for support ticket:', notifErr)
       }
     }
   } catch (dbErr) {
-    console.warn('Database save failed, continuing to send email:', dbErr)
   }
 
   const resendApiKey = process.env.RESEND_API_KEY
@@ -141,7 +138,6 @@ export async function sendSupportRequest(formData: FormData) {
     const data = await response.json()
 
     if (!response.ok) {
-      console.error('Resend API error:', data)
       if (dbSaved) {
         revalidatePath('/support')
         return { success: true, message: 'Talep kaydedildi fakat e-posta gönderimi başarısız oldu.' }
@@ -152,7 +148,6 @@ export async function sendSupportRequest(formData: FormData) {
     revalidatePath('/support')
     return { success: true }
   } catch (err: any) {
-    console.error('Support action error:', err)
     if (dbSaved) {
       revalidatePath('/support')
       return { success: true, message: 'Talep kaydedildi fakat e-posta gönderilirken hata oluştu.' }
@@ -191,7 +186,6 @@ export async function getSupportTickets() {
   const { data, error } = await query.order('created_at', { ascending: false })
 
   if (error) {
-    console.error('getSupportTickets error:', error)
     return []
   }
 
@@ -255,7 +249,6 @@ export async function replyToSupportTicket(ticketId: string, replyText: string, 
     .single()
 
   if (updateError || !ticket) {
-    console.error('replyToSupportTicket error:', updateError)
     return { error: updateError?.message || 'Bilet güncellenemedi.' }
   }
 
@@ -276,7 +269,6 @@ export async function replyToSupportTicket(ticketId: string, replyText: string, 
       }
     )
   } catch (notifErr) {
-    console.warn('Could not create support reply in-app notification:', notifErr)
   }
 
   // Fetch ticket owner's email using supabase service client
@@ -288,7 +280,6 @@ export async function replyToSupportTicket(ticketId: string, replyText: string, 
       recipientEmail = userData.user.email ?? null
     }
   } catch (err) {
-    console.warn('Could not retrieve user email:', err)
   }
 
   // Send Resend notification if recipient email found and API key configured
@@ -321,7 +312,6 @@ export async function replyToSupportTicket(ticketId: string, replyText: string, 
         }),
       })
     } catch (emailErr) {
-      console.error('Failed to send reply notification email:', emailErr)
     }
   }
 
@@ -366,7 +356,6 @@ export async function closeSupportTicketByAdmin(ticketId: string) {
     .eq('id', ticketId)
 
   if (updateError) {
-    console.error('closeSupportTicketByAdmin error:', updateError)
     return { error: 'Talep kapatılamadı.' }
   }
 
@@ -384,7 +373,6 @@ export async function closeSupportTicketByAdmin(ticketId: string) {
       }
     )
   } catch (notifErr) {
-    console.warn('Could not create support reply in-app notification:', notifErr)
   }
 
   revalidatePath('/support')
@@ -426,7 +414,6 @@ export async function closeSupportTicketByUser(ticketId: string) {
     .eq('id', ticketId)
 
   if (updateError) {
-    console.error('closeSupportTicketByUser error:', updateError)
     return { error: 'Talep kapatılamadı.' }
   }
 
@@ -491,7 +478,6 @@ export async function sendSupportFollowUp(ticketId: string, replyText: string) {
     .eq('id', ticketId)
 
   if (updateError) {
-    console.error('sendSupportFollowUp error:', updateError)
     return { error: 'Mesaj gönderilemedi.' }
   }
 
@@ -515,7 +501,6 @@ export async function sendSupportFollowUp(ticketId: string, replyText: string) {
       }
     }
   } catch (notifErr) {
-    console.warn('Could not notify staff of support ticket follow-up:', notifErr)
   }
 
   revalidatePath('/support')
@@ -547,7 +532,6 @@ export async function getUserSupportTickets(targetUserId: string) {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('getUserSupportTickets error:', error)
     return []
   }
 
@@ -613,7 +597,6 @@ export async function sendAdminSupportRequest(targetUserId: string, subject: str
     .single()
 
   if (dbError || !insertedData) {
-    console.error('sendAdminSupportRequest db error:', dbError)
     return { error: 'Talep oluşturulamadı: ' + dbError?.message }
   }
 
@@ -632,7 +615,6 @@ export async function sendAdminSupportRequest(targetUserId: string, subject: str
       }
     )
   } catch (notifErr) {
-    console.warn('Could not create support_reply notification for admin started ticket:', notifErr)
   }
 
   revalidatePath('/support')

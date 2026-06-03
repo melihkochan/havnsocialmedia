@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
 import { enrichProfile } from '@/lib/profile-enrich'
 import { isFounder } from '@/lib/founder'
@@ -109,7 +109,6 @@ export const useGlobalStore = create<GlobalState>((set) => ({
       })
 
     } catch (error) {
-      console.error('Error fetching global data:', error)
       set({ isInitialized: true })
     }
   }

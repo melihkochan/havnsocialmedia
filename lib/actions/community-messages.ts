@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -32,7 +32,6 @@ export async function getCommunityMessages(communityId: string, type: 'general' 
     .order('created_at', { ascending: true })
 
   if (error) {
-    console.error('getCommunityMessages error:', error)
     return []
   }
 
@@ -79,7 +78,6 @@ export async function sendCommunityMessage(communityId: string, content: string,
     .single()
 
   if (error) {
-    console.error('sendCommunityMessage error:', error)
     return { error: error.message }
   }
 

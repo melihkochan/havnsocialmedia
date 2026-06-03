@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -65,7 +65,6 @@ export function FeedOnboarding({
         }
       }
     } catch (e) {
-      console.error(e)
     } finally {
       setActionLoading(prev => ({ ...prev, [targetId]: false }))
     }
@@ -87,7 +86,6 @@ export function FeedOnboarding({
         }
       }
     } catch (e) {
-      console.error(e)
     } finally {
       setActionLoading(prev => ({ ...prev, [commId]: false }))
     }

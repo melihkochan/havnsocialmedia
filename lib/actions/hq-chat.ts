@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
@@ -24,7 +24,6 @@ export async function getHQMessages() {
     .order('created_at', { ascending: true })
 
   if (error || !messagesData) {
-    console.error('getHQMessages error:', error)
     return []
   }
 
@@ -73,7 +72,6 @@ export async function sendHQMessage(content: string) {
     .single()
 
   if (error) {
-    console.error('sendHQMessage error:', error)
     return { error: error.message }
   }
 
@@ -98,7 +96,6 @@ export async function getTeamMembers() {
     .order('updated_at', { ascending: false })
 
   if (error || !data) {
-    console.error('getTeamMembers error:', error)
     return []
   }
   return data
@@ -323,6 +320,5 @@ export async function logHQModAction(actionType: string, targetName: string, det
         updated_by: user.id
       })
   } catch (err) {
-    console.error('Failed to log mod action:', err)
   }
 }

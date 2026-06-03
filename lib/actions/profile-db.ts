@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -145,7 +145,6 @@ export async function saveProfileMetadata(userId: string, newMeta: ProfileUpdate
     .eq('id', userId)
 
   if (error) {
-    console.error('saveProfileMetadata error:', error)
     return { error: error.message }
   }
 

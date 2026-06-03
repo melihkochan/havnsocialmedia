@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useTransition, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -99,7 +99,6 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
       setLogs(logsData)
       setNotes(notesData)
     } catch (err) {
-      console.error('Failed to load team data:', err)
     } finally {
       setLoading(false)
     }
@@ -126,7 +125,6 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
         )
         setSearchResults(filtered)
       } catch (err) {
-        console.error(err)
       } finally {
         setSearching(false)
       }

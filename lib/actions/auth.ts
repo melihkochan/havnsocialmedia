@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -132,7 +132,6 @@ export async function signUp(formData: FormData) {
           .getPublicUrl(uploadData.path)
         avatarUrl = publicUrl
       } else {
-        console.error('Failed to upload avatar during signUp:', uploadError.message)
       }
     }
 
@@ -148,7 +147,6 @@ export async function signUp(formData: FormData) {
     })
 
     if (upsertError) {
-      console.error('Failed to create user profile during signUp:', upsertError.message)
     }
   }
 
@@ -167,7 +165,6 @@ export async function signOut() {
     const cookieStore = await cookies()
     cookieStore.delete('havn_hq_sudo_unlocked')
   } catch (e) {
-    console.error('Failed to delete hq sudo cookie:', e)
   }
 
   redirect('/login')
@@ -196,7 +193,6 @@ export async function getUser() {
       await saveProfileMetadata(session.user.id, { last_session_id: currentSessionId })
       enriched.last_session_id = currentSessionId
     } else if (enriched.last_session_id !== currentSessionId) {
-      console.warn(`Session mismatch detected for user ${enriched.username}. Booting...`)
       // Use 'local' scope to avoid revoking tokens stored in the multi-account localStorage list.
       await supabase.auth.signOut({ scope: 'local' })
       redirect('/login?reason=multi_session')

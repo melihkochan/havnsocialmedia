@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createServiceClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -99,7 +99,6 @@ export async function getHQOverviewStats() {
     if (cpuPct < 0) cpuPct = 2
     if (cpuPct > 100) cpuPct = 95
   } catch (err) {
-    console.error('Failed to get real OS stats:', err)
   }
 
   const warnsList = warnsDataRes.data ?? []
@@ -468,7 +467,6 @@ export async function getPendingCommunities() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('getPendingCommunities error:', error)
     return []
   }
   return data ?? []
@@ -667,7 +665,6 @@ export async function getAllCommunitiesForAdmin() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('getAllCommunitiesForAdmin error:', error)
     return []
   }
 
@@ -768,7 +765,6 @@ export async function getHQOverviewStatsForRange(range: '24s' | '7g' | '30g' | '
     if (cpuPct < 0) cpuPct = 2
     if (cpuPct > 100) cpuPct = 95
   } catch (err) {
-    console.error(err)
   }
 
   const warnsList = warnsDataRes.data ?? []

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
@@ -198,7 +198,6 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
           localStorage.setItem(cacheKey, isAdmin ? 'true' : 'false')
         }
       } catch (err) {
-        console.error(err)
       }
     }
     checkAdmin()

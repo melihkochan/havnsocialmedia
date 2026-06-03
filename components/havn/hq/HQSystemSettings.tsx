@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useTransition } from 'react'
 import { motion } from 'framer-motion'
@@ -27,7 +27,6 @@ export function HQSystemSettings() {
           media_upload_lock: !!data.media_upload_lock,
         })
       } catch (err) {
-        console.error('Failed to load settings:', err)
       } finally {
         setLoading(false)
       }

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
@@ -41,7 +41,6 @@ export function HQSystemLog({ stats }: { stats?: DashboardStats }) {
       const data = await getHQModLogs()
       setLatestLogs(data.slice(0, 3)) // only keep latest 3 logs for overview preview
     } catch (e) {
-      console.error('Failed to load logs for dashboard overview:', e)
     } finally {
       setLoadingLogs(false)
     }

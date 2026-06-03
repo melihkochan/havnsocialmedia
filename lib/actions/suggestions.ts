@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -32,7 +32,6 @@ export async function createSuggestion(
     .single()
 
   if (error) {
-    console.error('createSuggestion error:', error)
     return { error: 'Öneri kaydedilemedi: ' + error.message }
   }
 
@@ -62,7 +61,6 @@ export async function createSuggestion(
       }
     }
   } catch (err) {
-    console.warn('Could not send notification to admins for new suggestion:', err)
   }
 
   revalidatePath('/suggestions')
@@ -91,7 +89,6 @@ export async function getSuggestions(statusFilter?: string, sortBy: 'votes' | 'n
   const { data, error } = await query
 
   if (error) {
-    console.error('getSuggestions error:', error)
     return []
   }
 
@@ -151,7 +148,6 @@ export async function getSuggestions(statusFilter?: string, sortBy: 'votes' | 'n
       })
     }
   } catch (err) {
-    console.warn('Could not fetch suggestion comment counts (table might not exist yet):', err)
   }
 
   // Map and aggregate
@@ -242,7 +238,6 @@ export async function voteSuggestion(suggestionId: string, voteType: number) {
       .eq('user_id', user.id)
 
     if (error) {
-      console.error('delete vote error:', error)
       return { error: 'Oy silinemedi.' }
     }
   } else {
@@ -258,7 +253,6 @@ export async function voteSuggestion(suggestionId: string, voteType: number) {
       })
 
     if (error) {
-      console.error('upsert vote error:', error)
       return { error: 'Oy kaydedilemedi.' }
     }
   }
@@ -269,7 +263,6 @@ export async function voteSuggestion(suggestionId: string, voteType: number) {
       const { checkAllBadgesForUser } = await import('@/lib/actions/badges')
       checkAllBadgesForUser((suggestion as any).user_id)
     } catch (err) {
-      console.error('Badge trigger error in voteSuggestion:', err)
     }
   }
 
@@ -346,7 +339,6 @@ export async function updateSuggestionStatus(suggestionId: string, status: strin
     .eq('id', suggestionId)
 
   if (error) {
-    console.error('updateSuggestionStatus error:', error)
     return { error: 'Öneri güncellenemedi.' }
   }
 
@@ -378,7 +370,6 @@ export async function updateSuggestionStatus(suggestionId: string, status: strin
       )
     }
   } catch (err) {
-    console.warn('Could not notify author of suggestion status update:', err)
   }
 
   revalidatePath('/suggestions')
@@ -437,7 +428,6 @@ export async function deleteSuggestion(suggestionId: string) {
     .eq('id', suggestionId)
 
   if (error) {
-    console.error('deleteSuggestion error:', error)
     return { error: 'Öneri silinemedi.' }
   }
 

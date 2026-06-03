@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
@@ -36,7 +36,6 @@ export async function trackProfileView(profileId: string) {
         .maybeSingle()
 
       if (selectError) {
-        console.error('trackProfileView select error (user):', selectError)
       }
 
       if (!existing) {
@@ -46,7 +45,6 @@ export async function trackProfileView(profileId: string) {
           viewer_ip: viewerIp,
         })
         if (insertError) {
-          console.error('trackProfileView insert error (user):', insertError)
         }
       }
     } else {
@@ -62,7 +60,6 @@ export async function trackProfileView(profileId: string) {
           .maybeSingle()
 
         if (selectError) {
-          console.error('trackProfileView select error (anon):', selectError)
         }
 
         if (!existing) {
@@ -71,13 +68,11 @@ export async function trackProfileView(profileId: string) {
             viewer_ip: viewerIp,
           })
           if (insertError) {
-            console.error('trackProfileView insert error (anon):', insertError)
           }
         }
       }
     }
   } catch (err) {
-    console.error('trackProfileView exception:', err)
   }
 }
 
@@ -100,7 +95,6 @@ export async function trackPostView(postId: string) {
         .maybeSingle()
 
       if (selectError) {
-        console.error('trackPostView select error (user):', selectError)
       }
 
       if (!existing) {
@@ -110,7 +104,6 @@ export async function trackPostView(postId: string) {
           viewer_ip: viewerIp,
         })
         if (insertError) {
-          console.error('trackPostView insert error (user):', insertError)
         }
       }
     } else {
@@ -125,7 +118,6 @@ export async function trackPostView(postId: string) {
           .maybeSingle()
 
         if (selectError) {
-          console.error('trackPostView select error (anon):', selectError)
         }
 
         if (!existing) {
@@ -134,13 +126,11 @@ export async function trackPostView(postId: string) {
             viewer_ip: viewerIp,
           })
           if (insertError) {
-            console.error('trackPostView insert error (anon):', insertError)
           }
         }
       }
     }
   } catch (err) {
-    console.error('trackPostView exception:', err)
   }
 }
 

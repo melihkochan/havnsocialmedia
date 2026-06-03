@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -17,7 +17,6 @@ export async function getUnreadMessagesCount() {
     .eq('is_read', false)
 
   if (error) {
-    console.error('getUnreadMessagesCount error:', error)
     return 0
   }
 
@@ -40,7 +39,6 @@ export async function getConversations() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('getConversations error:', error)
     return []
   }
 
@@ -188,7 +186,6 @@ export async function restoreStreak(otherUserId: string) {
     .eq('id', user.id)
 
   if (updateErr) {
-    console.error('restoreStreak update error:', updateErr)
     return { error: 'Alev serisi geri yüklenirken bir hata oldu.' }
   }
 
@@ -212,7 +209,6 @@ export async function getMessagesWithUser(otherUserId: string) {
     .order('created_at', { ascending: true })
 
   if (error) {
-    console.error('getMessagesWithUser error:', error)
     return []
   }
 
@@ -248,7 +244,6 @@ export async function sendDirectMessage(receiverId: string, content: string) {
     .single()
 
   if (error) {
-    console.error('sendDirectMessage error:', error)
     return { error: error.message }
   }
 
@@ -269,7 +264,6 @@ export async function markMessagesAsRead(senderId: string) {
     .eq('is_read', false)
 
   if (error) {
-    console.error('markMessagesAsRead error:', error)
     return { error: error.message }
   }
 
@@ -303,7 +297,6 @@ export async function deleteDirectMessage(messageId: string) {
     .eq('id', messageId)
 
   if (error) {
-    console.error('deleteDirectMessage error:', error)
     return { error: error.message }
   }
 
@@ -343,7 +336,6 @@ export async function editDirectMessage(messageId: string, newContent: string) {
     .eq('id', messageId)
 
   if (error) {
-    console.error('editDirectMessage error:', error)
     return { error: error.message }
   }
 
@@ -406,7 +398,6 @@ export async function clearConversation(otherUserId: string) {
     .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
 
   if (error) {
-    console.error('clearConversation error:', error)
     return { error: error.message }
   }
 

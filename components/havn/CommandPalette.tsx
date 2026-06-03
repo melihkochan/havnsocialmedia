@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -54,7 +54,6 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
           setAllCommunities(data)
         }
       } catch (e) {
-        console.error(e)
       }
     }
     fetchCommunities()
@@ -94,7 +93,6 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
           setSemanticPosts(semanticRes.posts)
         }
       } catch (err) {
-        console.error(err)
       } finally {
         setLoading(false)
       }

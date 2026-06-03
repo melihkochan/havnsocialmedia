@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -281,7 +281,6 @@ export async function updateLastSeen() {
   // Enforce single session check
   const currentSessionId = getSessionId(session.access_token)
   if (currentSessionId && enriched.last_session_id && enriched.last_session_id !== currentSessionId) {
-    console.warn(`Heartbeat mismatch: Booting user ${enriched.username}.`)
     await supabase.auth.signOut()
     return { error: 'multi_session' }
   }

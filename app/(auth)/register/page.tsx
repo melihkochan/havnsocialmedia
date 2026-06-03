@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -34,7 +34,6 @@ export default function RegisterPage() {
           image: c.flag
         })))
       } catch (err) {
-        console.error('Failed to load countries:', err)
       }
     }
     loadCountries()
@@ -55,7 +54,6 @@ export default function RegisterPage() {
         setSelectedCity(formatted[0].value)
       }
     } catch (err) {
-      console.error('Failed to load cities:', err)
     } finally {
       setLoadingGeo(false)
     }

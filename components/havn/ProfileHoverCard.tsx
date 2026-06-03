@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef } from 'react'
 import { useParams, usePathname } from 'next/navigation'
@@ -98,7 +98,6 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
         setProfile(enriched)
       }
     } catch (e) {
-      console.error(e)
     } finally {
       setLoading(false)
     }
@@ -124,7 +123,6 @@ export function ProfileHoverCard({ username, children }: ProfileHoverCardProps) 
         }
       }
     } catch (err) {
-      console.error(err)
     } finally {
       setActionLoading(false)
     }

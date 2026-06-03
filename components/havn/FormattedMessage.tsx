@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useState, useEffect } from 'react'
 import { splitMessageParts, getFlagImageUrl } from '@/lib/flags'
@@ -182,7 +182,6 @@ function HavnPostEmbed({ postId, url }: { postId: string; url: string }) {
           setPostData(data)
         }
       } catch (err) {
-        console.error(err)
       } finally {
         if (active) setLoading(false)
       }

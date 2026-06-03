@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -227,7 +227,6 @@ export function Sidebar({
 
         setSearchResults({ users, communities });
       } catch (err) {
-        console.error("Search failed:", err);
         setSearchResults({ users: [], communities: [] });
       } finally {
         setSearchLoading(false);
@@ -329,7 +328,6 @@ export function Sidebar({
               }
             }
           } else {
-            console.warn("Auto-heal failed after 3 attempts. Clearing saved account to prevent infinite loop.");
             const stored = localStorage.getItem("havn_accounts");
             if (stored) {
               try {
@@ -635,7 +633,6 @@ export function Sidebar({
             }
           }
         } catch (err) {
-          console.error("Failed to switch session to account:", nextAccount.profile.username, err);
         }
         
         // Switch failed — remove this account from the saved list and try the next one

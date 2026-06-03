@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, startTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -117,6 +117,7 @@ function RoleChip({ role }: { role: string }) {
 function GlobalRightBar() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [showMembersModal, setShowMembersModal] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -124,7 +125,6 @@ function GlobalRightBar() {
         const res = await getRightBarData()
         setData(res)
       } catch (err) {
-        console.error(err)
       } finally {
         setLoading(false)
       }
@@ -170,6 +170,7 @@ function GlobalRightBar() {
   }
 
   return (
+    <>
     <aside className="h-full py-6 px-4 flex flex-col gap-4 overflow-y-auto">
       {/* Platform Stats */}
       <div className="bg-card/65 backdrop-blur-md border border-border/80 rounded-2xl p-4 flex flex-col gap-3 shadow-md transition-all duration-300 hover:border-primary/20 flex-shrink-0">
@@ -185,8 +186,11 @@ function GlobalRightBar() {
           <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wide">Canlı</span>
         </div>
         <div className="grid grid-cols-2 gap-2.5">
-          {/* Communities Stat */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-violet-500/8 to-indigo-500/3 hover:from-violet-500/12 hover:to-indigo-500/6 border border-violet-500/15 hover:border-violet-500/30 rounded-xl p-3.5 transition-all duration-300 group/stat hover:-translate-y-0.5">
+          {/* Communities Stat — clickable */}
+          <Link
+            href="/communities"
+            className="relative overflow-hidden bg-gradient-to-br from-violet-500/8 to-indigo-500/3 hover:from-violet-500/12 hover:to-indigo-500/6 border border-violet-500/15 hover:border-violet-500/40 rounded-xl p-3.5 transition-all duration-300 group/stat hover:-translate-y-0.5 cursor-pointer block"
+          >
             <div className="absolute top-0 right-0 w-12 h-12 bg-violet-500/10 blur-lg rounded-full -mr-3 -mt-3 pointer-events-none group-hover/stat:bg-violet-500/20 transition-all duration-300" />
             <div className="flex items-center justify-between text-violet-500 dark:text-violet-400 mb-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider">Topluluklar</span>
@@ -195,9 +199,12 @@ function GlobalRightBar() {
               </div>
             </div>
             <p className="text-2xl font-black text-foreground tracking-tight drop-shadow-[0_0_12px_rgba(139,92,246,0.15)]">{data?.totalCommunities ?? 0}</p>
-          </div>
-          {/* Members Stat */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500/8 to-teal-500/3 hover:from-emerald-500/12 hover:to-teal-500/6 border border-emerald-500/15 hover:border-emerald-500/30 rounded-xl p-3.5 transition-all duration-300 group/stat hover:-translate-y-0.5">
+          </Link>
+          {/* Members Stat — opens modal */}
+          <button
+            onClick={() => setShowMembersModal(true)}
+            className="relative overflow-hidden bg-gradient-to-br from-emerald-500/8 to-teal-500/3 hover:from-emerald-500/12 hover:to-teal-500/6 border border-emerald-500/15 hover:border-emerald-500/40 rounded-xl p-3.5 transition-all duration-300 group/stat hover:-translate-y-0.5 cursor-pointer text-left"
+          >
             <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-500/10 blur-lg rounded-full -mr-3 -mt-3 pointer-events-none group-hover/stat:bg-emerald-500/20 transition-all duration-300" />
             <div className="flex items-center justify-between text-emerald-500 dark:text-emerald-400 mb-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider">Üyeler</span>
@@ -206,7 +213,7 @@ function GlobalRightBar() {
               </div>
             </div>
             <p className="text-2xl font-black text-foreground tracking-tight drop-shadow-[0_0_12px_rgba(16,185,129,0.15)]">{(data?.totalMembers ?? 0).toLocaleString('tr-TR')}</p>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -438,7 +445,81 @@ function GlobalRightBar() {
         HAVN — Topluluk Platformu
       </p>
     </aside>
-  )
+
+    {/* Members Modal */}
+    {showMembersModal && (
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        onClick={(e) => { if (e.target === e.currentTarget) setShowMembersModal(false) }}
+      >
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMembersModal(false)} />
+        <div className="relative z-10 bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm max-h-[80vh] flex flex-col overflow-hidden">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-xl flex items-center justify-center bg-emerald-500/10 text-emerald-500">
+                <Users size={14} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-foreground">Platform Üyeleri</h3>
+                <p className="text-[10px] text-muted-foreground">{(data?.totalMembers ?? 0).toLocaleString('tr-TR')} kayıtlı üye</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowMembersModal(false)}
+              className="w-7 h-7 rounded-xl flex items-center justify-center hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            >
+              ✕
+            </button>
+          </div>
+          {/* Modal Content — shows leaderboard */}
+          <div className="overflow-y-auto flex-1 p-3 flex flex-col gap-1.5">
+            {data?.leaderboard && data.leaderboard.length > 0 ? (
+              data.leaderboard.map((u: any, idx: number) => {
+                const online = getOnlineStatus(u).status === 'online'
+                return (
+                  <Link
+                    key={u.id}
+                    href={`/profile/${u.username}`}
+                    onClick={() => setShowMembersModal(false)}
+                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-accent/40 transition-all group"
+                  >
+                    <span className={cn(
+                      "text-[10px] font-black font-mono w-5 text-right flex-shrink-0",
+                      idx === 0 ? "text-amber-500" : idx === 1 ? "text-slate-400" : idx === 2 ? "text-amber-700" : "text-muted-foreground/60"
+                    )}>{idx + 1}.</span>
+                    <Avatar username={u.username} avatarUrl={u.avatar_url} size="sm" isOnline={online} updatedAt={u.updated_at} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-bold text-foreground truncate group-hover:text-emerald-500 transition-colors">
+                          {getFullName(u) ?? u.username}
+                        </span>
+                        {u.is_gold && <BadgeCheck size={12} className="fill-[#eab308] text-background flex-shrink-0" />}
+                        {u.is_verified && !u.is_gold && <BadgeCheck size={12} className="fill-[#0ea5e9] text-background flex-shrink-0" />}
+                      </div>
+                      <p className="text-[9px] text-muted-foreground">@{u.username}</p>
+                    </div>
+                    <span className={cn(
+                      "text-[9px] font-black px-1.5 py-0.5 rounded-md font-mono border select-none flex-shrink-0",
+                      idx === 0 ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                      idx === 1 ? "bg-slate-400/10 border-slate-400/20 text-slate-400" :
+                      idx === 2 ? "bg-amber-700/10 border-amber-700/20 text-amber-700" :
+                      "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+                    )}>{u.xp} XP</span>
+                  </Link>
+                )
+              })
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-8">Henüz üye yok.</p>
+            )}
+            <div className="pt-2 border-t border-border/40 mt-2">
+              <p className="text-[9px] text-muted-foreground text-center">En yüksek XP'ye sahip üyeler gösteriliyor</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </>)
 }
 
 // ─── Community RightBar ───────────────────────────────────────────────────────

@@ -89,8 +89,8 @@ export default async function RootLayout({
         }
       }
     }
-  } catch (err) {
-    console.error("RootLayout maintenance check error:", err);
+  } catch {
+    // silent — maintenance check failed, allow page to render
   }
 
   if (shouldRedirect) {

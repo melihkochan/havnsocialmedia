@@ -1,4 +1,4 @@
-import { pipeline, env } from '@xenova/transformers';
+﻿import { pipeline, env } from '@xenova/transformers';
 
 // Configure cache directory to be local to the project
 env.cacheDir = './.cache';
@@ -30,7 +30,6 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     });
     return Array.from(output.data);
   } catch (error) {
-    console.error('Error generating embedding for semantic search:', error);
     return new Array(384).fill(0);
   }
 }

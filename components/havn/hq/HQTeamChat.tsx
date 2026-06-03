@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -130,7 +130,6 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
           image: c.flag
         })))
       } catch (err) {
-        console.error('Failed to load countries:', err)
       }
     }
     loadCountries()
@@ -158,7 +157,6 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
           isFirstLoadMgmt.current = false
         }
       } catch (err) {
-        console.error('Failed to load cities:', err)
       } finally {
         setLoadingGeo(false)
       }
@@ -270,7 +268,6 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
         const data = await getTeamMembers()
         setTeamMembers(data)
       } catch (err) {
-        console.error('Failed to load team members:', err)
       }
     }
     loadTeam()
@@ -285,7 +282,6 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
         const data = await getHQMessages()
         setMessages(data as any)
       } catch (err) {
-        console.error('Failed to load HQ messages:', err)
       } finally {
         setLoading(false)
       }
@@ -300,7 +296,6 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
       const data = await getHQNotes()
       setNotes(data)
     } catch (e) {
-      console.error(e)
     } finally {
       setLoadingNotes(false)
     }
@@ -312,7 +307,6 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
       const data = await getHQModLogs()
       setModLogs(data)
     } catch (e) {
-      console.error(e)
     } finally {
       setLoadingLogs(false)
     }

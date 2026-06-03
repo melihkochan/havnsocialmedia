@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -78,7 +78,6 @@ export default function HQModerationClient({
       const updatedLogs = await getHQModLogs()
       setLogs(updatedLogs)
     } catch (e) {
-      console.error(e)
     } finally {
       setIsRefreshingLogs(false)
     }
@@ -96,7 +95,6 @@ export default function HQModerationClient({
           setTimeout(() => setActionMsg(null), 3000)
         }
       } catch (err) {
-        console.error(err)
         setActionMsg('Kullanıcı detayı yüklenirken hata oluştu.')
         setTimeout(() => setActionMsg(null), 3000)
       }
@@ -166,7 +164,6 @@ export default function HQModerationClient({
           image: c.flag
         })))
       } catch (err) {
-        console.error('Failed to load countries:', err)
       }
     }
     loadCountries()
@@ -183,7 +180,6 @@ export default function HQModerationClient({
         const list = await getCitiesAction(mgmtCountry)
         setCitiesList(list.map(city => ({ value: city, label: city })))
       } catch (err) {
-        console.error('Failed to load cities:', err)
       } finally {
         setLoadingGeo(false)
       }

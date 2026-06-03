@@ -114,8 +114,8 @@ export function CommunityContentTabs({
           .neq('user_id', currentUser?.id)
 
         if (count) setUnreadChatCount(count)
-      } catch (err) {
-        console.error('Error fetching unread counts:', err)
+      } catch {
+        // silent
       }
     }
 

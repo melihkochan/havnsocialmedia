@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useEffect } from 'react'
 import { Check, Loader2, AlertCircle, Sparkles, Eye, EyeOff, Lock, Mail, Info, MapPin } from 'lucide-react'
@@ -45,7 +45,6 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
           image: c.flag
         })))
       } catch (err) {
-        console.error('Failed to load countries:', err)
       }
     }
     loadCountries()
@@ -63,7 +62,6 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
       setCitiesList(formatted)
       if (formatted.length > 0) setSelectedCity(formatted[0].value)
     } catch (err) {
-      console.error('Failed to load cities:', err)
     } finally {
       setLoadingGeo(false)
     }

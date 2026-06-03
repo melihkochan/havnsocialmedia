@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -75,7 +75,6 @@ export async function createComment(postId: string, content: string, parentComme
     const { checkAllBadgesForUser } = await import('@/lib/actions/badges')
     checkAllBadgesForUser(user.id)
   } catch (err) {
-    console.error('Badge trigger error in createComment:', err)
   }
 
   // Trigger notification
@@ -175,7 +174,6 @@ export async function toggleCommentLike(commentId: string, postId: string) {
         .eq('type', 'comment_like')
         .eq('comment_id', commentId)
     } catch (err) {
-      console.error('Error deleting comment like notification:', err)
     }
 
     revalidatePath(`/post/${postId}`)

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -203,7 +203,6 @@ export function HQUserTable({
           image: c.flag
         })))
       } catch (err) {
-        console.error('Failed to load countries:', err)
       }
     }
     loadCountries()
@@ -231,7 +230,6 @@ export function HQUserTable({
           isFirstLoadMgmt.current = false
         }
       } catch (err) {
-        console.error('Failed to load cities:', err)
       } finally {
         setLoadingGeo(false)
       }
