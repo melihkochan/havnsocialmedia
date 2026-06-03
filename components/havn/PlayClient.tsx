@@ -154,7 +154,9 @@ export function PlayClient({ currentUser }: PlayClientProps) {
         <div className="flex items-center gap-3 p-4 border border-dashed border-amber-500/20 bg-amber-500/5 rounded-2xl">
           <Lock className="text-amber-500 flex-shrink-0" size={18} />
           <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-            Skorlarınızı kaydetmek, liderlik tablosuna girmek ve günlük XP ödüllerini kazanmak için giriş yapmış olmalısınız.
+            {locale === 'tr' 
+              ? 'Skorlarınızı kaydetmek, liderlik tablosuna girmek ve günlük XP ödüllerini kazanmak için giriş yapmış olmalısınız.' 
+              : 'You must be logged in to save scores, enter the leaderboard, and claim daily XP rewards.'}
           </span>
         </div>
       )}
@@ -238,13 +240,17 @@ export function PlayClient({ currentUser }: PlayClientProps) {
         {/* Right Column: Personal Stats (Stacked) */}
         <div className="lg:col-span-3 flex flex-col gap-4">
           <div className="flex-1 bg-card border border-border rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-sm">
-            <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">Kişisel En İyi (PB)</span>
+            <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
+              {locale === 'tr' ? 'Kişisel En İyi (PB)' : 'Personal Best (PB)'}
+            </span>
             <span className="text-xl font-black text-foreground mt-2 block">
               {personalBest !== null ? `${personalBest}ms` : '—'}
             </span>
           </div>
           <div className="flex-1 bg-card border border-border rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-sm">
-            <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">Ortalama (Oturum)</span>
+            <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
+              {locale === 'tr' ? 'Ortalama (Oturum)' : 'Average (Session)'}
+            </span>
             <span className="text-xl font-black text-foreground mt-2 block">
               {attempts > 0 ? `${Math.round(totalMs / attempts)}ms` : '—'}
             </span>
@@ -258,7 +264,7 @@ export function PlayClient({ currentUser }: PlayClientProps) {
         <div className="flex items-center justify-between border-b border-border/30 pb-3">
           <h3 className="font-extrabold text-xs text-foreground flex items-center gap-1.5">
             <Trophy size={14} className="text-yellow-500" />
-            Liderlik Tablosu
+            {t('games.tab.leaderboard')}
           </h3>
           
           {/* Period Select */}
@@ -274,7 +280,7 @@ export function PlayClient({ currentUser }: PlayClientProps) {
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {period === 'daily' ? 'Günlük' : period === 'weekly' ? 'Haftalık' : 'Genel'}
+                {period === 'daily' ? t('games.leaderboard.daily') : period === 'weekly' ? t('games.leaderboard.weekly') : t('games.leaderboard.all')}
               </button>
             ))}
           </div>
@@ -284,11 +290,13 @@ export function PlayClient({ currentUser }: PlayClientProps) {
         {leaderboardLoading ? (
           <div className="flex items-center justify-center py-10 text-muted-foreground gap-2">
             <Loader2 className="animate-spin text-primary" size={16} />
-            <span className="text-[10px] font-semibold">Skorlar yükleniyor...</span>
+            <span className="text-[10px] font-semibold">
+              {locale === 'tr' ? 'Skorlar yükleniyor...' : 'Loading scores...'}
+            </span>
           </div>
         ) : leaderboardData.length === 0 ? (
           <div className="text-center py-8 text-[11px] text-muted-foreground">
-            Henüz skor girilmedi. İlk skoru sen kaydet!
+            {t('games.leaderboard.empty')}
           </div>
         ) : (
           <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
