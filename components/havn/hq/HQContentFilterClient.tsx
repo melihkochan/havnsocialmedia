@@ -159,9 +159,9 @@ export function HQContentFilterClient({ initialWords }: HQContentFilterClientPro
                   className="w-full px-4 py-3 text-xs rounded-xl border border-white/5 bg-slate-950/60 text-slate-200 focus:outline-none focus:border-violet-500/40 cursor-pointer"
                   disabled={isPending}
                 >
-                  <option value="nsfw">NSFW (Cinsellik/Argo)</option>
-                  <option value="hate_speech">Nefret Söylemi</option>
-                  <option value="spam">Spam / Dolandırıcılık</option>
+                  <option value="nsfw">NSFW ({locale === 'tr' ? 'Cinsellik/Argo' : 'Sexuality/Slang'})</option>
+                  <option value="hate_speech">{locale === 'tr' ? 'Nefret Söylemi' : 'Hate Speech'}</option>
+                  <option value="spam">{locale === 'tr' ? 'Spam / Dolandırıcılık' : 'Spam / Fraud'}</option>
                 </select>
               </div>
 
@@ -270,7 +270,7 @@ export function HQContentFilterClient({ initialWords }: HQContentFilterClientPro
                       >
                         <span>{w.word}</span>
                         <span className="text-[8px] opacity-60 uppercase tracking-wider">
-                          ({w.category})
+                          ({w.category === 'nsfw' ? 'nsfw' : w.category === 'hate_speech' ? (locale === 'tr' ? 'nefret söylemi' : 'hate speech') : (locale === 'tr' ? 'spam' : 'spam')})
                         </span>
                         <button
                           onClick={() => handleDeleteWord(w.id, w.word)}

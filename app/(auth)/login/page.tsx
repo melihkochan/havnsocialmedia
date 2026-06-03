@@ -66,6 +66,7 @@ export default function LoginPage() {
   const [identifierValue, setIdentifierValue] = useState('')
   const [passwordValue, setPasswordValue] = useState('')
   const [isReturningUser, setIsReturningUser] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   // Detect returning vs new visitor via localStorage
   useEffect(() => {
@@ -76,6 +77,7 @@ export default function LoginPage() {
       localStorage.setItem('havn_visited', '1')
       setIsReturningUser(false)
     }
+    setMounted(true)
   }, [])
 
   const phrases = useMemo(() => {
@@ -134,7 +136,10 @@ export default function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05, duration: 0.4 }}
         >
-          {isReturningUser ? t('auth.login.welcome_back', locale) : t('auth.login.welcome', locale)}
+          {mounted
+            ? (isReturningUser ? t('auth.login.welcome_back', locale) : t('auth.login.welcome', locale))
+            : t('auth.login.welcome', 'en')
+          }
         </motion.h1>
         <motion.p
           className="text-muted-foreground text-sm"

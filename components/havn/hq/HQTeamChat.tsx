@@ -46,6 +46,7 @@ import {
   awardUserXP
 } from '@/lib/actions/hq-admin'
 import { getRankInfo } from '@/lib/gamification'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 import { SearchableSelect } from '@/components/havn/SearchableSelect'
 import { getCountriesAction, getCitiesAction } from '@/lib/actions/location'
 
@@ -84,6 +85,7 @@ function getTeamMemberStatus(lastSeenAt?: string | null, showStatus?: boolean) {
 }
 
 export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
+  const { locale } = useLocale()
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(true)
@@ -199,9 +201,9 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
         mgmtCity
       )
       if (res.error) {
-        setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
+        setMgmtMsg({ type: 'error', text: locale === 'tr' ? `Hata: ${res.error}` : `Error: ${res.error}` })
       } else {
-        setMgmtMsg({ type: 'success', text: 'Kullanıcı bilgileri güncellendi.' })
+        setMgmtMsg({ type: 'success', text: locale === 'tr' ? 'Kullanıcı bilgileri güncellendi.' : 'User information updated successfully.' })
         setTeamMembers(prev => prev.map(m => m.id === mgmtUser.id ? {
           ...m,
           first_name: mgmtFirstName.trim() || null,
@@ -220,7 +222,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
     startMgmtTransition(async () => {
       const res = await toggleProfileVerification(mgmtUser.id, field)
       if (res.error) {
-        setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
+        setMgmtMsg({ type: 'error', text: locale === 'tr' ? `Hata: ${res.error}` : `Error: ${res.error}` })
       } else {
         setTeamMembers(prev => prev.map(m => m.id === mgmtUser.id ? {
           ...m,
@@ -232,7 +234,15 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
           is_verified: field === 'verified' ? !prev.is_verified : prev.is_verified,
           is_gold: field === 'gold' ? !prev.is_gold : prev.is_gold,
         } : null)
-        setMgmtMsg({ type: 'success', text: `${field === 'verified' ? 'Mavi Tik' : 'Sarı Tik'} durumu değiştirildi.` })
+        const badgeLabel = field === 'verified' 
+          ? (locale === 'tr' ? 'Mavi Tik' : 'Blue Badge') 
+          : (locale === 'tr' ? 'Sarı Tik' : 'Gold Badge');
+        setMgmtMsg({ 
+          type: 'success', 
+          text: locale === 'tr' 
+            ? `${badgeLabel} durumu değiştirildi.` 
+            : `${badgeLabel} status has been updated.` 
+        })
       }
     })
   }
@@ -243,7 +253,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
     startMgmtTransition(async () => {
       const res = await awardUserXP(mgmtUser.id, xpRewardAmount)
       if (res.error) {
-        setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
+        setMgmtMsg({ type: 'error', text: locale === 'tr' ? `Hata: ${res.error}` : `Error: ${res.error}` })
       } else {
         setTeamMembers(prev => prev.map(m => m.id === mgmtUser.id ? {
           ...m,
@@ -253,7 +263,12 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
           ...prev,
           xp: (prev.xp ?? 0) + xpRewardAmount
         } : null)
-        setMgmtMsg({ type: 'success', text: `+${xpRewardAmount} XP başarıyla gönderildi.` })
+        setMgmtMsg({ 
+          type: 'success', 
+          text: locale === 'tr' 
+            ? `+${xpRewardAmount} XP başarıyla gönderildi.` 
+            : `+${xpRewardAmount} XP successfully awarded.` 
+        })
       }
     })
   }
@@ -371,7 +386,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
 
     const res = await sendHQMessage(text)
     if (res?.error) {
-      alert(`Mesaj gönderilemedi: ${res.error}`)
+      alert(locale === 'tr' ? `Mesaj gönderilemedi: ${res.error}` : `Failed to send message: ${res.error}`)
     } else if (res?.message) {
       setMessages((prev) => {
         if (prev.some((m) => m.id === res.message.id)) return prev
@@ -388,7 +403,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
     setAddingNote(true)
     const res = await addHQNote(newNoteTitle, newNoteContent, newNoteType, newNoteAssigned)
     if (res.error) {
-      alert(`Hata: ${res.error}`)
+      alert(locale === 'tr' ? `Hata: ${res.error}` : `Error: ${res.error}`)
     } else {
       setNewNoteTitle('')
       setNewNoteContent('')
@@ -402,17 +417,17 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
   const handleUpdateNoteStatus = async (noteId: string, newStatus: 'todo' | 'inprogress' | 'completed') => {
     const res = await updateHQNoteStatus(noteId, newStatus)
     if (res.error) {
-      alert(`Hata: ${res.error}`)
+      alert(locale === 'tr' ? `Hata: ${res.error}` : `Error: ${res.error}`)
     } else {
       await handleLoadNotes()
     }
   }
 
   const handleDeleteNote = async (noteId: string) => {
-    if (!confirm('Bu notu silmek istediğinize emin misiniz?')) return
+    if (!confirm(locale === 'tr' ? 'Bu notu silmek istediğinize emin misiniz?' : 'Are you sure you want to delete this note?')) return
     const res = await deleteHQNote(noteId)
     if (res.error) {
-      alert(`Hata: ${res.error}`)
+      alert(locale === 'tr' ? `Hata: ${res.error}` : `Error: ${res.error}`)
     } else {
       await handleLoadNotes()
     }
@@ -448,7 +463,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                     ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                     : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                 }`}>
-                  {note.type === 'announcement' ? 'Duyuru' : 'Not'}
+                  {note.type === 'announcement' ? (locale === 'tr' ? 'Duyuru' : 'Announcement') : (locale === 'tr' ? 'Not' : 'Note')}
                 </span>
                 
                 <button
@@ -467,13 +482,13 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
 
               <div className="mt-1 pt-2.5 border-t border-white/5 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between text-[9px] text-slate-400 font-mono">
-                  <span className="font-semibold">Ekleme: {note.created_by?.name || 'Yetkili'}</span>
-                  <span>{new Date(note.created_at).toLocaleDateString('tr-TR')}</span>
+                  <span className="font-semibold">{locale === 'tr' ? 'Ekleme:' : 'Added by:'} {note.created_by?.name || (locale === 'tr' ? 'Yetkili' : 'Staff')}</span>
+                  <span>{new Date(note.created_at).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US')}</span>
                 </div>
                 {note.assigned_to && (
                   <div className="text-[9px] text-purple-300 font-mono font-bold flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                    Sorumlu: @{note.assigned_to}
+                    {locale === 'tr' ? 'Sorumlu:' : 'Assigned:'} @{note.assigned_to}
                   </div>
                 )}
               </div>
@@ -484,7 +499,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                     onClick={() => handleUpdateNoteStatus(note.id, 'inprogress')}
                     className="flex-1 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/10 hover:border-blue-500/20 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                   >
-                    Başlat
+                    {locale === 'tr' ? 'Başlat' : 'Start'}
                   </button>
                 )}
                 {statusKey === 'inprogress' && (
@@ -493,13 +508,13 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                       onClick={() => handleUpdateNoteStatus(note.id, 'todo')}
                       className="flex-1 py-1.5 rounded-xl bg-slate-500/10 hover:bg-slate-500/20 text-slate-350 border border-slate-500/10 hover:border-slate-500/20 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                     >
-                      Geri Al
+                      {locale === 'tr' ? 'Geri Al' : 'Revert'}
                     </button>
                     <button
                       onClick={() => handleUpdateNoteStatus(note.id, 'completed')}
                       className="flex-1 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/10 hover:border-emerald-500/20 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                     >
-                      Tamamla
+                      {locale === 'tr' ? 'Tamamla' : 'Complete'}
                     </button>
                   </>
                 )}
@@ -508,7 +523,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                     onClick={() => handleUpdateNoteStatus(note.id, 'inprogress')}
                     className="flex-1 py-1.5 rounded-xl bg-slate-500/10 hover:bg-slate-500/20 text-slate-350 border border-slate-500/10 hover:border-slate-500/20 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                   >
-                    Yeniden Aç
+                    {locale === 'tr' ? 'Yeniden Aç' : 'Reopen'}
                   </button>
                 )}
               </div>
@@ -517,7 +532,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
           {filtered.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 text-center text-slate-600 border border-dashed border-white/5 rounded-xl">
               <ClipboardList size={16} className="text-slate-700/60 mb-1" />
-              <span className="text-[9px] font-bold">Öğe Yok</span>
+              <span className="text-[9px] font-bold">{locale === 'tr' ? 'Öğe Yok' : 'No Items'}</span>
             </div>
           )}
         </div>
@@ -529,24 +544,24 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
   const renderModLogsView = () => {
     const getActionStyles = (action: string) => {
       switch (action) {
-        case 'role_change': return { icon: Shield, bg: 'bg-purple-500/15 text-purple-400 border-purple-500/25', label: 'Rol Değişimi' }
-        case 'user_warn': return { icon: AlertTriangle, bg: 'bg-amber-500/15 text-amber-400 border-amber-500/25', label: 'Uyarı' }
-        case 'verification_toggle': return { icon: Star, bg: 'bg-blue-500/15 text-blue-400 border-blue-500/25', label: 'Rozet' }
-        case 'xp_award': return { icon: Award, bg: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/25', label: 'XP Ödülü' }
-        case 'community_approve': return { icon: CheckCircle2, bg: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', label: 'Topluluk Onay' }
-        case 'community_reject': return { icon: Trash2, bg: 'bg-rose-500/15 text-rose-400 border-rose-500/25', label: 'Topluluk Red' }
-        case 'warn_reset': return { icon: CheckSquare, bg: 'bg-teal-500/15 text-teal-400 border-teal-500/25', label: 'Uyarı Sıfırlama' }
-        case 'note_add': return { icon: Plus, bg: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25', label: 'Not Ekleme' }
-        case 'note_status': return { icon: ListTodo, bg: 'bg-slate-500/15 text-slate-400 border-slate-500/25', label: 'Not Güncelleme' }
-        case 'note_delete': return { icon: Trash2, bg: 'bg-rose-500/15 text-rose-400 border-rose-500/25', label: 'Not Silme' }
-        default: return { icon: Activity, bg: 'bg-slate-500/15 text-slate-400 border-slate-500/25', label: 'Sistem Olayı' }
+        case 'role_change': return { icon: Shield, bg: 'bg-purple-500/15 text-purple-400 border-purple-500/25', label: locale === 'tr' ? 'Rol Değişimi' : 'Role Change' }
+        case 'user_warn': return { icon: AlertTriangle, bg: 'bg-amber-500/15 text-amber-400 border-amber-500/25', label: locale === 'tr' ? 'Uyarı' : 'Warning' }
+        case 'verification_toggle': return { icon: Star, bg: 'bg-blue-500/15 text-blue-400 border-blue-500/25', label: locale === 'tr' ? 'Rozet' : 'Badge' }
+        case 'xp_award': return { icon: Award, bg: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/25', label: locale === 'tr' ? 'XP Ödülü' : 'XP Award' }
+        case 'community_approve': return { icon: CheckCircle2, bg: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', label: locale === 'tr' ? 'Topluluk Onay' : 'Community Approve' }
+        case 'community_reject': return { icon: Trash2, bg: 'bg-rose-500/15 text-rose-400 border-rose-500/25', label: locale === 'tr' ? 'Topluluk Red' : 'Community Reject' }
+        case 'warn_reset': return { icon: CheckSquare, bg: 'bg-teal-500/15 text-teal-400 border-teal-500/25', label: locale === 'tr' ? 'Uyarı Sıfırlama' : 'Warning Reset' }
+        case 'note_add': return { icon: Plus, bg: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25', label: locale === 'tr' ? 'Not Ekleme' : 'Note Addition' }
+        case 'note_status': return { icon: ListTodo, bg: 'bg-slate-500/15 text-slate-400 border-slate-500/25', label: locale === 'tr' ? 'Not Güncelleme' : 'Note Status Update' }
+        case 'note_delete': return { icon: Trash2, bg: 'bg-rose-500/15 text-rose-400 border-rose-500/25', label: locale === 'tr' ? 'Not Silme' : 'Note Deletion' }
+        default: return { icon: Activity, bg: 'bg-slate-500/15 text-slate-400 border-slate-500/25', label: locale === 'tr' ? 'Sistem Olayı' : 'System Event' }
       }
     }
 
     return (
       <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar min-h-0">
         <div className="flex items-center justify-between pb-3 border-b border-white/5 flex-shrink-0">
-          <h4 className="text-xs font-bold text-white uppercase tracking-wider">Denetim Günlükleri Timelıne</h4>
+          <h4 className="text-xs font-bold text-white uppercase tracking-wider">{locale === 'tr' ? 'Denetim Günlükleri Timelıne' : 'Audit Logs Timeline'}</h4>
           <button
             onClick={handleLoadLogs}
             disabled={loadingLogs}
@@ -559,13 +574,17 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
         {loadingLogs ? (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
-            <p className="text-[10px] text-muted-foreground">Günlükler yükleniyor...</p>
+            <p className="text-[10px] text-muted-foreground">{locale === 'tr' ? 'Günlükler yükleniyor...' : 'Loading logs...'}</p>
           </div>
         ) : modLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-2">
             <Shield size={20} className="text-slate-600" />
-            <p className="text-xs text-muted-foreground font-semibold">Kayıt Bulunmamaktadır</p>
-            <p className="text-[10px] text-muted-foreground/60 max-w-xs">Yönetim ve moderasyon panellerinden yapılan işlemler burada listelenir.</p>
+            <p className="text-xs text-muted-foreground font-semibold">{locale === 'tr' ? 'Kayıt Bulunmamaktadır' : 'No Logs Found'}</p>
+            <p className="text-[10px] text-muted-foreground/60 max-w-xs">
+              {locale === 'tr'
+                ? 'Yönetim ve moderasyon panellerinden yapılan işlemler burada listelenir.'
+                : 'Actions performed in management and moderation panels are listed here.'}
+            </p>
           </div>
         ) : (
           <div className="relative border-l border-white/5 pl-4 ml-2 space-y-6">
@@ -581,8 +600,8 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-white">{log.actor?.name || 'Sistem'}</span>
-                      <span className="text-[9px] text-slate-400">({log.actor?.role === 'founder' ? 'Kurucu' : log.actor?.role === 'admin' ? 'Yönetici' : 'Moderatör'})</span>
-                      <span className="text-[9px] text-slate-600 font-mono">{new Date(log.timestamp).toLocaleString('tr-TR')}</span>
+                      <span className="text-[9px] text-slate-400">({log.actor?.role === 'founder' ? (locale === 'tr' ? 'Kurucu' : 'Founder') : log.actor?.role === 'admin' ? (locale === 'tr' ? 'Yönetici' : 'Admin') : (locale === 'tr' ? 'Moderatör' : 'Moderator')})</span>
+                      <span className="text-[9px] text-slate-600 font-mono">{new Date(log.timestamp).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')}</span>
                     </div>
                     
                     <div className="p-3 rounded-xl border border-white/[0.03] bg-white/[0.01] text-xs leading-relaxed text-slate-300">
@@ -592,7 +611,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                         </span>
                         {log.target && (
                           <span className="text-[10px] text-purple-400 font-mono">
-                            Hedef: {log.target}
+                            {locale === 'tr' ? 'Hedef:' : 'Target:'} {log.target}
                           </span>
                         )}
                       </div>
@@ -612,7 +631,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-xs text-muted-foreground">Ekip sohbeti yükleniyor...</p>
+        <p className="text-xs text-muted-foreground">{locale === 'tr' ? 'Ekip sohbeti yükleniyor...' : 'Loading team chat...'}</p>
       </div>
     )
   }
@@ -624,8 +643,8 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
       {/* Column 1: Channels List */}
       <div className="w-52 border-r border-border/60 bg-muted/15 flex flex-col h-full flex-shrink-0 select-none">
         <div className="p-3.5 border-b border-border/60 bg-muted/20">
-          <h3 className="text-[10px] font-black text-foreground uppercase tracking-wider">KONTROL ODALARI</h3>
-          <p className="text-[9px] text-muted-foreground mt-0.5">Dahili İletişim Kanalları</p>
+          <h3 className="text-[10px] font-black text-foreground uppercase tracking-wider">{locale === 'tr' ? 'KONTROL ODALARI' : 'CONTROL ROOMS'}</h3>
+          <p className="text-[9px] text-muted-foreground mt-0.5">{locale === 'tr' ? 'Dahili İletişim Kanalları' : 'Internal Communication Channels'}</p>
         </div>
         <div className="p-2.5 space-y-1">
           <button
@@ -637,7 +656,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
             }`}
           >
             <span>#</span>
-            <span>hq-sohbet</span>
+            <span>{locale === 'tr' ? 'hq-sohbet' : 'hq-chat'}</span>
           </button>
           <button
             onClick={() => setActiveChannel('notlar')}
@@ -648,7 +667,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
             }`}
           >
             <span>#</span>
-            <span>notlar & duyurular</span>
+            <span>{locale === 'tr' ? 'notlar & duyurular' : 'notes & announcements'}</span>
           </button>
           <button
             onClick={() => setActiveChannel('mod-logs')}
@@ -678,13 +697,13 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                   <MessageSquare size={16} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-foreground">HQ Dahili İletişim</h3>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Sadece platform yöneticileri ve ekip üyeleri görebilir.</p>
+                  <h3 className="text-xs font-bold text-foreground">{locale === 'tr' ? 'HQ Dahili İletişim' : 'HQ Internal Chat'}</h3>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{locale === 'tr' ? 'Sadece platform yöneticileri ve ekip üyeleri görebilir.' : 'Only visible to platform administrators and staff members.'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-rose-500/20 bg-rose-500/5 text-[9px] font-black text-rose-500 uppercase tracking-wider">
                 <Lock size={10} />
-                <span>Şifreli & Gizli</span>
+                <span>{locale === 'tr' ? 'Şifreli & Gizli' : 'Encrypted & Confidential'}</span>
               </div>
             </div>
 
@@ -724,11 +743,11 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                         <span className="font-bold text-foreground/80">{displayName}</span>
                         {msg.user?.role && msg.user.role !== 'member' && (
                           <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase border ${roleStyle}`}>
-                            {msg.user.role === 'founder' ? 'Kurucu' : msg.user.role === 'admin' ? 'Yönetici' : 'Moderatör'}
+                            {msg.user.role === 'founder' ? (locale === 'tr' ? 'Kurucu' : 'Founder') : msg.user.role === 'admin' ? (locale === 'tr' ? 'Yönetici' : 'Admin') : (locale === 'tr' ? 'Moderatör' : 'Moderator')}
                           </span>
                         )}
                         <span className="text-muted-foreground/60">
-                          {new Date(msg.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(msg.created_at).toLocaleTimeString(locale === 'tr' ? 'tr-TR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
 
@@ -748,8 +767,12 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-center space-y-2">
                   <MessageSquare size={24} className="text-muted-foreground/45" />
-                  <p className="text-xs text-muted-foreground font-semibold">Henüz mesaj yok</p>
-                  <p className="text-[10px] text-muted-foreground/60 max-w-xs">Geliştirici ekibi ve sistem yöneticileri ile sohbet etmek için ilk mesajı yazın.</p>
+                  <p className="text-xs text-muted-foreground font-semibold">{locale === 'tr' ? 'Henüz mesaj yok' : 'No messages yet'}</p>
+                  <p className="text-[10px] text-muted-foreground/60 max-w-xs">
+                    {locale === 'tr'
+                      ? 'Geliştirici ekibi ve sistem yöneticileri ile sohbet etmek için ilk mesajı yazın.'
+                      : 'Write the first message to chat with the developer team and system administrators.'}
+                  </p>
                 </div>
               )}
               <div ref={bottomRef} />
@@ -761,7 +784,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Ekip arkadaşlarınıza bir şeyler yazın..."
+                placeholder={locale === 'tr' ? 'Ekip arkadaşlarınıza bir şeyler yazın...' : 'Write something to your team members...'}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background/55 text-xs text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/60"
               />
               <button
@@ -785,8 +808,8 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                   <ListTodo size={16} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-foreground">Ekip Notları & Görevler</h3>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Yapılacak işler, bakılacak notlar ve hedefler panosu.</p>
+                  <h3 className="text-xs font-bold text-foreground">{locale === 'tr' ? 'Ekip Notları & Görevler' : 'Team Notes & Tasks'}</h3>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{locale === 'tr' ? 'Yapılacak işler, bakılacak notlar ve hedefler panosu.' : 'To-do list, notes to review, and targets board.'}</p>
                 </div>
               </div>
               <button
@@ -794,7 +817,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                 className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-primary hover:bg-primary/95 text-white transition-all cursor-pointer flex items-center gap-1 shadow-md shadow-primary/10"
               >
                 <Plus size={12} />
-                <span>{showAddNoteForm ? 'Vazgeç' : 'Yeni Not Ekle'}</span>
+                <span>{showAddNoteForm ? (locale === 'tr' ? 'Vazgeç' : 'Cancel') : (locale === 'tr' ? 'Yeni Not Ekle' : 'Add New Note')}</span>
               </button>
             </div>
 
@@ -815,7 +838,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                         required
                         value={newNoteTitle}
                         onChange={(e) => setNewNoteTitle(e.target.value)}
-                        placeholder="Not Başlığı (örn: 2X XP Aktifleştirme)"
+                        placeholder={locale === 'tr' ? 'Not Başlığı (örn: 2X XP Aktifleştirme)' : 'Note Title (e.g., Activate 2X XP)'}
                         className="flex-1 min-w-[200px] px-3.5 py-2 rounded-xl border border-border/60 bg-[#0e0e1a]/80 text-xs text-foreground outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                       />
                       
@@ -825,8 +848,8 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                         onChange={(e) => setNewNoteType(e.target.value as any)}
                         className="w-32 px-3 py-2 rounded-xl border border-border/60 bg-[#0e0e1a]/80 text-xs text-foreground outline-none focus:border-primary transition-all cursor-pointer"
                       >
-                        <option value="note">Not</option>
-                        <option value="announcement">Duyuru</option>
+                        <option value="note">{locale === 'tr' ? 'Not' : 'Note'}</option>
+                        <option value="announcement">{locale === 'tr' ? 'Duyuru' : 'Announcement'}</option>
                       </select>
 
                       {/* Assignee Selection (Dropdown of Team Members) */}
@@ -835,10 +858,10 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                         onChange={(e) => setNewNoteAssigned(e.target.value)}
                         className="w-48 px-3 py-2 rounded-xl border border-border/60 bg-[#0e0e1a]/80 text-xs text-foreground outline-none focus:border-primary transition-all cursor-pointer"
                       >
-                        <option value="">Atanmamış (Sorumlu Yok)</option>
+                        <option value="">{locale === 'tr' ? 'Atanmamış (Sorumlu Yok)' : 'Unassigned (No Owner)'}</option>
                         {teamMembers.map((m) => (
                           <option key={m.id} value={m.username}>
-                            @{m.username} ({[m.first_name, m.last_name].filter(Boolean).join(' ') || 'Yetkili'})
+                            @{m.username} ({[m.first_name, m.last_name].filter(Boolean).join(' ') || (locale === 'tr' ? 'Yetkili' : 'Staff')})
                           </option>
                         ))}
                       </select>
@@ -851,7 +874,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                         required
                         value={newNoteContent}
                         onChange={(e) => setNewNoteContent(e.target.value)}
-                        placeholder="Yapılacak işin açıklaması veya duyuru detayları..."
+                        placeholder={locale === 'tr' ? 'Yapılacak işin açıklaması veya duyuru detayları...' : 'Description of the task or announcement details...'}
                         className="flex-1 px-3.5 py-2 rounded-xl border border-border/60 bg-[#0e0e1a]/80 text-xs text-foreground outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                       />
 
@@ -861,7 +884,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                         className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-primary hover:bg-primary/95 text-white transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 flex-shrink-0 shadow-md shadow-primary/10"
                       >
                         {addingNote ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                        <span>Not Ekle</span>
+                        <span>{locale === 'tr' ? 'Not Ekle' : 'Add Note'}</span>
                       </button>
                     </div>
                   </form>
@@ -873,13 +896,13 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
             {loadingNotes ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-2">
                 <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                <p className="text-xs text-muted-foreground">Panodaki notlar yükleniyor...</p>
+                <p className="text-xs text-muted-foreground">{locale === 'tr' ? 'Panodaki notlar yükleniyor...' : 'Loading notes on the board...'}</p>
               </div>
             ) : (
               <div className="flex-1 flex gap-4 p-4 min-h-0 overflow-hidden select-none">
-                {renderNotesColumn('todo', 'Yapılacak', 'bg-blue-500/10 border border-blue-500/20', 'text-blue-400')}
-                {renderNotesColumn('inprogress', 'Yapılıyor', 'bg-amber-500/10 border border-amber-500/20', 'text-amber-400')}
-                {renderNotesColumn('completed', 'Tamamlandı', 'bg-emerald-500/10 border border-emerald-500/20', 'text-emerald-400')}
+                {renderNotesColumn('todo', locale === 'tr' ? 'Yapılacak' : 'To Do', 'bg-blue-500/10 border border-blue-500/20', 'text-blue-400')}
+                {renderNotesColumn('inprogress', locale === 'tr' ? 'Yapılıyor' : 'In Progress', 'bg-amber-500/10 border border-amber-500/20', 'text-amber-400')}
+                {renderNotesColumn('completed', locale === 'tr' ? 'Tamamlandı' : 'Completed', 'bg-emerald-500/10 border border-emerald-500/20', 'text-emerald-400')}
               </div>
             )}
           </div>
@@ -895,8 +918,8 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                   <Shield size={16} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-foreground">Denetim Günlükleri (Mod Logs)</h3>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Yöneticiler ve moderatörler tarafından gerçekleştirilen tüm işlemlerin kayıtları.</p>
+                  <h3 className="text-xs font-bold text-foreground">{locale === 'tr' ? 'Denetim Günlükleri (Mod Logs)' : 'Audit Logs (Mod Logs)'}</h3>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{locale === 'tr' ? 'Yöneticiler ve moderatörler tarafından gerçekleştirilen tüm işlemlerin kayıtları.' : 'Records of all actions performed by administrators and moderators.'}</p>
                 </div>
               </div>
             </div>
@@ -928,7 +951,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
               {/* Title / Header */}
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-5 select-none">
                 <Settings size={12} />
-                <span>YÖNETİM KARTI</span>
+                <span>{locale === 'tr' ? 'YÖNETİM KARTI' : 'MANAGEMENT CARD'}</span>
               </h3>
 
               {/* User overview section */}
@@ -946,13 +969,13 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <h4 className="text-sm font-black text-white truncate">{mgmtUser.first_name || mgmtUser.username} {mgmtUser.last_name || ''}</h4>
-                    {mgmtUser.is_verified && <span className="text-blue-400" title="Doğrulanmış">✓</span>}
-                    {mgmtUser.is_gold && <span className="text-amber-400" title="İş Ortağı">★</span>}
+                    {mgmtUser.is_verified && <span className="text-blue-400" title={locale === 'tr' ? "Doğrulanmış" : "Verified"}>✓</span>}
+                    {mgmtUser.is_gold && <span className="text-amber-400" title={locale === 'tr' ? "İş Ortağı" : "Partner"}>★</span>}
                     <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-black uppercase tracking-wider select-none">
-                      AKTİF
+                      {locale === 'tr' ? 'AKTİF' : 'ACTIVE'}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{mgmtUser.username} • Seviye {getRankInfo(mgmtUser.xp ?? 0).level} ({mgmtUser.xp ?? 0} XP)</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{mgmtUser.username} • {locale === 'tr' ? 'Seviye' : 'Level'} {getRankInfo(mgmtUser.xp ?? 0).level} ({mgmtUser.xp ?? 0} XP)</p>
                 </div>
               </div>
 
@@ -970,11 +993,11 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
               <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
                 {/* DETAY BİLGİLERİ GÜNCELLE */}
                 <div className="space-y-3">
-                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Detay Bilgileri Güncelle</h5>
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">{locale === 'tr' ? 'Detay Bilgileri Güncelle' : 'Update Profile Details'}</h5>
                   
                   <div className="grid grid-cols-2 gap-2.5">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">İsim</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'İsim' : 'First Name'}</label>
                       <input
                         type="text"
                         value={mgmtFirstName}
@@ -984,7 +1007,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Soyisim</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'Soyisim' : 'Last Name'}</label>
                       <input
                         type="text"
                         value={mgmtLastName}
@@ -997,22 +1020,22 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
 
                   <div className="grid grid-cols-2 gap-2.5">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Ülke</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'Ülke' : 'Country'}</label>
                       <SearchableSelect
                         value={mgmtCountry}
                         onChange={handleMgmtCountryChange}
                         options={countriesList}
-                        placeholder="Ülke Seçin"
+                        placeholder={locale === 'tr' ? "Ülke Seçin" : "Select Country"}
                         selectClassName="p-2.5 bg-[#0e0e1b]"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Şehir</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'Şehir' : 'City'}</label>
                       <SearchableSelect
                         value={mgmtCity}
                         onChange={setMgmtCity}
                         options={citiesList}
-                        placeholder={loadingGeo ? "Yükleniyor..." : "Şehir Seçin"}
+                        placeholder={loadingGeo ? (locale === 'tr' ? "Yükleniyor..." : "Loading...") : (locale === 'tr' ? "Şehir Seçin" : "Select City")}
                         disabled={!mgmtCountry || loadingGeo}
                         selectClassName="p-2.5 bg-[#0e0e1b]"
                       />
@@ -1021,11 +1044,11 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
 
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Biyografi</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'Biyografi' : 'Biography'}</label>
                     <textarea
                       value={mgmtBio}
                       onChange={(e) => setMgmtBio(e.target.value)}
-                      placeholder="Kendinizi tanıtın..."
+                      placeholder={locale === 'tr' ? "Kendinizi tanıtın..." : "Tell us about yourself..."}
                       rows={2}
                       className="w-full p-2.5 rounded-xl border border-white/5 bg-background/55 text-xs text-foreground outline-none focus:border-primary/40 transition-all resize-none placeholder:text-slate-700"
                     />
@@ -1035,7 +1058,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
 
                 {/* HIZLI YETKİLENDİRME */}
                 <div className="space-y-3 pt-2">
-                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Hızlı Yetkilendirme</h5>
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">{locale === 'tr' ? 'Hızlı Yetkilendirme' : 'Quick Authorization'}</h5>
                   
                   <div className="grid grid-cols-2 gap-2.5">
                     <button
@@ -1048,7 +1071,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                       }`}
                     >
                       <Check size={12} />
-                      <span>Mavi Tik</span>
+                      <span>{locale === 'tr' ? 'Mavi Tik' : 'Blue Badge'}</span>
                     </button>
                     <button
                       onClick={() => handleToggleVerify('gold')}
@@ -1060,17 +1083,19 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                       }`}
                     >
                       <Star size={12} className={mgmtUser.is_gold ? "fill-amber-400" : ""} />
-                      <span>Sarı Tik (Sistem)</span>
+                      <span>{locale === 'tr' ? 'Sarı Tik (Sistem)' : 'Gold Badge (System)'}</span>
                     </button>
                   </div>
                 </div>
 
                 {/* HAVN ONUR ÖDÜLÜ */}
                 <div className="space-y-3 pt-2">
-                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">HAVN Onur Ödülü (XP Gönder)</h5>
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">{locale === 'tr' ? 'HAVN Onur Ödülü (XP Gönder)' : 'HAVN Honor Award (Award XP)'}</h5>
                   
                   <p className="text-[10px] text-slate-500 leading-relaxed">
-                    Katkılarından dolayı üyeye anlık deneyim puanı (XP) atayın. Bu eylem seviyelerini yükseltir!
+                    {locale === 'tr' 
+                      ? 'Katkılarından dolayı üyeye anlık deneyim puanı (XP) atayın. Bu eylem seviyelerini yükseltir!' 
+                      : 'Award instant experience points (XP) to the member for their contributions. This action raises their level!'}
                   </p>
 
                   <div className="flex gap-2">
@@ -1079,10 +1104,10 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                       onChange={(e) => setXpRewardAmount(Number(e.target.value))}
                       className="flex-1 p-2.5 rounded-xl border border-white/5 bg-background/55 text-xs text-foreground outline-none focus:border-primary/40 transition-all"
                     >
-                      <option value={100}>+100 XP (Standart Ödül)</option>
-                      <option value={250}>+250 XP (Önemli Katkı)</option>
-                      <option value={500}>+500 XP (Büyük Emek)</option>
-                      <option value={1000}>+1000 XP (Süper Sinerji Ödülü)</option>
+                      <option value={100}>+100 XP {locale === 'tr' ? '(Standart Ödül)' : '(Standard Award)'}</option>
+                      <option value={250}>+250 XP {locale === 'tr' ? '(Önemli Katkı)' : '(Significant Contribution)'}</option>
+                      <option value={500}>+500 XP {locale === 'tr' ? '(Büyük Emek)' : '(Major Effort)'}</option>
+                      <option value={1000}>+1000 XP {locale === 'tr' ? '(Süper Sinerji Ödülü)' : '(Super Synergy Award)'}</option>
                     </select>
 
                     <button
@@ -1091,7 +1116,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                       className="px-4 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 transition-all cursor-pointer flex items-center gap-1"
                     >
                       {isMgmtPending ? <Loader2 size={12} className="animate-spin" /> : <Award size={12} />}
-                      <span>Ödüllendir</span>
+                      <span>{locale === 'tr' ? 'Ödüllendir' : 'Award'}</span>
                     </button>
                   </div>
                 </div>
@@ -1108,7 +1133,7 @@ export function HQTeamChat({ currentUserId }: { currentUserId: string }) {
                   className="w-full max-w-[240px] py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-primary/10"
                 >
                   {isMgmtPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                  <span>Değişiklikleri Kaydet</span>
+                  <span>{locale === 'tr' ? 'Değişiklikleri Kaydet' : 'Save Changes'}</span>
                 </button>
               </div>
             </motion.div>

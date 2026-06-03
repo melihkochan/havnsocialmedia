@@ -1,12 +1,14 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useTransition } from 'react'
 import { motion } from 'framer-motion'
 import { Shield, Zap, ToggleLeft, ToggleRight, Loader2, Save, CheckCircle2, AlertCircle } from 'lucide-react'
 import { updateSystemSetting, getSystemSettings } from '@/lib/actions/hq-admin'
 import { useSystemSettingsStore } from '@/lib/store/useSystemSettingsStore'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 export function HQSystemSettings() {
+  const { locale } = useLocale()
   const { settings, setSettings, setSetting } = useSystemSettingsStore()
   const [isPending, startTransition] = useTransition()
   const [loading, setLoading] = useState(true)
@@ -58,7 +60,7 @@ export function HQSystemSettings() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-xs text-muted-foreground">Sistem ayarları yükleniyor...</p>
+        <p className="text-xs text-muted-foreground">{locale === 'tr' ? 'Sistem ayarları yükleniyor...' : 'Loading system settings...'}</p>
       </div>
     )
   }
@@ -66,56 +68,70 @@ export function HQSystemSettings() {
   const settingItems = [
     {
       key: 'lockdown_mode' as const,
-      label: '🚨 Acil Durum Modu (Lockdown)',
-      description: 'Tüm platformu anlık olarak salt okunur (read-only) moduna alır. Yeni gönderi, yorum, DM gönderilemez ve profiller değiştirilemez.',
+      label: locale === 'tr' ? '🚨 Acil Durum Modu (Lockdown)' : '🚨 Lockdown Mode (Emergency)',
+      description: locale === 'tr' 
+        ? 'Tüm platformu anlık olarak salt okunur (read-only) moduna alır. Yeni gönderi, yorum, DM gönderilemez ve profiller değiştirilemez.' 
+        : 'Instantly puts the entire platform into read-only mode. No new posts, comments, DMs can be sent and profiles cannot be edited.',
       icon: Shield,
       color: 'text-red-500 bg-red-500/10 border-red-500/20',
       activeColor: 'bg-red-600',
     },
     {
       key: 'media_upload_lock' as const,
-      label: '📁 Medya Yükleme Kilidi',
-      description: 'Platform genelinde her türlü görsel, video veya dosya yüklenmesini devre dışı bırakır. Metin paylaşımları açıktır.',
+      label: locale === 'tr' ? '📁 Medya Yükleme Kilidi' : '📁 Media Upload Lock',
+      description: locale === 'tr' 
+        ? 'Platform genelinde her türlü görsel, video veya dosya yüklenmesini devre dışı bırakır. Metin paylaşımları açıktır.' 
+        : 'Disables all types of image, video or file uploads across the platform. Text posts remain enabled.',
       icon: Shield,
       color: 'text-orange-500 bg-orange-500/10 border-orange-500/20',
       activeColor: 'bg-orange-500',
     },
     {
       key: 'maintenance_mode' as const,
-      label: 'Bakım Modu',
-      description: 'Platformu genel erişime kapatır. Sadece kurucu ve yöneticiler giriş yapabilir.',
+      label: locale === 'tr' ? 'Bakım Modu' : 'Maintenance Mode',
+      description: locale === 'tr' 
+        ? 'Platformu genel erişime kapatır. Sadece kurucu ve yöneticiler giriş yapabilir.' 
+        : 'Closes public access to the platform. Only founder and admins can log in.',
       icon: Shield,
       color: 'text-rose-500 bg-rose-500/10 border-rose-500/20',
       activeColor: 'bg-rose-500',
     },
     {
       key: 'registration_open' as const,
-      label: 'Yeni Kayıtlar',
-      description: 'Yeni kullanıcıların platforma kayıt olmasına izin verir.',
+      label: locale === 'tr' ? 'Yeni Kayıtlar' : 'New Registrations',
+      description: locale === 'tr' 
+        ? 'Yeni kullanıcıların platforma kayıt olmasına izin verir.' 
+        : 'Allows new users to register on the platform.',
       icon: CheckCircle2,
       color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
       activeColor: 'bg-emerald-500',
     },
     {
       key: 'double_xp_active' as const,
-      label: '2X XP Haftası',
-      description: 'Tüm etkileşimlerden (gönderi, yorum, beğeni vb.) kazanılan XP miktarını ikiye katlar.',
+      label: locale === 'tr' ? '2X XP Haftası' : '2X XP Week',
+      description: locale === 'tr' 
+        ? 'Tüm etkileşimlerden (gönderi, yorum, beğeni vb.) kazanılan XP miktarını ikiye katlar.' 
+        : 'Doubles the amount of XP earned from all interactions (posts, comments, likes, etc.).',
       icon: Zap,
       color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
       activeColor: 'bg-amber-500',
     },
     {
       key: 'slow_mode_active' as const,
-      label: 'Platform Geneli Yavaş Mod',
-      description: 'Kullanıcıların peş peşe gönderi/yorum paylaşmasını engellemek için gönderiler arasına 15 saniyelik bekleme koyar.',
+      label: locale === 'tr' ? 'Platform Geneli Yavaş Mod' : 'Platform-wide Slow Mode',
+      description: locale === 'tr' 
+        ? 'Kullanıcıların peş peşe gönderi/yorum paylaşmasını engellemek için gönderiler arasına 15 saniyelik bekleme koyar.' 
+        : 'Enforces a 15-second delay between posts to prevent users from spamming posts/comments consecutively.',
       icon: Shield,
       color: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
       activeColor: 'bg-rose-500',
     },
     {
       key: 'community_approval_required' as const,
-      label: 'Ücretsiz Topluluk Sınırı (Onay)',
-      description: 'Sıradan kullanıcıların durmadan boş sunucu açmasını engeller. Kurulumları kurucu onayına bağlar.',
+      label: locale === 'tr' ? 'Ücretsiz Topluluk Sınırı (Onay)' : 'Free Community Limit (Approval)',
+      description: locale === 'tr' 
+        ? 'Sıradan kullanıcıların durmadan boş sunucu açmasını engeller. Kurulumları kurucu onayına bağlar.' 
+        : 'Prevents regular users from spawning empty communities. Subject new community creation to founder approval.',
       icon: Zap,
       color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
       activeColor: 'bg-amber-500',
@@ -164,7 +180,7 @@ export function HQSystemSettings() {
 
               <div className="flex items-center justify-between pt-2 border-t border-border/50">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  DURUM: {isActive ? 'AKTİF' : 'PASİF'}
+                  {locale === 'tr' ? `DURUM: ${isActive ? 'AKTİF' : 'PASİF'}` : `STATUS: ${isActive ? 'ACTIVE' : 'INACTIVE'}`}
                 </span>
 
                 <button
@@ -192,12 +208,12 @@ export function HQSystemSettings() {
       <div className="p-4 rounded-xl border border-border/50 bg-muted/20 flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Supabase Realtime Sync aktif. Değişiklikler anında sunucuya yansıtılır.</span>
+          <span>{locale === 'tr' ? 'Supabase Realtime Sync aktif. Değişiklikler anında sunucuya yansıtılır.' : 'Supabase Realtime Sync active. Changes are synced instantly.'}</span>
         </div>
         {isPending && (
           <div className="flex items-center gap-1.5 text-xs text-primary font-semibold">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>Kaydediliyor...</span>
+            <span>{locale === 'tr' ? 'Kaydediliyor...' : 'Saving...'}</span>
           </div>
         )}
       </div>

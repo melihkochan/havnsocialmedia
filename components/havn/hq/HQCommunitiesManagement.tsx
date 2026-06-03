@@ -17,6 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { updateCommunitySettings } from '@/lib/actions/communities'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 import { cn } from '@/lib/utils'
 
 type Community = {
@@ -41,14 +42,14 @@ type Community = {
 }
 
 const COLOR_PRESETS = [
-  { name: 'default', color: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))', label: 'Varsayılan' },
-  { name: '#0284c7', color: '#0284c7', label: 'Mavi' },
-  { name: '#059669', color: '#059669', label: 'Yeşil' },
-  { name: '#d97706', color: '#d97706', label: 'Altın' },
-  { name: '#e11d48', color: '#e11d48', label: 'Gül' },
-  { name: '#4f46e5', color: '#4f46e5', label: 'İndigo' },
-  { name: '#ea580c', color: '#ea580c', label: 'Turuncu' },
-  { name: '#0891b2', color: '#0891b2', label: 'Cyan' },
+  { name: 'default', color: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))', label_tr: 'Varsayılan', label_en: 'Default' },
+  { name: '#0284c7', color: '#0284c7', label_tr: 'Mavi', label_en: 'Blue' },
+  { name: '#059669', color: '#059669', label_tr: 'Yeşil', label_en: 'Green' },
+  { name: '#d97706', color: '#d97706', label_tr: 'Altın', label_en: 'Gold' },
+  { name: '#e11d48', color: '#e11d48', label_tr: 'Gül', label_en: 'Rose' },
+  { name: '#4f46e5', color: '#4f46e5', label_tr: 'İndigo', label_en: 'Indigo' },
+  { name: '#ea580c', color: '#ea580c', label_tr: 'Turuncu', label_en: 'Orange' },
+  { name: '#0891b2', color: '#0891b2', label_tr: 'Cyan', label_en: 'Cyan' },
 ]
 
 function CommunityItemIcon({ id, name, accentColor, cacheBust }: { id: string; name: string; accentColor: string | null; cacheBust?: number }) {
@@ -90,6 +91,7 @@ export function HQCommunitiesManagement({
 }: {
   initialCommunities: Community[]
 }) {
+  const { locale } = useLocale()
   const [communities, setCommunities] = useState<Community[]>(initialCommunities)
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -148,9 +150,9 @@ export function HQCommunitiesManagement({
 
       const res = await updateCommunitySettings(selectedCommunity.id, fd)
       if (res.error) {
-        setFeedback({ type: 'error', text: `Hata: ${res.error}` })
+        setFeedback({ type: 'error', text: locale === 'tr' ? `Hata: ${res.error}` : `Error: ${res.error}` })
       } else {
-        setFeedback({ type: 'success', text: 'Topluluk ayarları başarıyla güncellendi.' })
+        setFeedback({ type: 'success', text: locale === 'tr' ? 'Topluluk ayarları başarıyla güncellendi.' : 'Community settings updated successfully.' })
         setCacheBust(Date.now())
         setAvatarFile(null)
         setBannerFile(null)
@@ -182,9 +184,9 @@ export function HQCommunitiesManagement({
       {/* Left Sidebar: Communities List */}
       <div className="rounded-2xl border border-white/5 bg-[#090912]/80 backdrop-blur-md p-4 space-y-4 flex flex-col h-[650px] lg:col-span-1 min-w-0">
         <div className="flex items-center justify-between border-b border-white/5 pb-3">
-          <h3 className="text-xs font-black text-white uppercase tracking-widest">AKTİF TOPLULUKLAR</h3>
+          <h3 className="text-xs font-black text-white uppercase tracking-widest">{locale === 'tr' ? 'AKTİF TOPLULUKLAR' : 'ACTIVE COMMUNITIES'}</h3>
           <span className="text-[9px] font-bold text-slate-500 font-mono uppercase bg-white/5 px-2 py-0.5 rounded">
-            {communities.length} adet
+            {communities.length} {locale === 'tr' ? 'adet' : 'items'}
           </span>
         </div>
 
@@ -195,7 +197,7 @@ export function HQCommunitiesManagement({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Topluluk ara..."
+            placeholder={locale === 'tr' ? "Topluluk ara..." : "Search communities..."}
             className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-slate-600"
           />
         </div>
@@ -222,11 +224,11 @@ export function HQCommunitiesManagement({
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs font-bold truncate block">{c.name}</span>
                     <span className="text-[8px] font-bold uppercase tracking-wider text-slate-500">
-                      {c.type === 'public' ? 'Açık' : 'Özel'}
+                      {c.type === 'public' ? (locale === 'tr' ? 'Açık' : 'Public') : (locale === 'tr' ? 'Özel' : 'Private')}
                     </span>
                   </div>
                   <p className="text-[9px] text-slate-500 font-mono mt-0.5 truncate flex items-center gap-1.5">
-                    <span>{c.memberCount.toLocaleString('tr-TR')} üye</span>
+                    <span>{c.memberCount.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')} {locale === 'tr' ? 'üye' : 'members'}</span>
                     {c.creator && (
                       <>
                         <span>•</span>
@@ -242,7 +244,7 @@ export function HQCommunitiesManagement({
             )
           })}
           {filtered.length === 0 && (
-            <p className="text-center text-xs text-slate-600 font-bold py-12">Aranan kriterde topluluk bulunamadı.</p>
+            <p className="text-center text-xs text-slate-600 font-bold py-12">{locale === 'tr' ? 'Aranan kriterde topluluk bulunamadı.' : 'No communities found matching search criteria.'}</p>
           )}
         </div>
       </div>
@@ -263,10 +265,10 @@ export function HQCommunitiesManagement({
                 <div>
                   <h3 className="text-sm font-black text-white flex items-center gap-2">
                     <Settings className="text-primary w-4 h-4" />
-                    <span>{selectedCommunity.name.toUpperCase()} AYARLARI</span>
+                    <span>{selectedCommunity.name.toUpperCase()} {locale === 'tr' ? 'AYARLARI' : 'SETTINGS'}</span>
                   </h3>
                   <p className="text-[10px] text-slate-500 font-mono mt-1 leading-normal select-all">
-                    Kurucu ID: {selectedCommunity.created_by} · slug: /{selectedCommunity.slug}
+                    {locale === 'tr' ? 'Kurucu' : 'Founder'} ID: {selectedCommunity.created_by} · slug: /{selectedCommunity.slug}
                   </p>
                 </div>
                 {selectedCommunity.creator && (
@@ -301,7 +303,7 @@ export function HQCommunitiesManagement({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-white/5">
                   {/* Community Logo */}
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Topluluk Simgesi</label>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">{locale === 'tr' ? 'Topluluk Simgesi' : 'Community Icon'}</label>
                     <div className="flex items-center gap-3">
                       <div className="relative group">
                         <CommunityItemIcon id={selectedCommunity.id} name={selectedCommunity.name} accentColor={selectedAccent} cacheBust={cacheBust} />
@@ -316,14 +318,14 @@ export function HQCommunitiesManagement({
                           }}
                           className="text-[10px] text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-white/5 file:text-white hover:file:bg-white/10 file:cursor-pointer"
                         />
-                        {avatarFile && <span className="text-[10px] text-emerald-400 font-bold">✓ {avatarFile.name} yüklenecek</span>}
+                        {avatarFile && <span className="text-[10px] text-emerald-400 font-bold">✓ {avatarFile.name} {locale === 'tr' ? 'yüklenecek' : 'will be uploaded'}</span>}
                       </div>
                     </div>
                   </div>
 
                   {/* Community Banner */}
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">Kapak Görseli (Banner)</label>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">{locale === 'tr' ? 'Kapak Görseli (Banner)' : 'Cover Image (Banner)'}</label>
                     <div className="flex items-center gap-3">
                       <div className="w-16 h-10 rounded-xl bg-slate-900 border border-white/5 overflow-hidden flex items-center justify-center flex-shrink-0">
                         <img
@@ -345,16 +347,18 @@ export function HQCommunitiesManagement({
                           }}
                           className="text-[10px] text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-white/5 file:text-white hover:file:bg-white/10 file:cursor-pointer"
                         />
-                        {bannerFile && <span className="text-[10px] text-emerald-400 font-bold">✓ {bannerFile.name} yüklenecek</span>}
+                        {bannerFile && <span className="text-[10px] text-emerald-400 font-bold">✓ {bannerFile.name} {locale === 'tr' ? 'yüklenecek' : 'will be uploaded'}</span>}
                       </div>
                     </div>
                   </div>
                 </div>
                 {/* TOPLULUK TÜRÜ */}
                 <div className="space-y-2">
-                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">Topluluk Türü</h4>
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">{locale === 'tr' ? 'Topluluk Türü' : 'Community Type'}</h4>
                   <p className="text-[10px] text-slate-500 leading-normal">
-                    Kullanıcıların bu topluluğa serbestçe katılıp katılamayacağını veya başvuru kuyruğuna girip girmeyeceğini seçin.
+                    {locale === 'tr' 
+                      ? 'Kullanıcıların bu topluluğa serbestçe katılıp katılamayacağını veya başvuru kuyruğuna girip girmeyeceğini seçin.'
+                      : 'Choose whether users can join this community freely or if they will enter a review queue.'}
                   </p>
                   
                   <div className="grid grid-cols-2 gap-3 max-w-sm pt-1">
@@ -368,7 +372,7 @@ export function HQCommunitiesManagement({
                       )}
                     >
                       <Globe size={12} />
-                      <span>Açık (Herkese)</span>
+                      <span>{locale === 'tr' ? 'Açık (Herkese)' : 'Public (Everyone)'}</span>
                     </button>
                     <button
                       onClick={() => setSelectedType('request_to_join')}
@@ -380,16 +384,18 @@ export function HQCommunitiesManagement({
                       )}
                     >
                       <Lock size={12} />
-                      <span>Başvurulu (Özel)</span>
+                      <span>{locale === 'tr' ? 'Başvurulu (Özel)' : 'Request to Join (Private)'}</span>
                     </button>
                   </div>
                 </div>
 
                 {/* ACCENT COLOR SELECTOR */}
                 <div className="space-y-2">
-                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">Topluluk Tema Rengi (Accent)</h4>
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">{locale === 'tr' ? 'Topluluk Tema Rengi (Accent)' : 'Community Theme Color (Accent)'}</h4>
                   <p className="text-[10px] text-slate-500 leading-normal">
-                    Topluluk içi butonlar, başlıklar ve arka plan gradyanında bu tema rengi devralınacaktır.
+                    {locale === 'tr'
+                      ? 'Topluluk içi butonlar, başlıklar ve arka plan gradyanında bu tema rengi devralınacaktır.'
+                      : 'Buttons, headers, and background gradients in the community will inherit this theme color.'}
                   </p>
 
                   <div className="flex flex-wrap gap-2.5 pt-1">
@@ -404,7 +410,7 @@ export function HQCommunitiesManagement({
                             isSel ? "ring-2 ring-primary scale-110" : "hover:scale-105 border border-white/10"
                           )}
                           style={{ background: preset.color }}
-                          title={preset.label}
+                          title={locale === 'tr' ? preset.label_tr : preset.label_en}
                         >
                           {isSel && (
                             <span className="text-[10px] text-white font-black drop-shadow-md">✓</span>
@@ -417,11 +423,11 @@ export function HQCommunitiesManagement({
 
                 {/* ACTIVE RULES LIST */}
                 <div className="space-y-3">
-                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">Aktif Kurallar Listesi</h4>
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">{locale === 'tr' ? 'Aktif Kurallar Listesi' : 'Active Rules List'}</h4>
                   
                   <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                     {rules.length === 0 ? (
-                      <p className="text-xs text-slate-500/60 italic py-4">Bu topluluğa eklenmiş herhangi bir özel kural bulunmamaktadır.</p>
+                      <p className="text-xs text-slate-500/60 italic py-4">{locale === 'tr' ? 'Bu topluluğa eklenmiş herhangi bir özel kural bulunmamaktadır.' : 'There are no custom rules added to this community.'}</p>
                     ) : (
                       rules.map((rule, idx) => (
                         <div
@@ -438,7 +444,7 @@ export function HQCommunitiesManagement({
                           <button
                             onClick={() => handleRemoveRule(idx)}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer flex-shrink-0"
-                            title="Kuralı Sil"
+                            title={locale === 'tr' ? 'Kuralı Sil' : 'Delete Rule'}
                           >
                             <Trash2 size={13} />
                           </button>
@@ -459,7 +465,7 @@ export function HQCommunitiesManagement({
                           handleAddRule()
                         }
                       }}
-                      placeholder="Yeni kural başlığı yazın..."
+                      placeholder={locale === 'tr' ? 'Yeni kural başlığı yazın...' : 'Type a new rule title...'}
                       className="flex-1 px-4 py-2.5 rounded-xl border border-white/5 bg-background/55 text-xs text-white outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/10 transition-all placeholder:text-slate-700"
                     />
                     <button
@@ -467,7 +473,7 @@ export function HQCommunitiesManagement({
                       className="px-4 rounded-xl text-xs font-black uppercase tracking-wider bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all cursor-pointer flex items-center gap-1"
                     >
                       <Plus size={13} />
-                      <span>Ekle</span>
+                      <span>{locale === 'tr' ? 'Ekle' : 'Add'}</span>
                     </button>
                   </div>
                 </div>
@@ -476,16 +482,18 @@ export function HQCommunitiesManagement({
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
                     <Megaphone size={12} className="text-primary" />
-                    <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">Sabitlenen Genel Duyuru</h4>
+                    <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">{locale === 'tr' ? 'Sabitlenen Genel Duyuru' : 'Pinned Announcement'}</h4>
                   </div>
                   <p className="text-[10px] text-slate-500 leading-normal">
-                    Topluluk akışının en tepesinde sabit olarak gösterilecek duyuru metnini yazın. Devre dışı bırakmak için kutuyu boş bırakın.
+                    {locale === 'tr'
+                      ? 'Topluluk akışının en tepesinde sabit olarak gösterilecek duyuru metnini yazın. Devre dışı bırakmak için kutuyu boş bırakın.'
+                      : 'Type the announcement text to be pinned at the top of the community feed. Leave blank to disable.'}
                   </p>
                   
                   <textarea
                     value={announcement}
                     onChange={(e) => setAnnouncement(e.target.value)}
-                    placeholder="Duyuru metnini buraya yazın (Örn: Accent-color uyumu buttery-smooth test ediliyor.)"
+                    placeholder={locale === 'tr' ? "Duyuru metnini buraya yazın (Örn: Accent-color uyumu buttery-smooth test ediliyor.)" : "Type the announcement text here..."}
                     rows={3}
                     maxLength={300}
                     className="w-full px-4 py-3 rounded-xl border border-white/5 bg-background/55 text-xs text-white outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/10 transition-all resize-none placeholder:text-slate-700 leading-relaxed"
@@ -500,7 +508,7 @@ export function HQCommunitiesManagement({
                     className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-primary text-white hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-primary/10"
                   >
                     {isPending ? <Loader2 size={13} className="animate-spin" /> : null}
-                    <span>Topluluk Ayarlarını Güncelle (Kaydet)</span>
+                    <span>{locale === 'tr' ? 'Topluluk Ayarlarını Güncelle (Kaydet)' : 'Update Community Settings (Save)'}</span>
                   </button>
                 </div>
               </div>
@@ -508,9 +516,11 @@ export function HQCommunitiesManagement({
           ) : (
             <div className="rounded-2xl border border-white/5 bg-[#090912]/80 backdrop-blur-md p-16 text-center flex flex-col items-center justify-center gap-3">
               <Settings size={28} className="text-slate-600 animate-spin-slow" />
-              <h4 className="text-sm font-bold text-white">Yönetilecek Topluluk Seçin</h4>
+              <h4 className="text-sm font-bold text-white">{locale === 'tr' ? 'Yönetilecek Topluluk Seçin' : 'Select a Community to Manage'}</h4>
               <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-                Ayarlarını, accent rengini, kurallarını ve duyurularını düzenlemek için soldaki listeden bir topluluk seçin.
+                {locale === 'tr'
+                  ? 'Ayarlarını, accent rengini, kurallarını ve duyurularını düzenlemek için soldaki listeden bir topluluk seçin.'
+                  : 'Select a community from the list on the left to edit its settings, accent color, rules, and announcements.'}
               </p>
             </div>
           )}

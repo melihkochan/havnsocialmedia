@@ -47,6 +47,7 @@ interface ProfileUpdateMeta {
   is_setup_completed?: boolean
   show_xp?: boolean
   show_badges?: boolean
+  show_activity_map?: boolean
   preferred_language?: string
 }
 
@@ -114,15 +115,17 @@ export async function saveProfileMetadata(userId: string, newMeta: ProfileUpdate
     if (newMeta.is_setup_completed !== undefined) customMeta.is_setup_completed = newMeta.is_setup_completed
     if (newMeta.show_xp !== undefined) customMeta.show_xp = newMeta.show_xp
     if (newMeta.show_badges !== undefined) customMeta.show_badges = newMeta.show_badges
+    if (newMeta.show_activity_map !== undefined) customMeta.show_activity_map = newMeta.show_activity_map
     if (newMeta.preferred_language !== undefined) customMeta.preferred_language = newMeta.preferred_language
 
-    if (Object.keys(customMeta).length > 0 || (existingMeta && (existingMeta.accent_theme !== undefined || existingMeta.last_session_id !== undefined || existingMeta.is_setup_completed !== undefined || existingMeta.show_xp !== undefined || existingMeta.show_badges !== undefined || existingMeta.preferred_language !== undefined))) {
+    if (Object.keys(customMeta).length > 0 || (existingMeta && (existingMeta.accent_theme !== undefined || existingMeta.last_session_id !== undefined || existingMeta.is_setup_completed !== undefined || existingMeta.show_xp !== undefined || existingMeta.show_badges !== undefined || existingMeta.show_activity_map !== undefined || existingMeta.preferred_language !== undefined))) {
       const mergedCustomMeta: any = {
         accent_theme: customMeta.accent_theme !== undefined ? customMeta.accent_theme : existingMeta.accent_theme,
         last_session_id: customMeta.last_session_id !== undefined ? customMeta.last_session_id : existingMeta.last_session_id,
         is_setup_completed: customMeta.is_setup_completed !== undefined ? customMeta.is_setup_completed : existingMeta.is_setup_completed,
         show_xp: customMeta.show_xp !== undefined ? customMeta.show_xp : existingMeta.show_xp,
         show_badges: customMeta.show_badges !== undefined ? customMeta.show_badges : existingMeta.show_badges,
+        show_activity_map: customMeta.show_activity_map !== undefined ? customMeta.show_activity_map : existingMeta.show_activity_map,
         preferred_language: customMeta.preferred_language !== undefined ? customMeta.preferred_language : existingMeta.preferred_language,
       }
       

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles, Lightbulb, X, Sun, Moon, Monitor, Shield, Terminal } from "lucide-react";
+import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles, Lightbulb, X, Sun, Moon, Monitor, Shield, Terminal, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { HavnLogo } from "@/components/havn/HavnLogo";
@@ -91,7 +91,7 @@ export function Sidebar({
   isCollapsed = false,
   onExpand,
 }: SidebarProps) {
-  const { t } = useLocale();
+  const { t, locale, setLocale } = useLocale();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -947,7 +947,7 @@ export function Sidebar({
                       className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-foreground hover:bg-accent/70 transition-all text-left cursor-pointer w-full"
                     >
                       <User size={14} className="text-muted-foreground" />
-                      Profil
+                      {t("sidebar.profile.menu.profile")}
                     </Link>
 
                     {/* Ayarlar Link */}
@@ -957,21 +957,21 @@ export function Sidebar({
                       className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-foreground hover:bg-accent/70 transition-all text-left cursor-pointer w-full"
                     >
                       <Settings size={14} className="text-muted-foreground" />
-                      Ayarlar
+                      {t("sidebar.profile.menu.settings")}
                     </Link>
 
                     {/* Tema Değiştirici (Inline Segmented) */}
                     <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-accent/40 transition-colors">
                       <span className="flex items-center gap-2.5 text-xs font-bold text-foreground select-none">
                         <Sun size={14} className="text-muted-foreground" />
-                        Renk Modu
+                        {t("sidebar.profile.menu.color_mode")}
                       </span>
                       {mounted && (
                         <div className="flex bg-accent rounded-lg p-0.5 border border-border/40">
                           {[
-                            { value: "light", icon: Sun, label: "Açık" },
-                            { value: "dark", icon: Moon, label: "Koyu" },
-                            { value: "system", icon: Monitor, label: "Sistem" }
+                            { value: "light", icon: Sun, label: t("sidebar.profile.menu.color_mode.light") },
+                            { value: "dark", icon: Moon, label: t("sidebar.profile.menu.color_mode.dark") },
+                            { value: "system", icon: Monitor, label: t("sidebar.profile.menu.color_mode.system") }
                           ].map((t) => (
                             <button
                               key={t.value}
@@ -989,11 +989,50 @@ export function Sidebar({
                       )}
                     </div>
 
-                    {/* Rol Badge Row */}
+                    {/* Dil Seçimi (Segmented) — ÜST'TE */}
+                    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-accent/40 transition-colors">
+                      <span className="flex items-center gap-2.5 text-xs font-bold text-foreground select-none">
+                        <Globe size={14} className="text-muted-foreground" />
+                        {locale === "tr" ? "Dil" : "Language"}
+                      </span>
+                      <div className="flex bg-accent rounded-lg p-0.5 border border-border/40">
+                        {([
+                          { value: "tr", label: "Türkçe", flagUrl: "https://flagcdn.com/w40/tr.png" },
+                          { value: "en", label: "English", flagUrl: "https://flagcdn.com/w40/gb.png" }
+                        ] as const).map((lang) => {
+                          const isSel = locale === lang.value;
+                          return (
+                            <button
+                              key={lang.value}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLocale(lang.value);
+                              }}
+                              title={lang.label}
+                              className={cn(
+                                "px-2 py-0.5 rounded-md transition-all text-[10px] font-black cursor-pointer flex items-center gap-1 select-none",
+                                isSel 
+                                  ? "bg-card text-primary shadow-sm border border-border/10" 
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              <img src={lang.flagUrl} className="w-3.5 h-2.5 object-cover rounded-sm flex-shrink-0" alt="" />
+                              <span>{lang.value.toUpperCase()}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Rol Badge Row — ALTTA */}
                     {(() => {
                       const isUserFounder = isFounder(currentUser);
                       const isUserGold = currentUser.is_gold;
-                      const badgeText = isUserFounder ? "FOUNDER" : isUserGold ? "GOLD" : "ÜYE";
+                      const badgeText = isUserFounder 
+                        ? t("sidebar.profile.menu.role.founder") 
+                        : isUserGold 
+                        ? t("sidebar.profile.menu.role.gold") 
+                        : t("sidebar.profile.menu.role.member");
                       const badgeClass = isUserFounder 
                         ? "bg-amber-500/10 text-amber-500 border-amber-500/20" 
                         : isUserGold 
@@ -1004,7 +1043,7 @@ export function Sidebar({
                         <div className="flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-accent/40 transition-colors">
                           <span className="flex items-center gap-2.5 text-xs font-bold text-foreground select-none">
                             <Shield size={14} className="text-muted-foreground" />
-                            Rol
+                            {t("sidebar.profile.menu.role")}
                           </span>
                           <span className={cn("px-1.5 py-0.5 text-[8px] font-black rounded border tracking-wider", badgeClass)}>
                             {badgeText}
@@ -1026,7 +1065,7 @@ export function Sidebar({
                         {otherAccounts.length > 0 && (
                           <div className="flex flex-col gap-1 max-h-[140px] overflow-y-auto pr-0.5">
                             <div className="text-[9px] font-black text-muted-foreground/80 uppercase px-2 py-0.5 tracking-wider select-none">
-                              Hesap Değiştir
+                              {t("sidebar.profile.menu.switch_account")}
                             </div>
                             {otherAccounts.map((acc) => {
                               const isConfirming = confirmRemoveId === acc.profile.id;
@@ -1034,7 +1073,7 @@ export function Sidebar({
                                 <div key={acc.profile.id} className="flex flex-col">
                                   {isConfirming ? (
                                     <div className="flex items-center justify-between gap-1 px-1.5 py-1 rounded-xl bg-destructive/15 border border-destructive/20 text-xs font-bold text-destructive animate-in fade-in slide-in-from-right-1 duration-200 w-full min-h-[36px]">
-                                      <span className="truncate flex-1 text-[9px] leading-tight font-black select-none text-destructive">Oturum kapatılsın mı?</span>
+                                      <span className="truncate flex-1 text-[9px] leading-tight font-black select-none text-destructive">{t("sidebar.profile.menu.logout_confirm")}</span>
                                       <div className="flex items-center gap-1 flex-shrink-0">
                                         <button
                                           onClick={(e) => {
@@ -1043,7 +1082,7 @@ export function Sidebar({
                                           }}
                                           className="px-1.5 py-0.5 rounded-lg bg-card border border-border hover:bg-accent text-foreground transition-all text-[8px] cursor-pointer font-black"
                                         >
-                                          İptal
+                                          {t("sidebar.profile.menu.cancel")}
                                         </button>
                                         <button
                                           onClick={async (e) => {
@@ -1053,7 +1092,7 @@ export function Sidebar({
                                           }}
                                           className="px-1.5 py-0.5 rounded-lg bg-destructive text-white hover:bg-destructive/90 transition-all text-[8px] cursor-pointer font-black"
                                         >
-                                          Evet
+                                          {t("sidebar.profile.menu.yes")}
                                         </button>
                                       </div>
                                     </div>
@@ -1073,7 +1112,7 @@ export function Sidebar({
                                           e.stopPropagation();
                                           setConfirmRemoveId(acc.profile.id);
                                         }}
-                                        title="Hesabı Kaldır"
+                                        title={t("sidebar.profile.menu.remove_account")}
                                         className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer flex-shrink-0 opacity-0 group-hover/acc:opacity-100 focus/acc:opacity-100"
                                       >
                                         <X size={12} />
@@ -1092,7 +1131,7 @@ export function Sidebar({
                             className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold text-primary hover:bg-primary/5 transition-all text-left cursor-pointer w-full mt-0.5"
                           >
                             <span className="w-4 h-4 rounded-md bg-primary/10 flex items-center justify-center font-bold text-xs">+</span>
-                            Yeni Hesap Ekle
+                            {t("sidebar.profile.menu.add_account")}
                           </button>
                         )}
                       </>
@@ -1107,7 +1146,7 @@ export function Sidebar({
                     className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-destructive hover:bg-destructive/10 transition-all text-left cursor-pointer w-full"
                   >
                     <LogOut size={13} className="text-destructive flex-shrink-0" />
-                    Çıkış Yap
+                    {t("sidebar.profile.menu.logout")}
                   </button>
                 </motion.div>
               </>
@@ -1178,7 +1217,7 @@ export function Sidebar({
                   {/* Çevrimiçi Badge */}
                   <div className="flex items-center gap-1.5 text-[9px] text-green-500 font-black mt-1 uppercase tracking-wider select-none bg-green-500/5 px-2 py-0.5 rounded-full border border-green-500/10">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    Çevrimiçi
+                    {t("sidebar.profile.menu.online")}
                   </div>
 
                   {/* Bio */}
@@ -1190,7 +1229,7 @@ export function Sidebar({
                   
                   {/* Hint */}
                   <div className="border-t border-border/40 w-full mt-3 pt-2 text-[9px] font-bold text-primary">
-                    Profil menüsü için tıklayın
+                    {t("sidebar.profile.menu.click_hint")}
                   </div>
                 </div>
               </motion.div>
@@ -1228,7 +1267,7 @@ export function Sidebar({
                       e.stopPropagation();
                     }}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground border border-background flex items-center justify-center shadow-lg hover:scale-110 transition-transform z-10"
-                    title="HQ Kontrol Odası"
+                    title={t("sidebar.profile.menu.hq_title")}
                   >
                     <Shield size={10} />
                   </Link>
@@ -1249,7 +1288,7 @@ export function Sidebar({
                       e.stopPropagation();
                     }}
                     className="p-1.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20 select-none flex items-center justify-center flex-shrink-0 group/hq"
-                    title="HQ Kontrol Odası"
+                    title={t("sidebar.profile.menu.hq_title")}
                   >
                     <Shield size={16} className="text-muted-foreground group-hover/hq:text-primary group-hover/hq:scale-110 transition-all" />
                   </Link>
@@ -1260,7 +1299,7 @@ export function Sidebar({
         </div>
       ) : (
         <div className="flex flex-col gap-2 items-center w-full mt-auto">
-          <Link href="/login" title={isCollapsed ? "Giriş Yap" : undefined} className="w-full flex justify-center">
+          <Link href="/login" title={isCollapsed ? t("sidebar.profile.menu.login") : undefined} className="w-full flex justify-center">
             <motion.div
               whileTap={{ scale: 0.97 }}
               className={cn(
@@ -1274,13 +1313,13 @@ export function Sidebar({
                 color: "var(--primary-foreground)",
               }}
             >
-              {isCollapsed ? <User size={16} /> : "Giriş Yap"}
+              {isCollapsed ? <User size={16} /> : t("sidebar.profile.menu.login")}
             </motion.div>
           </Link>
           {!isCollapsed && (
             <Link href="/register" className="w-full">
               <div className="w-full flex items-center justify-center py-2.5 rounded-xl text-sm font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-all">
-                Kayıt Ol
+                {t("sidebar.profile.menu.register")}
               </div>
             </Link>
           )}
@@ -1316,7 +1355,7 @@ export function Sidebar({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Kullanıcı veya topluluk ara..."
+                  placeholder={t("sidebar.profile.menu.search_placeholder")}
                   className="flex-1 bg-transparent border-0 outline-none text-xs text-foreground placeholder:text-muted-foreground focus:ring-0"
                   autoFocus
                 />
@@ -1328,7 +1367,7 @@ export function Sidebar({
                       onClick={() => setSearchQuery("")}
                       className="text-[10px] font-bold text-muted-foreground hover:text-foreground cursor-pointer"
                     >
-                      Temizle
+                      {t("sidebar.profile.menu.clear")}
                     </button>
                   )
                 )}
@@ -1336,7 +1375,7 @@ export function Sidebar({
                   onClick={() => setShowSearchModal(false)}
                   className="px-2.5 py-1 rounded-lg border border-border bg-accent/40 text-[10px] font-bold text-muted-foreground hover:text-foreground cursor-pointer"
                 >
-                  Kapat
+                  {t("sidebar.profile.menu.close")}
                 </button>
               </div>
 
@@ -1347,8 +1386,8 @@ export function Sidebar({
                     <Search size={24} className="opacity-30 text-muted-foreground" />
                     <span>
                       {searchQuery.trim().length < 2
-                        ? "Arama yapmak için en az 2 karakter yazın."
-                        : "Eşleşen sonuç bulunamadı."}
+                        ? t("sidebar.profile.menu.search_empty_hint")
+                        : t("sidebar.profile.menu.search_no_results")}
                     </span>
                   </div>
                 ) : (
@@ -1357,7 +1396,7 @@ export function Sidebar({
                     {searchResults.users.length > 0 && (
                       <div className="flex flex-col gap-1">
                         <div className="text-[10px] font-black tracking-widest text-muted-foreground/80 uppercase px-3.5 py-2 mt-2 first:mt-1 select-none border-b border-border/20">
-                          Kullanıcılar
+                          {t("sidebar.profile.menu.search_users")}
                         </div>
                         {searchResults.users.map((user) => (
                           <Link
@@ -1399,7 +1438,7 @@ export function Sidebar({
                     {searchResults.communities.length > 0 && (
                       <div className="flex flex-col gap-1 mt-3 animate-in fade-in duration-200">
                         <div className="text-[10px] font-black tracking-widest text-muted-foreground/80 uppercase px-3.5 py-2 select-none border-b border-border/20">
-                          Topluluklar
+                          {t("sidebar.profile.menu.search_communities")}
                         </div>
                         {searchResults.communities.map((community) => {
                           const commAvatarUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/communities/${community.id}/avatar`;
@@ -1435,7 +1474,7 @@ export function Sidebar({
                                   {community.name}
                                 </div>
                                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                                  @{community.slug} • {community.type === 'private' ? 'Özel' : 'Açık'}
+                                  @{community.slug} • {community.type === 'private' ? t("cmd.meta.private") : t("cmd.meta.public")}
                                 </div>
                                 {community.description && (
                                   <p className="text-[10px] text-muted-foreground truncate mt-0.5">{community.description}</p>

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, X, ShieldAlert, Users, Clock, Loader2, Sparkles } from 'lucide-react'
 import { resolveCommunityApproval } from '@/lib/actions/hq-admin'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 type PendingCommunity = {
   id: string
@@ -25,6 +26,7 @@ export function HQCommunitiesApproval({
 }: {
   initialCommunities: PendingCommunity[]
 }) {
+  const { locale } = useLocale()
   const [communities, setCommunities] = useState<PendingCommunity[]>(initialCommunities)
   const [actionMsg, setActionMsg] = useState<string | null>(null)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
@@ -35,10 +37,13 @@ export function HQCommunitiesApproval({
     startTransition(async () => {
       const res = await resolveCommunityApproval(communityId, action)
       if (res.error) {
-        setActionMsg(`Hata: ${res.error}`)
+        setActionMsg(locale === 'tr' ? `Hata: ${res.error}` : `Error: ${res.error}`)
       } else {
         setCommunities((prev) => prev.filter((c) => c.id !== communityId))
-        setActionMsg(`"${name}" topluluğu başarıyla ${action === 'approve' ? 'onaylandı' : 'reddedildi'}`)
+        setActionMsg(locale === 'tr' 
+          ? `"${name}" topluluğu başarıyla ${action === 'approve' ? 'onaylandı' : 'reddedildi'}`
+          : `Community "${name}" successfully ${action === 'approve' ? 'approved' : 'rejected'}`
+        )
       }
       setResolvingId(null)
       setTimeout(() => setActionMsg(null), 3000)
@@ -66,15 +71,17 @@ export function HQCommunitiesApproval({
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 text-slate-500 bg-white/5">
             <Users size={28} className="opacity-70" />
           </div>
-          <h3 className="text-sm font-bold text-white mb-1">Onay bekleyen topluluk yok</h3>
+          <h3 className="text-sm font-bold text-white mb-1">{locale === 'tr' ? 'Onay bekleyen topluluk yok' : 'No communities pending approval'}</h3>
           <p className="text-xs text-slate-400 max-w-[280px]">
-            Tüm yeni topluluk talepleri onaylandı veya onay bekleyen herhangi bir istek yok.
+            {locale === 'tr'
+              ? 'Tüm yeni topluluk talepleri onaylandı veya onay bekleyen herhangi bir istek yok.'
+              : 'All new community requests have been approved or there are no pending requests.'}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {communities.map((comm) => {
-            const creatorName = [comm.creator?.first_name, comm.creator?.last_name].filter(Boolean).join(' ') || comm.creator?.username || 'Bilinmeyen Kullanıcı'
+            const creatorName = [comm.creator?.first_name, comm.creator?.last_name].filter(Boolean).join(' ') || comm.creator?.username || (locale === 'tr' ? 'Bilinmeyen Kullanıcı' : 'Unknown User')
             const isResolving = resolvingId === comm.id
             
             return (
@@ -93,7 +100,7 @@ export function HQCommunitiesApproval({
                       <p className="text-[10px] text-slate-500 font-mono mt-0.5">slug: /{comm.slug}</p>
                     </div>
                     <span className="text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider bg-amber-500/10 text-amber-400 border-amber-500/25">
-                      {comm.type === 'request_to_join' ? 'Özel' : 'Açık'}
+                      {comm.type === 'request_to_join' ? (locale === 'tr' ? 'Özel' : 'Private') : (locale === 'tr' ? 'Açık' : 'Public')}
                     </span>
                   </div>
 
@@ -102,7 +109,7 @@ export function HQCommunitiesApproval({
                       {comm.description}
                     </p>
                   ) : (
-                    <p className="text-xs text-slate-500 italic">Açıklama belirtilmemiş.</p>
+                    <p className="text-xs text-slate-500 italic">{locale === 'tr' ? 'Açıklama belirtilmemiş.' : 'No description provided.'}</p>
                   )}
                 </div>
 
@@ -114,7 +121,7 @@ export function HQCommunitiesApproval({
                     </div>
                     <div className="min-w-0">
                       <p className="text-[11px] font-bold text-white truncate">{creatorName}</p>
-                      <p className="text-[9px] text-slate-500 font-mono">@{comm.creator?.username || 'anonim'}</p>
+                      <p className="text-[9px] text-slate-500 font-mono">@{comm.creator?.username || (locale === 'tr' ? 'anonim' : 'anonymous')}</p>
                     </div>
                   </div>
 
@@ -124,19 +131,19 @@ export function HQCommunitiesApproval({
                       onClick={() => handleResolve(comm.id, 'reject', comm.name)}
                       disabled={resolvingId !== null}
                       className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      title="Talebi Reddet ve Sil"
+                      title={locale === 'tr' ? 'Talebi Reddet ve Sil' : 'Reject and Delete Request'}
                     >
                       {isResolving ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <X size={10} />}
-                      <span>Reddet</span>
+                      <span>{locale === 'tr' ? 'Reddet' : 'Reject'}</span>
                     </button>
                     <button
                       onClick={() => handleResolve(comm.id, 'approve', comm.name)}
                       disabled={resolvingId !== null}
                       className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      title="Onayla ve Yayınla"
+                      title={locale === 'tr' ? 'Onayla ve Yayınla' : 'Approve and Publish'}
                     >
                       {isResolving ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Check size={10} />}
-                      <span>Onayla</span>
+                      <span>{locale === 'tr' ? 'Onayla' : 'Approve'}</span>
                     </button>
                   </div>
                 </div>

@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, ShieldAlert } from 'lucide-react'
 import { verifyHQSudo } from '@/lib/actions/hq-auth'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 export default function HQGateClient() {
+  const { locale } = useLocale()
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -18,14 +20,22 @@ export default function HQGateClient() {
     setError(null)
 
     if (!password.trim()) {
-      setError('Lütfen şifrenizi girin.')
+      setError(locale === 'tr' ? 'Lütfen şifrenizi girin.' : 'Please enter your password.')
       return
     }
 
     startTransition(async () => {
       const res = await verifyHQSudo(password)
       if (res?.error) {
-        setError(res.error)
+        let errorMsg = res.error
+        if (errorMsg.includes('şifre yanlış')) {
+          errorMsg = locale === 'tr' ? 'Girdiğiniz şifre yanlış veya geçersiz.' : 'The password you entered is incorrect or invalid.'
+        } else if (errorMsg.includes('yetkiniz yok')) {
+          errorMsg = locale === 'tr' ? 'Bu işlem için yetkiniz yok.' : 'You do not have permission for this action.'
+        } else if (errorMsg.includes('Oturum bulunamadı')) {
+          errorMsg = locale === 'tr' ? 'Oturum bulunamadı. Giriş yapmalısınız.' : 'Session not found. You must log in.'
+        }
+        setError(errorMsg)
       } else {
         // Redirect to overview page on success
         router.replace('/havn-hq-control/overview')
@@ -132,7 +142,7 @@ export default function HQGateClient() {
           </div>
           <h2 className="text-lg font-black text-white tracking-widest uppercase">HAVN HQ GATEWAY</h2>
           <p className="text-[10px] text-slate-400 max-w-xs mx-auto leading-relaxed uppercase tracking-wider font-semibold">
-            Güvenlik Geçidi • Yetkilendirme Kontrolü
+            {locale === 'tr' ? 'Güvenlik Geçidi • Yetkilendirme Kontrolü' : 'Security Gateway • Authorization Control'}
           </p>
         </div>
 
@@ -150,7 +160,7 @@ export default function HQGateClient() {
           <div className="space-y-1.5">
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5" htmlFor="gate-password">
               <Lock size={10} className="text-violet-400" />
-              Yönetici Sudo Şifresi
+              {locale === 'tr' ? 'Yönetici Sudo Şifresi' : 'Admin Sudo Password'}
             </label>
             <div className="relative">
               <input
@@ -159,7 +169,7 @@ export default function HQGateClient() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Geçiş şifresini girin"
+                placeholder={locale === 'tr' ? 'Geçiş şifresini girin' : 'Enter passcode'}
                 className="w-full px-4 py-3 rounded-xl border border-white/5 bg-[#090914]/80 text-white text-xs outline-none focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/10 transition-all placeholder:text-slate-700 font-mono"
               />
               <button
@@ -199,7 +209,7 @@ export default function HQGateClient() {
               <Loader2 size={13} className="animate-spin text-white" />
             ) : (
               <>
-                <span>Doğrula ve Geçiş Yap</span>
+                <span>{locale === 'tr' ? 'Doğrula ve Geçiş Yap' : 'Verify & Enter'}</span>
                 <ArrowRight size={12} />
               </>
             )}

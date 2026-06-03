@@ -648,6 +648,7 @@ export async function updatePreferences(formData: FormData) {
   const showStatus = formData.get('show_status') === 'true'
   const showXp = formData.get('show_xp') === 'true'
   const showBadges = formData.get('show_badges') === 'true'
+  const showActivityMap = formData.get('show_activity_map') === 'true'
 
   // Get current profile
   const { data: currentProfile } = await supabase
@@ -668,6 +669,7 @@ export async function updatePreferences(formData: FormData) {
     show_status: showStatus,
     show_xp: showXp,
     show_badges: showBadges,
+    show_activity_map: showActivityMap,
   }
   if (!showStatus) {
     metaUpdates.last_seen_at = null

@@ -1,10 +1,11 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Shield, ShieldOff, ShieldAlert, AlertTriangle, Trash2, RefreshCw, Loader2, Check, Star, Settings, X, Award, MapPin, Globe, Lock } from 'lucide-react'
 import { updateUserRole, getHQUsers, warnUser, deleteUserProfile, toggleProfileVerification, resetUserWarns, updateUserProfileDetails, awardUserXP, muteUserAction } from '@/lib/actions/hq-admin'
 import { getRankInfo } from '@/lib/gamification'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 import { getCountryName, getCountryFlagUrl } from '@/lib/countries'
 import { SearchableSelect } from '@/components/havn/SearchableSelect'
 import { getCountriesAction, getCitiesAction } from '@/lib/actions/location'
@@ -41,6 +42,7 @@ const ROLE_STYLES: Record<string, { bg: string; color: string; label: string; bo
 }
 
 function RoleBadge({ user }: { user: UserRow }) {
+  const { locale } = useLocale()
   let roleKey = user.role ?? 'member'
   if (roleKey === 'member') {
     if ((user.xp ?? 0) > 1000) {
@@ -50,43 +52,51 @@ function RoleBadge({ user }: { user: UserRow }) {
     }
   }
   const s = ROLE_STYLES[roleKey] ?? ROLE_STYLES.member
+  let label = s.label
+  if (roleKey === 'founder') label = locale === 'tr' ? 'Kurucu' : 'Founder'
+  else if (roleKey === 'admin') label = locale === 'tr' ? 'Yönetici' : 'Admin'
+  else if (roleKey === 'moderator') label = locale === 'tr' ? 'Moderatör' : 'Moderator'
+  else if (roleKey === 'elite') label = locale === 'tr' ? 'Elite Üye' : 'Elite Member'
+  else if (roleKey === 'new_member') label = locale === 'tr' ? 'Yeni Üye' : 'New Member'
+  else if (roleKey === 'member') label = locale === 'tr' ? 'Üye' : 'Member'
+
   return (
     <span
       className="text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider select-none"
       style={{ background: s.bg, color: s.color, borderColor: s.border }}
     >
-      {s.label}
+      {label}
     </span>
   )
 }
 
-function getOnlineStatus(user: UserRow) {
+function getOnlineStatus(user: UserRow, locale: string) {
   if (user.show_status === false || !user.last_seen_at) {
-    return { label: 'Çevrimdışı', colorClass: 'bg-slate-500/80' }
+    return { label: locale === 'tr' ? 'Çevrimdışı' : 'Offline', colorClass: 'bg-slate-500/80' }
   }
   const lastSeen = new Date(user.last_seen_at)
   const now = new Date()
   const diffMins = Math.floor((now.getTime() - lastSeen.getTime()) / 60000)
 
   if (diffMins < 3) {
-    return { label: 'Çevrimiçi', colorClass: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' }
+    return { label: locale === 'tr' ? 'Çevrimiçi' : 'Online', colorClass: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' }
   } else if (diffMins < 10) {
-    return { label: 'Boşta', colorClass: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' }
+    return { label: locale === 'tr' ? 'Boşta' : 'Idle', colorClass: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' }
   }
-  return { label: 'Çevrimdışı', colorClass: 'bg-slate-500/80' }
+  return { label: locale === 'tr' ? 'Çevrimdışı' : 'Offline', colorClass: 'bg-slate-500/80' }
 }
 
-function WarnCircles({ count }: { count: number }) {
+function WarnCircles({ count, locale }: { count: number; locale: string }) {
   const c = Math.max(0, count)
   if (c === 0) {
     return (
       <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg">
-        Temiz
+        {locale === 'tr' ? 'Temiz' : 'Clean'}
       </span>
     )
   }
   return (
-    <div className="flex items-center gap-1" title={`${c} aktif uyarı puanı`}>
+    <div className="flex items-center gap-1" title={locale === 'tr' ? `${c} aktif uyarı puanı` : `${c} active warning points`}>
       {[0, 1, 2, 3, 4].map((idx) => {
         let bgClass = 'bg-white/10'
         if (c > 0 && idx < c) {
@@ -160,6 +170,7 @@ export function HQUserTable({
   initialTotal: number
   currentUserRole?: string
 }) {
+  const { locale } = useLocale()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [users, setUsers] = useState(initialUsers)
@@ -275,7 +286,7 @@ export function HQUserTable({
       if (res.error) {
         setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
       } else {
-        setMgmtMsg({ type: 'success', text: 'Kullanıcı bilgileri güncellendi.' })
+        setMgmtMsg({ type: 'success', text: locale === 'tr' ? 'Kullanıcı bilgileri güncellendi.' : 'User information updated.' })
         setUsers(prev => prev.map(m => m.id === mgmtUser.id ? {
           ...m,
           first_name: mgmtFirstName.trim() || null,
@@ -306,7 +317,7 @@ export function HQUserTable({
           is_verified: field === 'verified' ? !prev.is_verified : prev.is_verified,
           is_gold: field === 'gold' ? !prev.is_gold : prev.is_gold,
         } : null)
-        setMgmtMsg({ type: 'success', text: `${field === 'verified' ? 'Mavi Tik' : 'Sarı Tik'} durumu değiştirildi.` })
+        setMgmtMsg({ type: 'success', text: locale === 'tr' ? `${field === 'verified' ? 'Mavi Tik' : 'Sarı Tik'} durumu değiştirildi.` : `${field === 'verified' ? 'Blue badge' : 'Gold badge'} status updated.` })
       }
     })
   }
@@ -327,7 +338,7 @@ export function HQUserTable({
           ...prev,
           xp: (prev.xp ?? 0) + xpRewardAmount
         } : null)
-        setMgmtMsg({ type: 'success', text: `+${xpRewardAmount} XP başarıyla gönderildi.` })
+        setMgmtMsg({ type: 'success', text: locale === 'tr' ? `+${xpRewardAmount} XP başarıyla gönderildi.` : `+\${xpRewardAmount} XP successfully awarded.` })
       }
     })
   }
@@ -391,7 +402,8 @@ export function HQUserTable({
       if (mgmtUser?.id === userId) {
         setMgmtUser((prev) => prev ? { ...prev, role: newRole } : null)
       }
-      setActionMsg({ id: userId, msg: `@${username} rolü ${newRole === 'moderator' ? 'Moderatör' : newRole === 'admin' ? 'Yönetici' : 'Üye'} yapıldı` })
+      const roleLabel = newRole === 'moderator' ? (locale === 'tr' ? 'Moderatör' : 'Moderator') : newRole === 'admin' ? (locale === 'tr' ? 'Yönetici' : 'Admin') : (locale === 'tr' ? 'Üye' : 'Member');
+      setActionMsg({ id: userId, msg: locale === 'tr' ? `@${username} rolü ${roleLabel} yapıldı` : `@${username} role updated to ${roleLabel}` })
     }
     setTimeout(() => setActionMsg(null), 3000)
   }
@@ -409,7 +421,7 @@ export function HQUserTable({
         if (mgmtUser?.id === warnModalUser.id) {
           setMgmtUser((prev) => prev ? { ...prev, warns: (prev.warns ?? 0) + 1 } : null)
         }
-        setActionMsg({ id: warnModalUser.id, msg: `@${warnModalUser.username} başarıyla uyarıldı` })
+        setActionMsg({ id: warnModalUser.id, msg: locale === 'tr' ? `@${warnModalUser.username} başarıyla uyarıldı` : `@${warnModalUser.username} successfully warned` })
       }
       setWarnModalUser(null)
       setWarnReason('')
@@ -429,7 +441,7 @@ export function HQUserTable({
         if (mgmtUser?.id === deleteConfirmUser.id) {
           setMgmtUser(null)
         }
-        setActionMsg({ id: deleteConfirmUser.id, msg: `@${deleteConfirmUser.username} başarıyla silindi` })
+        setActionMsg({ id: deleteConfirmUser.id, msg: locale === 'tr' ? `@${deleteConfirmUser.username} başarıyla silindi` : `@${deleteConfirmUser.username} successfully deleted` })
       }
       setDeleteConfirmUser(null)
       setTimeout(() => setActionMsg(null), 3000)
@@ -447,7 +459,7 @@ export function HQUserTable({
       if (mgmtUser?.id === userId) {
         setMgmtUser((prev) => prev ? { ...prev, warns: 0 } : null)
       }
-      setActionMsg({ id: userId, msg: `@${username} uyarıları sıfırlandı` })
+      setActionMsg({ id: userId, msg: locale === 'tr' ? `@${username} uyarıları sıfırlandı` : `@${username} warnings reset` })
     }
     setTimeout(() => setActionMsg(null), 3000)
   }
@@ -476,18 +488,18 @@ export function HQUserTable({
           is_gold: field === 'gold' ? !prev.is_gold : prev.is_gold,
         } : null)
       }
-      const fieldName = field === 'verified' ? 'Mavi Tik' : 'Sarı Tik'
-      setActionMsg({ id: userId, msg: `@${username} için ${fieldName} güncellendi` })
+      const fieldName = field === 'verified' ? (locale === 'tr' ? 'Mavi Tik' : 'Blue Badge') : (locale === 'tr' ? 'Sarı Tik' : 'Gold Badge');
+      setActionMsg({ id: userId, msg: locale === 'tr' ? `@${username} için ${fieldName} güncellendi` : `@${username} ${fieldName} updated` })
     }
     setTimeout(() => setActionMsg(null), 3000)
   }
 
   const roleOptions = [
-    { value: '', label: 'Tüm Roller' },
-    { value: 'founder', label: 'Kurucu' },
-    { value: 'admin', label: 'Yönetici' },
-    { value: 'moderator', label: 'Moderatör' },
-    { value: 'member', label: 'Üye' },
+    { value: '', label: locale === 'tr' ? 'Tüm Roller' : 'All Roles' },
+    { value: 'founder', label: locale === 'tr' ? 'Kurucu' : 'Founder' },
+    { value: 'admin', label: locale === 'tr' ? 'Yönetici' : 'Admin' },
+    { value: 'moderator', label: locale === 'tr' ? 'Moderatör' : 'Moderator' },
+    { value: 'member', label: locale === 'tr' ? 'Üye' : 'Member' },
   ]
 
   return (
@@ -502,7 +514,7 @@ export function HQUserTable({
             type="text"
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Kullanıcı adı ara... (Örn: @melih)"
+            placeholder={locale === 'tr' ? "Kullanıcı adı ara... (Örn: @melih)" : "Search username... (E.g., @melih)"}
             className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-slate-500"
           />
           {isPending && <RefreshCw size={12} className="animate-spin text-slate-500" />}
@@ -555,32 +567,32 @@ export function HQUserTable({
               onClick={() => toggleSort('first_name')}
               className="flex items-center gap-1 hover:text-white transition-colors uppercase tracking-widest text-[10px] font-black cursor-pointer bg-transparent border-0 text-left p-0 select-none text-slate-400 outline-none"
             >
-              Kullanıcı {sortBy === 'first_name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+              {locale === 'tr' ? 'Kullanıcı' : 'User'} {sortBy === 'first_name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
             </button>
-            <span>Ülke / Şehir</span>
-            <span>Statü</span>
-            <span>Rolü</span>
+            <span>{locale === 'tr' ? 'Ülke / Şehir' : 'Country / City'}</span>
+            <span>{locale === 'tr' ? 'Statü' : 'Status'}</span>
+            <span>{locale === 'tr' ? 'Rolü' : 'Role'}</span>
             <button
               onClick={() => toggleSort('updated_at')}
               className="flex items-center gap-1 hover:text-white transition-colors uppercase tracking-widest text-[10px] font-black cursor-pointer bg-transparent border-0 text-left p-0 select-none text-slate-400 outline-none"
             >
-              Katılım Tarihi {sortBy === 'updated_at' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+              {locale === 'tr' ? 'Katılım Tarihi' : 'Join Date'} {sortBy === 'updated_at' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
             </button>
-            <span>Yazı Adeti</span>
-            <span>Tik Yönetimi</span>
+            <span>{locale === 'tr' ? 'Yazı Adeti' : 'Posts'}</span>
+            <span>{locale === 'tr' ? 'Tik Yönetimi' : 'Badge Management'}</span>
             <button
               onClick={() => toggleSort('warns')}
               className="flex items-center gap-1 hover:text-white transition-colors uppercase tracking-widest text-[10px] font-black cursor-pointer bg-transparent border-0 text-left p-0 select-none text-slate-400 outline-none"
             >
-              Uyarılar (Warns) {sortBy === 'warns' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+              {locale === 'tr' ? 'Uyarılar (Warns)' : 'Warnings'} {sortBy === 'warns' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
             </button>
-            <span className="text-right">Hızlı Moderasyon</span>
+            <span className="text-right">{locale === 'tr' ? 'Hızlı Moderasyon' : 'Quick Moderation'}</span>
           </div>
 
           {/* Rows */}
           <div className="divide-y divide-white/5">
             {users.map((user, i) => {
-               const status = getOnlineStatus(user)
+               const status = getOnlineStatus(user, locale)
 
                return (
                 <motion.div
@@ -619,7 +631,7 @@ export function HQUserTable({
                         <span>{getCountryName(user.country)}{user.city ? `, ${user.city}` : ''}</span>
                       </span>
                     ) : (
-                      <span className="text-slate-600 italic">Belirtilmemiş</span>
+                      <span className="text-slate-600 italic">{locale === 'tr' ? 'Belirtilmemiş' : 'Not Specified'}</span>
                     )}
                   </p>
 
@@ -637,7 +649,7 @@ export function HQUserTable({
 
                   {/* Join Date Column */}
                   <p className="text-[11px] font-mono text-slate-400">
-                    {new Date(user.updated_at).toLocaleDateString('tr-TR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                    {new Date(user.updated_at).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })}
                   </p>
 
                   {/* Post Count Column */}
@@ -649,7 +661,7 @@ export function HQUserTable({
                       <>
                         <button
                           onClick={() => handleToggleVerification(user.id, 'verified', user.username)}
-                          title={user.is_verified ? "Doğrulamayı Kaldır" : "Doğrula (Mavi Tik)"}
+                          title={user.is_verified ? (locale === 'tr' ? "Doğrulamayı Kaldır" : "Remove Verification") : (locale === 'tr' ? "Doğrula (Mavi Tik)" : "Verify (Blue Tick)")}
                           className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border cursor-pointer ${
                             user.is_verified
                               ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
@@ -660,7 +672,7 @@ export function HQUserTable({
                         </button>
                         <button
                           onClick={() => handleToggleVerification(user.id, 'gold', user.username)}
-                          title={user.is_gold ? "Sarı Tiki Kaldır" : "Sarı Tik Ver"}
+                          title={user.is_gold ? (locale === 'tr' ? "Sarı Tiki Kaldır" : "Remove Gold Badge") : (locale === 'tr' ? "Sarı Tik Ver" : "Give Gold Badge")}
                           className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border cursor-pointer ${
                             user.is_gold
                               ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
@@ -673,10 +685,10 @@ export function HQUserTable({
                     ) : (
                       <div className="flex items-center gap-1.5">
                         {user.is_verified && (
-                          <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] font-black uppercase">Mavi Tik</span>
+                          <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] font-black uppercase">{locale === 'tr' ? 'Mavi Tik' : 'Blue Tick'}</span>
                         )}
                         {user.is_gold && (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[8px] font-black uppercase">Sarı Tik</span>
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[8px] font-black uppercase">{locale === 'tr' ? 'Sarı Tik' : 'Gold Tick'}</span>
                         )}
                         {!user.is_verified && !user.is_gold && (
                           <span className="text-[10px] text-slate-500 pl-2">-</span>
@@ -687,11 +699,11 @@ export function HQUserTable({
 
                   {/* Warnings Column */}
                   <div className="flex items-center gap-2">
-                    <WarnCircles count={user.warns ?? 0} />
+                    <WarnCircles count={user.warns ?? 0} locale={locale} />
                     {(user.warns ?? 0) > 0 && ['founder', 'admin', 'moderator'].includes(currentUserRole) && (
                       <button
                         onClick={() => handleResetWarns(user.id, user.username)}
-                        title="Uyarıları Sıfırla"
+                        title={locale === 'tr' ? "Uyarıları Sıfırla" : "Reset Warnings"}
                         className="p-1 rounded bg-white/5 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 border border-white/5 transition-colors cursor-pointer"
                       >
                         <RefreshCw size={10} />
@@ -705,7 +717,7 @@ export function HQUserTable({
                     {user.role !== 'founder' && (
                       <button
                         onClick={() => setWarnModalUser(user)}
-                        title="Kullanıcıyı Uyar"
+                        title={locale === 'tr' ? "Kullanıcıyı Uyar" : "Warn User"}
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-all bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 cursor-pointer"
                       >
                         <AlertTriangle size={12} />
@@ -716,7 +728,7 @@ export function HQUserTable({
                     {['founder', 'admin'].includes(currentUserRole) && user.role !== 'founder' && (
                       <button
                         onClick={() => handleRoleUpdate(user.id, user.role === 'admin' ? 'member' : 'admin', user.username)}
-                        title={user.role === 'admin' ? 'Yöneticilik Yetkisini Al' : 'Yönetici Yap'}
+                        title={user.role === 'admin' ? (locale === 'tr' ? 'Yöneticilik Yetkisini Al' : 'Revoke Admin Role') : (locale === 'tr' ? 'Yönetici Yap' : 'Make Admin')}
                         className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border cursor-pointer ${
                           user.role === 'admin'
                             ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
@@ -731,7 +743,7 @@ export function HQUserTable({
                     {['founder', 'admin'].includes(currentUserRole) && ['moderator', 'member', 'admin'].includes(user.role ?? 'member') && user.role !== 'founder' && (
                       <button
                         onClick={() => handleRoleUpdate(user.id, user.role === 'moderator' ? 'member' : 'moderator', user.username)}
-                        title={user.role === 'moderator' ? 'Moderatörlük Yetkisini Al' : 'Moderatör Yap'}
+                        title={user.role === 'moderator' ? (locale === 'tr' ? 'Moderatörlük Yetkisini Al' : 'Revoke Moderator Role') : (locale === 'tr' ? 'Moderatör Yap' : 'Make Moderator')}
                         className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all border cursor-pointer ${
                           user.role === 'moderator'
                             ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/25'
@@ -746,7 +758,7 @@ export function HQUserTable({
                     {['founder', 'admin'].includes(currentUserRole) && user.role !== 'founder' && (
                       <button
                         onClick={() => setDeleteConfirmUser(user)}
-                        title="Kullanıcıyı Kalıcı Olarak Sil"
+                        title={locale === 'tr' ? "Kullanıcıyı Kalıcı Olarak Sil" : "Permanently Delete User"}
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-all bg-rose-500/10 hover:bg-rose-500/25 text-rose-500 border border-rose-500/20 cursor-pointer animate-pulse hover:animate-none"
                       >
                         <Trash2 size={12} />
@@ -757,10 +769,10 @@ export function HQUserTable({
                     {['founder', 'admin'].includes(currentUserRole) && user.role !== 'founder' && (
                       <button
                         onClick={() => openMgmtCard(user)}
-                        title="Kullanıcıyı Yönet (Yönetim Kartı)"
+                        title={locale === 'tr' ? "Kullanıcıyı Yönet (Yönetim Kartı)" : "Manage User (Management Card)"}
                         className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-purple-500/10 hover:bg-purple-500/25 text-purple-400 border border-purple-500/20 hover:border-purple-500/30 transition-all cursor-pointer"
                       >
-                        Yönet
+                        {locale === 'tr' ? 'Yönet' : 'Manage'}
                       </button>
                     )}
                   </div>
@@ -770,7 +782,7 @@ export function HQUserTable({
 
             {users.length === 0 && (
               <div className="text-center py-16 text-xs text-slate-500 font-bold bg-[#090912]/40">
-                Arama kriterlerine uygun üye bulunamadı.
+                {locale === 'tr' ? 'Arama kriterlerine uygun üye bulunamadı.' : 'No members found matching the search criteria.'}
               </div>
             )}
           </div>
@@ -778,7 +790,9 @@ export function HQUserTable({
       </div>
 
       <p className="text-[10px] text-right text-slate-500 font-mono select-none">
-        Toplam {total.toLocaleString('tr-TR')} üye · Sayfa başına 20 kayıt listeleniyor
+        {locale === 'tr' 
+          ? `Toplam ${total.toLocaleString('tr-TR')} üye · Sayfa başına 20 kayıt listeleniyor` 
+          : `Total ${total.toLocaleString('en-US')} members · 20 records listed per page`}
       </p>
 
       {/* Warning Modal */}
@@ -793,16 +807,18 @@ export function HQUserTable({
             >
               <h3 className="text-sm font-black text-white flex items-center gap-2">
                 <AlertTriangle className="text-amber-500" size={16} />
-                <span>@{warnModalUser.username} Kullanıcısını Uyar</span>
+                <span>@{warnModalUser.username} {locale === 'tr' ? 'Kullanıcısını Uyar' : 'Warn User'}</span>
               </h3>
               <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                Kullanıcıya gönderilecek uyarının gerekçesini yazınız. Bu uyarı kullanıcıya anlık bildirim (modal/bildirim) olarak gidecek ve uyarı göstergesi (+1) güncellenecektir.
+                {locale === 'tr'
+                  ? 'Kullanıcıya gönderilecek uyarının gerekçesini yazınız. Bu uyarı kullanıcıya anlık bildirim (modal/bildirim) olarak gidecek ve uyarı göstergesi (+1) güncellenecektir.'
+                  : 'Enter the reason for the warning to be sent to the user. This warning will be shown to the user instantly, and the warning counter (+1) will be updated.'}
               </p>
               
               <textarea
                 value={warnReason}
                 onChange={(e) => setWarnReason(e.target.value)}
-                placeholder="Örn: Spam ve aralıksız gönderi paylaşımı yapılması nedeniyle uyarıldınız."
+                placeholder={locale === 'tr' ? 'Örn: Spam ve aralıksız gönderi paylaşımı yapılması nedeniyle uyarıldınız.' : 'E.g., You have been warned due to spamming and continuous posting.'}
                 className="w-full h-24 mt-4 p-3 rounded-xl border border-white/5 bg-background/55 text-xs text-foreground outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/10 transition-all resize-none placeholder:text-slate-600"
               />
               
@@ -815,7 +831,7 @@ export function HQUserTable({
                   disabled={isWarningPending}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-white/5 transition-all cursor-pointer"
                 >
-                  İptal
+                  {locale === 'tr' ? 'İptal' : 'Cancel'}
                 </button>
                 <button
                   onClick={submitWarning}
@@ -825,10 +841,10 @@ export function HQUserTable({
                   {isWarningPending ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Gönderiliyor...</span>
+                      <span>{locale === 'tr' ? 'Gönderiliyor...' : 'Sending...'}</span>
                     </>
                   ) : (
-                    <span>Uyarı Gönder</span>
+                    <span>{locale === 'tr' ? 'Uyarı Gönder' : 'Send Warning'}</span>
                   )}
                 </button>
               </div>
@@ -849,10 +865,12 @@ export function HQUserTable({
             >
               <h3 className="text-sm font-black text-rose-500 flex items-center gap-2">
                 <Trash2 size={16} />
-                <span>Hesabı Kalıcı Olarak Sil</span>
+                <span>{locale === 'tr' ? 'Hesabı Kalıcı Olarak Sil' : 'Permanently Delete Account'}</span>
               </h3>
               <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                <b>@{deleteConfirmUser.username}</b> kullanıcısının hesabını ve platformdaki tüm paylaşımlarını/verilerini kalıcı olarak silmek üzeresiniz. Bu işlem **geri alınamaz**.
+                {locale === 'tr'
+                  ? <><b>@{deleteConfirmUser.username}</b> kullanıcısının hesabını ve platformdaki tüm paylaşımlarını/verilerini kalıcı olarak silmek üzeresiniz. Bu işlem <b>geri alınamaz</b>.</>
+                  : <>You are about to permanently delete <b>@{deleteConfirmUser.username}</b>'s account and all of their posts/data on the platform. This action <b>cannot be undone</b>.</>}
               </p>
               
               <div className="flex gap-2.5 mt-5 justify-end">
@@ -861,7 +879,7 @@ export function HQUserTable({
                   disabled={isDeletePending}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-white/5 transition-all cursor-pointer"
                 >
-                  İptal
+                  {locale === 'tr' ? 'İptal' : 'Cancel'}
                 </button>
                 <button
                   onClick={submitDeleteUser}
@@ -871,10 +889,10 @@ export function HQUserTable({
                   {isDeletePending ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Siliniyor...</span>
+                      <span>{locale === 'tr' ? 'Siliniyor...' : 'Deleting...'}</span>
                     </>
                   ) : (
-                    <span>Kalıcı Olarak Sil</span>
+                    <span>{locale === 'tr' ? 'Kalıcı Olarak Sil' : 'Permanently Delete'}</span>
                   )}
                 </button>
               </div>
@@ -908,7 +926,7 @@ export function HQUserTable({
               <div className="flex items-center justify-between pb-3 border-b border-white/5 flex-shrink-0">
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                   <Settings size={12} />
-                  <span>YÖNETİM KARTI</span>
+                  <span>{locale === 'tr' ? 'YÖNETİM KARTI' : 'MANAGEMENT CARD'}</span>
                 </span>
                 <button
                   onClick={() => setMgmtUser(null)}
@@ -939,10 +957,10 @@ export function HQUserTable({
                       {mgmtUser.is_verified && <span className="text-blue-400" title="Doğrulanmış">✓</span>}
                       {mgmtUser.is_gold && <span className="text-amber-400" title="İş Ortağı">★</span>}
                       <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-black uppercase tracking-wider select-none">
-                        ÜYE
+                        {locale === 'tr' ? 'ÜYE' : 'MEMBER'}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{mgmtUser.username} • Seviye {getRankInfo(mgmtUser.xp ?? 0).level} ({mgmtUser.xp ?? 0} XP)</p>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">@{mgmtUser.username} • {locale === 'tr' ? 'Seviye' : 'Level'} {getRankInfo(mgmtUser.xp ?? 0).level} ({mgmtUser.xp ?? 0} XP)</p>
                   </div>
                 </div>
 
@@ -958,30 +976,30 @@ export function HQUserTable({
 
                 {/* Özet Bilgiler */}
                 <div className="space-y-3.5">
-                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1 select-none">Özet Bilgiler</h5>
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1 select-none">{locale === 'tr' ? 'Özet Bilgiler' : 'Summary Info'}</h5>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
                     <div className="flex justify-between py-1 border-b border-white/[0.02]">
-                      <span className="text-slate-500">Rolü</span>
-                      <span className="font-semibold text-white capitalize">{mgmtUser.role || 'Üye'}</span>
+                      <span className="text-slate-500">{locale === 'tr' ? 'Rolü' : 'Role'}</span>
+                      <span className="font-semibold text-white capitalize">{mgmtUser.role ? (mgmtUser.role === 'admin' ? (locale === 'tr' ? 'Yönetici' : 'Admin') : mgmtUser.role === 'moderator' ? (locale === 'tr' ? 'Moderatör' : 'Moderator') : (locale === 'tr' ? 'Üye' : 'Member')) : (locale === 'tr' ? 'Üye' : 'Member')}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-white/[0.02]">
-                      <span className="text-slate-500">Durumu</span>
-                      <span className="font-semibold text-emerald-400">Aktif</span>
+                      <span className="text-slate-500">{locale === 'tr' ? 'Durumu' : 'Status'}</span>
+                      <span className="font-semibold text-emerald-400">{locale === 'tr' ? 'Aktif' : 'Active'}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-white/[0.02]">
-                      <span className="text-slate-500">Ülke</span>
-                      <span className="font-semibold text-white truncate max-w-[90px]">{mgmtUser.country ? getCountryName(mgmtUser.country) : 'Belirtilmemiş'}</span>
+                      <span className="text-slate-500">{locale === 'tr' ? 'Ülke' : 'Country'}</span>
+                      <span className="font-semibold text-white truncate max-w-[90px]">{mgmtUser.country ? getCountryName(mgmtUser.country) : (locale === 'tr' ? 'Belirtilmemiş' : 'Not Specified')}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-white/[0.02]">
-                      <span className="text-slate-500">Kayıt Tarihi</span>
-                      <span className="font-semibold text-white font-mono text-[10px]">{new Date(mgmtUser.updated_at).toLocaleDateString('tr-TR')}</span>
+                      <span className="text-slate-500">{locale === 'tr' ? 'Kayıt Tarihi' : 'Registration Date'}</span>
+                      <span className="font-semibold text-white font-mono text-[10px]">{new Date(mgmtUser.updated_at).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US')}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-white/[0.02]">
-                      <span className="text-slate-500">Post Sayısı</span>
+                      <span className="text-slate-500">{locale === 'tr' ? 'Post Sayısı' : 'Post Count'}</span>
                       <span className="font-semibold text-white font-mono">{mgmtUser.postCount}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-white/[0.02]">
-                      <span className="text-slate-500">Uyarılar</span>
+                      <span className="text-slate-500">{locale === 'tr' ? 'Uyarılar' : 'Warnings'}</span>
                       <span className="font-semibold text-amber-500 font-mono">{mgmtUser.warns ?? 0}x</span>
                     </div>
                   </div>
@@ -989,11 +1007,11 @@ export function HQUserTable({
 
                 {/* Edit Form */}
                 <div className="space-y-3">
-                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Detay Bilgileri Güncelle</h5>
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">{locale === 'tr' ? 'Detay Bilgileri Güncelle' : 'Update Detail Information'}</h5>
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">İsim</label>
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'İsim' : 'First Name'}</label>
                       <input
                         type="text"
                         value={mgmtFirstName}
@@ -1003,7 +1021,7 @@ export function HQUserTable({
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Soyisim</label>
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'Soyisim' : 'Last Name'}</label>
                       <input
                         type="text"
                         value={mgmtLastName}
@@ -1016,22 +1034,22 @@ export function HQUserTable({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Ülke</label>
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'Ülke' : 'Country'}</label>
                       <SearchableSelect
                         value={mgmtCountry}
                         onChange={handleMgmtCountryChange}
                         options={countriesList}
-                        placeholder="Ülke Seçin"
+                        placeholder={locale === 'tr' ? 'Ülke Seçin' : 'Select Country'}
                         selectClassName="p-2.5 bg-slate-950/60 border-white/5 rounded-xl text-xs"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Şehir</label>
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'Şehir' : 'City'}</label>
                       <SearchableSelect
                         value={mgmtCity}
                         onChange={setMgmtCity}
                         options={citiesList}
-                        placeholder={loadingGeo ? "Yükleniyor..." : "Şehir Seçin"}
+                        placeholder={loadingGeo ? (locale === 'tr' ? 'Yükleniyor...' : 'Loading...') : (locale === 'tr' ? 'Şehir Seçin' : 'Select City')}
                         disabled={!mgmtCountry || loadingGeo}
                         selectClassName="p-2.5 bg-slate-950/60 border-white/5 rounded-xl text-xs"
                       />
@@ -1039,11 +1057,11 @@ export function HQUserTable({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[8px] font-bold text-slate-500 uppercase">Biyografi</label>
+                    <label className="text-[8px] font-bold text-slate-500 uppercase">{locale === 'tr' ? 'Biyografi' : 'Biography'}</label>
                     <textarea
                       value={mgmtBio}
                       onChange={(e) => setMgmtBio(e.target.value)}
-                      placeholder="Kendinizi tanıtın..."
+                      placeholder={locale === 'tr' ? 'Kendinizi tanıtın...' : 'Introduce yourself...'}
                       rows={2}
                       className="w-full p-2.5 rounded-xl border border-white/5 bg-slate-950/60 text-xs text-white outline-none focus:border-violet-500/40 transition-all resize-none placeholder:text-slate-700"
                     />
@@ -1055,13 +1073,13 @@ export function HQUserTable({
                     className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center gap-1.5 w-full cursor-pointer transition-all select-none disabled:opacity-50"
                   >
                     {isMgmtPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                    <span>Değişiklikleri Kaydet</span>
+                    <span>{locale === 'tr' ? 'Değişiklikleri Kaydet' : 'Save Changes'}</span>
                   </button>
                 </div>
 
                 {/* Rozet ve Tik Yönetimi */}
                 <div className="space-y-3 pt-2">
-                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Rozet ve Tik Yönetimi</h5>
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">{locale === 'tr' ? 'Rozet ve Tik Yönetimi' : 'Badge & Verification'}</h5>
                   
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -1074,7 +1092,7 @@ export function HQUserTable({
                       }`}
                     >
                       <Check size={11} />
-                      <span>Mavi Tik</span>
+                      <span>{locale === 'tr' ? 'Mavi Tik' : 'Blue Badge'}</span>
                     </button>
                     <button
                       onClick={() => handleToggleVerify('gold')}
@@ -1086,17 +1104,17 @@ export function HQUserTable({
                       }`}
                     >
                       <Star size={11} className={mgmtUser.is_gold ? "fill-amber-400" : ""} />
-                      <span>Sarı Tik</span>
+                      <span>{locale === 'tr' ? 'Sarı Tik' : 'Gold Badge'}</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Onur Ödülü */}
                 <div className="space-y-3 pt-2">
-                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Onur Ödülü (XP Gönder)</h5>
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">{locale === 'tr' ? 'Onur Ödülü (XP Gönder)' : 'Honor Award (Send XP)'}</h5>
                   
                   <p className="text-[10px] text-slate-500 leading-relaxed">
-                    Katkılarından dolayı üyeye anlık deneyim puanı (XP) atayın. Bu eylem seviyelerini yükseltir!
+                    {locale === 'tr' ? 'Katkılarından dolayı üyeye anlık deneyim puanı (XP) atayın. Bu eylem seviyelerini yükseltir!' : 'Award instant experience points (XP) to the member for their contributions. This boosts their level!'}
                   </p>
 
                   <div className="flex gap-2">
@@ -1105,10 +1123,10 @@ export function HQUserTable({
                       onChange={(e) => setXpRewardAmount(Number(e.target.value))}
                       className="flex-1 p-2 rounded-xl border border-white/5 bg-slate-950/60 text-xs text-white outline-none font-mono"
                     >
-                      <option value={100}>+100 XP (Standart Ödül)</option>
-                      <option value={250}>+250 XP (Önemli Katkı)</option>
-                      <option value={500}>+500 XP (Büyük Emek)</option>
-                      <option value={1000}>+1000 XP (Süper Sinerji Ödülü)</option>
+                      <option value={100}>+100 XP ({locale === 'tr' ? 'Standart Ödül' : 'Standard Award'})</option>
+                      <option value={250}>+250 XP ({locale === 'tr' ? 'Önemli Katkı' : 'Significant Contribution'})</option>
+                      <option value={500}>+500 XP ({locale === 'tr' ? 'Büyük Emek' : 'Great Effort'})</option>
+                      <option value={1000}>+1000 XP ({locale === 'tr' ? 'Süper Sinerji Ödülü' : 'Super Synergy Award'})</option>
                     </select>
 
                     <button
@@ -1117,14 +1135,14 @@ export function HQUserTable({
                       className="px-3.5 rounded-xl text-[10px] font-black uppercase bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-1 cursor-pointer transition-all active:scale-95"
                     >
                       {isMgmtPending ? <Loader2 size={11} className="animate-spin" /> : <Award size={11} />}
-                      <span>Ödüllendir</span>
+                      <span>{locale === 'tr' ? 'Ödüllendir' : 'Award'}</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Hızlı Moderasyon İşlemleri */}
                 <div className="space-y-3 pt-2">
-                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">Hızlı Moderasyon İşlemleri</h5>
+                  <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-white/5 pb-1">{locale === 'tr' ? 'Hızlı Moderasyon İşlemleri' : 'Quick Moderation Actions'}</h5>
                   <div className="flex flex-col gap-2.5">
                     {/* Role modifications */}
                     {['founder', 'admin'].includes(currentUserRole) && mgmtUser.role !== 'founder' && (
@@ -1133,13 +1151,13 @@ export function HQUserTable({
                           onClick={() => handleRoleUpdate(mgmtUser.id, mgmtUser.role === 'admin' ? 'member' : 'admin', mgmtUser.username)}
                           className="flex-1 py-2 text-[9px] font-black uppercase border border-purple-500/20 hover:bg-purple-500/10 text-purple-400 rounded-xl transition-all cursor-pointer text-center"
                         >
-                          {mgmtUser.role === 'admin' ? 'Adminlik Yetkisini Al' : 'Admin Yap'}
+                          {mgmtUser.role === 'admin' ? (locale === 'tr' ? 'Adminlik Yetkisini Al' : 'Revoke Admin Role') : (locale === 'tr' ? 'Admin Yap' : 'Make Admin')}
                         </button>
                         <button
                           onClick={() => handleRoleUpdate(mgmtUser.id, mgmtUser.role === 'moderator' ? 'member' : 'moderator', mgmtUser.username)}
                           className="flex-1 py-2 text-[9px] font-black uppercase border border-emerald-500/25 hover:bg-emerald-500/10 text-emerald-400 rounded-xl transition-all cursor-pointer text-center"
                         >
-                          {mgmtUser.role === 'moderator' ? 'Modluğu Al' : 'Moderatör Yap'}
+                          {mgmtUser.role === 'moderator' ? (locale === 'tr' ? 'Modluğu Al' : 'Revoke Moderator Role') : (locale === 'tr' ? 'Moderatör Yap' : 'Make Moderator')}
                         </button>
                       </div>
                     )}
@@ -1150,7 +1168,7 @@ export function HQUserTable({
                         onClick={() => handleResetWarns(mgmtUser.id, mgmtUser.username)}
                         className="py-2.5 text-[9px] font-black uppercase border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 rounded-xl transition-all cursor-pointer w-full text-center"
                       >
-                        Uyarıları Sıfırla
+                        {locale === 'tr' ? 'Uyarıları Sıfırla' : 'Reset Warnings'}
                       </button>
                     )}
 
@@ -1163,7 +1181,7 @@ export function HQUserTable({
                         }}
                         className="py-2.5 text-[9px] font-black uppercase border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-500 rounded-xl transition-all cursor-pointer w-full text-center"
                       >
-                        Uyarı Gönder
+                        {locale === 'tr' ? 'Uyarı Gönder' : 'Send Warning'}
                       </button>
                     )}
 
@@ -1179,18 +1197,18 @@ export function HQUserTable({
                           if (res.error) {
                             setMgmtMsg({ type: 'error', text: `Hata: ${res.error}` })
                           } else {
-                            setMgmtMsg({ type: 'success', text: `@${mgmtUser.username} 24 saatliğine susturuldu.` })
+                            setMgmtMsg({ type: 'success', text: locale === 'tr' ? `@${mgmtUser.username} 24 saatliğine susturuldu.` : `@${mgmtUser.username} muted for 24 hours.` })
                             setMutedUserIds(prev => [...prev, mgmtUser.id])
                           }
                         }}
                         className="py-2.5 text-[9px] font-black uppercase border border-slate-500/15 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all cursor-pointer w-full text-center disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {isMuting ? (
-                          <span className="flex items-center justify-center gap-1.5"><Loader2 size={11} className="animate-spin" /> Susturuluyor...</span>
+                          <span className="flex items-center justify-center gap-1.5"><Loader2 size={11} className="animate-spin" /> {locale === 'tr' ? 'Susturuluyor...' : 'Muting...'}</span>
                         ) : mutedUserIds.includes(mgmtUser.id) ? (
-                          <span className="flex items-center justify-center gap-1.5 text-emerald-400"><Check size={11} /> Susturuldu</span>
+                          <span className="flex items-center justify-center gap-1.5 text-emerald-400"><Check size={11} /> {locale === 'tr' ? 'Susturuldu' : 'Muted'}</span>
                         ) : (
-                          "Sustur (24 Saat)"
+                          locale === 'tr' ? 'Sustur (24 Saat)' : 'Mute (24 Hours)'
                         )}
                       </button>
                     )}
@@ -1201,7 +1219,7 @@ export function HQUserTable({
                         onClick={() => setDeleteConfirmUser(mgmtUser)}
                         className="py-2.5 text-[9px] font-black uppercase border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 text-rose-500 rounded-xl transition-all cursor-pointer w-full text-center"
                       >
-                        Hesabı Kalıcı Olarak Sil
+                        {locale === 'tr' ? 'Hesabı Kalıcı Olarak Sil' : 'Permanently Delete Account'}
                       </button>
                     )}
                   </div>

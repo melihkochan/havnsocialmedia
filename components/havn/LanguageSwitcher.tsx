@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 const languages = [
-  { code: "tr", label: "Türkçe", flag: "🇹🇷" },
-  { code: "en", label: "English", flag: "🇬🇧" },
+  { code: "tr", label: "Türkçe", flagUrl: "https://flagcdn.com/w40/tr.png" },
+  { code: "en", label: "English", flagUrl: "https://flagcdn.com/w40/gb.png" },
 ] as const;
 
 interface LanguageSwitcherProps {
@@ -54,9 +54,11 @@ export function LanguageSwitcher({ variant = "settings" }: LanguageSwitcherProps
             )}
           >
             <div className="flex items-center gap-2.5">
-              <span className="text-base flex-shrink-0" role="img" aria-label={current.label}>
-                {current.flag}
-              </span>
+              <img
+                src={current.flagUrl}
+                className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
+                alt={current.label}
+              />
               <span>{current.label}</span>
             </div>
             <ChevronDown
@@ -76,7 +78,7 @@ export function LanguageSwitcher({ variant = "settings" }: LanguageSwitcherProps
                 transition={{ duration: 0.15, ease: "easeOut" }}
                 className="absolute left-0 right-0 z-50 mt-2 bg-card border border-border backdrop-blur-md rounded-xl overflow-hidden shadow-xl"
               >
-                {languages.map(({ code, label, flag }) => (
+                {languages.map(({ code, label, flagUrl }) => (
                   <button
                     key={code}
                     type="button"
@@ -92,9 +94,11 @@ export function LanguageSwitcher({ variant = "settings" }: LanguageSwitcherProps
                         : "text-foreground"
                     )}
                   >
-                    <span className="text-base" role="img" aria-label={label}>
-                      {flag}
-                    </span>
+                    <img
+                      src={flagUrl}
+                      className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
+                      alt={label}
+                    />
                     <span>{label}</span>
                     {locale === code && (
                       <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
@@ -132,7 +136,11 @@ export function LanguageSwitcher({ variant = "settings" }: LanguageSwitcherProps
           </div>
         ) : (
           <>
-            <span className="text-base">{current.flag}</span>
+            <img
+              src={current.flagUrl}
+              className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
+              alt={current.label}
+            />
             <span className="font-semibold">{current.label}</span>
             <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
           </>
@@ -151,7 +159,7 @@ export function LanguageSwitcher({ variant = "settings" }: LanguageSwitcherProps
               variant === "compact" ? "bottom-full mb-2 left-0" : "right-0 top-full"
             )}
           >
-            {languages.map(({ code, label, flag }) => (
+            {languages.map(({ code, label, flagUrl }) => (
               <button
                 key={code}
                 type="button"
@@ -167,7 +175,11 @@ export function LanguageSwitcher({ variant = "settings" }: LanguageSwitcherProps
                     : "text-foreground"
                 )}
               >
-                <span className="text-sm">{flag}</span>
+                <img
+                  src={flagUrl}
+                  className="w-4 h-3 object-cover rounded-sm flex-shrink-0"
+                  alt={label}
+                />
                 <span>{label}</span>
                 {locale === code && (
                   <span className="ml-auto w-1 h-1 rounded-full bg-primary" />

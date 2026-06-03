@@ -16,6 +16,9 @@ import { getRankInfo } from '@/lib/gamification'
 import { getUserBadges } from '@/lib/actions/badges'
 import { ProfileBadgesShowcase } from '@/components/havn/ProfileBadgesShowcase'
 import { getProfileViewCount } from '@/lib/actions/analytics'
+import { getUserActivity } from '@/lib/actions/activity'
+import { ActivityMap } from '@/components/havn/ActivityMap'
+import { MutualFollowers } from '@/components/havn/MutualFollowers'
 
 const Twitter = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -121,6 +124,7 @@ export default async function ProfilePage({
     followToUserResult,
     suggestionsResultRow,
     unlockedBadges,
+    activityResult,
   ] = await Promise.all([
     user
       ? supabase
@@ -176,7 +180,10 @@ export default async function ProfilePage({
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false }),
     getUserBadges(profile.id),
+    getUserActivity(profile.id),
   ])
+
+  const activityData = activityResult?.success ? activityResult.data : {}
 
   const followToTarget = followToTargetResult.data
   const followToUser = followToUserResult.data
@@ -260,6 +267,32 @@ export default async function ProfilePage({
       profiles: profile,
     }
   })
+
+  // === MUTUAL FOLLOWERS ===
+  let mutualFollowers: any[] = []
+  let totalMutualCount = 0
+
+  if (user && user.id !== profile.id) {
+    const { data: myFollowingData } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', user.id)
+
+    const myFollowingIds = (myFollowingData ?? []).map((f: any) => f.following_id)
+
+    if (myFollowingIds.length > 0) {
+      const { data: mutuals } = await supabase
+        .from('follows')
+        .select('follower_id, profiles!follower_id(id, username, first_name, last_name, avatar_url, updated_at)')
+        .eq('following_id', profile.id)
+        .in('follower_id', myFollowingIds)
+
+      if (mutuals) {
+        mutualFollowers = mutuals.map((m: any) => m.profiles).filter(Boolean)
+        totalMutualCount = mutualFollowers.length
+      }
+    }
+  }
 
   return (
     <MainLayout currentUser={currentProfile}>
@@ -392,47 +425,7 @@ export default async function ProfilePage({
               <span className="flex items-center gap-1.5"><Eye size={14} className="opacity-70" />{profileViews ?? 0} görüntülenme</span>
             </div>
 
-
-
-            {/* Sosyal Medya Bağlantıları */}
-            {profile.social_links && (profile.social_links.twitter || profile.social_links.instagram || profile.social_links.github) && (
-              <div className="flex flex-wrap gap-2.5 mt-4 pt-3.5 border-t border-border/40 select-none">
-                {profile.social_links.twitter && (
-                  <a
-                    href={`https://x.com/${profile.social_links.twitter}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/10 text-xs font-bold text-sky-400 hover:text-sky-300 transition-all select-none hover:scale-[1.02]"
-                  >
-                    <Twitter size={14} />
-                    <span>@{profile.social_links.twitter}</span>
-                  </a>
-                )}
-                {profile.social_links.instagram && (
-                  <a
-                    href={`https://instagram.com/${profile.social_links.instagram}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-pink-500/20 bg-pink-500/5 hover:bg-pink-500/10 text-xs font-bold text-pink-400 hover:text-pink-300 transition-all select-none hover:scale-[1.02]"
-                  >
-                    <Instagram size={14} />
-                    <span>@{profile.social_links.instagram}</span>
-                  </a>
-                )}
-                {profile.social_links.github && (
-                  <a
-                    href={`https://github.com/${profile.social_links.github}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted/70 text-xs font-bold text-foreground transition-all select-none hover:scale-[1.02] hover:border-foreground/20"
-                  >
-                    <Github size={14} />
-                    <span>@{profile.social_links.github}</span>
-                  </a>
-                )}
-              </div>
-            )}
-
+            {/* Takipçi / Takip İstatistikleri — sosyal linklerden ÖNCE */}
             <FollowStatsModal
               profileId={profile.id}
               currentUserId={user?.id}
@@ -443,37 +436,86 @@ export default async function ProfilePage({
               isOwnProfile={isOwnProfile}
             />
 
+            {!isOwnProfile && mutualFollowers.length > 0 && (
+              <MutualFollowers mutuals={mutualFollowers} totalCount={totalMutualCount} />
+            )}
+
+            {/* Sosyal Medya Bağlantıları — takipçi sayısının ALTINDA, çizgi ile ayrılmış */}
+            {profile.social_links && (profile.social_links.twitter || profile.social_links.instagram || profile.social_links.github) && (
+              <div className="flex flex-wrap gap-2 pt-4 mt-3 border-t border-border/40 select-none">
+                {profile.social_links.twitter && (
+                  <a
+                    href={`https://x.com/${profile.social_links.twitter}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/10 text-xs font-bold text-sky-400 hover:text-sky-300 transition-all select-none hover:scale-[1.02]"
+                  >
+                    <Twitter size={13} />
+                    <span>@{profile.social_links.twitter}</span>
+                  </a>
+                )}
+                {profile.social_links.instagram && (
+                  <a
+                    href={`https://instagram.com/${profile.social_links.instagram}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-pink-500/20 bg-pink-500/5 hover:bg-pink-500/10 text-xs font-bold text-pink-400 hover:text-pink-300 transition-all select-none hover:scale-[1.02]"
+                  >
+                    <Instagram size={13} />
+                    <span>@{profile.social_links.instagram}</span>
+                  </a>
+                )}
+                {profile.social_links.github && (
+                  <a
+                    href={`https://github.com/${profile.social_links.github}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-muted/40 hover:bg-muted/70 text-xs font-bold text-foreground transition-all select-none hover:scale-[1.02] hover:border-foreground/20"
+                  >
+                    <Github size={13} />
+                    <span>@{profile.social_links.github}</span>
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Topluluklar — kompakt, max 3 görünür */}
             {memberships.length > 0 && (
-              <div className="mt-5 pt-5 border-t border-border/40">
-                <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Topluluklar</h2>
-                <div className="flex flex-wrap gap-2">
-                  {memberships.map((m) => {
+              <div className="mt-4 pt-4 border-t border-border/40">
+                <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2.5">Topluluklar</h2>
+                <div className="flex flex-wrap gap-1.5">
+                  {memberships.slice(0, 3).map((m) => {
                     if (!m.community) return null
                     return (
                       <a
                         key={m.community.id}
                         href={`/communities/${m.community.slug}`}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-border/80 bg-muted/20 hover:bg-muted/40 text-xs font-bold text-foreground transition-all cursor-pointer"
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border/80 bg-muted/20 hover:bg-muted/40 text-xs font-semibold text-foreground transition-all cursor-pointer"
                       >
                         {m.community.name}
                         {m.role === 'owner' && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md ml-1 select-none">
-                            👑 KURUCU
-                          </span>
+                          <span className="text-[9px] font-black text-amber-500 ml-0.5">👑</span>
                         )}
                         {m.role === 'moderator' && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black text-[#8b5cf6] bg-[#8b5cf6]/10 border border-[#8b5cf6]/20 px-1.5 py-0.5 rounded-md ml-1 select-none">
-                            🎨 MOD
-                          </span>
+                          <span className="text-[9px] font-black text-[#8b5cf6] ml-0.5">✦</span>
                         )}
                       </a>
                     )
                   })}
+                  {memberships.length > 3 && (
+                    <span className="flex items-center px-2.5 py-1 rounded-full border border-border/50 bg-muted/10 text-[10px] font-bold text-muted-foreground select-none">
+                      +{memberships.length - 3} daha
+                    </span>
+                  )}
                 </div>
               </div>
             )}
           </div>
         </div>
+
+        {!isLocked && (isOwnProfile || profile.show_activity_map !== false) && (
+          <ActivityMap activityData={activityData} />
+        )}
 
         {!isLocked && tab !== 'tickets' && tab !== 'suggestions' && isOwnProfile && currentProfile && (
           <FeedPostForm

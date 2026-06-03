@@ -107,7 +107,7 @@ function Switch({ checked, onChange, label, description }: { checked: boolean; o
 
 
 export function SettingsClient({ profile, email }: SettingsClientProps) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'appearance' | 'preferences' | 'notifications' | 'support' | 'language' | 'account'>('profile')
   const [notifPrefs, setNotifPrefs] = useState({
     all: true,
@@ -125,6 +125,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   const [showStatus, setShowStatus] = useState((profile as any).show_status !== false)
   const [showXp, setShowXp] = useState((profile as any).show_xp !== false)
   const [showBadges, setShowBadges] = useState((profile as any).show_badges !== false)
+  const [showActivityMap, setShowActivityMap] = useState((profile as any).show_activity_map !== false)
   const [twitter, setTwitter] = useState((profile as any).social_links?.twitter || '')
   const [instagram, setInstagram] = useState((profile as any).social_links?.instagram || '')
   const [github, setGithub] = useState((profile as any).social_links?.github || '')
@@ -354,6 +355,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
     fd.set('show_status', showStatus.toString())
     fd.set('show_xp', showXp.toString())
     fd.set('show_badges', showBadges.toString())
+    fd.set('show_activity_map', showActivityMap.toString())
     fd.set('twitter', twitter)
     fd.set('instagram', instagram)
     fd.set('github', github)
@@ -372,6 +374,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
       fd.set('show_status', showStatus.toString())
       fd.set('show_xp', showXp.toString())
       fd.set('show_badges', showBadges.toString())
+      fd.set('show_activity_map', showActivityMap.toString())
       const res = await updatePreferences(fd)
       setPreferencesResult(res)
     })
@@ -455,13 +458,13 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.15 }}
               >
-                <Section title="Profil Bilgileri" icon={User}>
+                <Section title={t('settings.profile.title')} icon={User}>
                   <div className="relative">
                     {profilePending && (
                       <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center rounded-2xl gap-3">
                         <div className="flex items-center gap-2 bg-card border border-border/80 px-4 py-3 rounded-2xl shadow-lg">
                           <Loader2 size={16} className="animate-spin text-primary" />
-                          <span className="text-xs font-bold text-foreground">Değişiklikler Kaydediliyor...</span>
+                          <span className="text-xs font-bold text-foreground">{t('settings.saving_changes')}</span>
                         </div>
                       </div>
                     )}
@@ -469,7 +472,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                       {/* Banner */}
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <label className="text-xs font-semibold text-muted-foreground block">Kapak Görseli (Banner)</label>
+                          <label className="text-xs font-semibold text-muted-foreground block">{t('settings.profile.banner')}</label>
                           {isBannerDeleted ? (
                             <button
                               type="button"
@@ -477,7 +480,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                               className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
                             >
                               <Undo size={11} />
-                              Geri Al
+                              {t('settings.profile.banner_undo')}
                             </button>
                           ) : (bannerPreview || bannerFile) ? (
                             <button
@@ -485,7 +488,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                               onClick={handleRemoveBanner}
                               className="text-[10px] font-semibold text-muted-foreground hover:text-destructive transition-all cursor-pointer"
                             >
-                              Kapağı Kaldır
+                              {t('settings.profile.banner_remove')}
                             </button>
                           ) : null}
                         </div>
@@ -495,7 +498,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                           onClick={() => bannerInputRef.current?.click()}
                         >
                           {bannerPreview ? (
-                            <img src={bannerPreview} alt="Kapak Görseli" className="w-full h-full object-cover" />
+                            <img src={bannerPreview} alt={t('settings.profile.banner')} className="w-full h-full object-cover" />
                           ) : (
                             <div
                               className="w-full h-full opacity-70"
@@ -506,7 +509,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                           )}
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-[1px]">
                             <Camera size={20} />
-                            <span>Kapak Resmi Seç</span>
+                            <span>{t('settings.profile.banner_pick')}</span>
                           </div>
                         </div>
                         <input
@@ -517,13 +520,13 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                           onChange={handleBannerChange}
                         />
                         <p className="text-[10px] text-muted-foreground mt-1.5">
-                          JPG, PNG — En iyi görünüm için 3:1 veya 16:9 genişlik oranı tavsiye edilir.
+                          {t('settings.profile.banner_hint')}
                         </p>
                       </div>
 
                     {/* Avatar */}
                     <div>
-                      <label className="text-xs font-semibold text-muted-foreground block mb-2">Profil Fotoğrafı</label>
+                      <label className="text-xs font-semibold text-muted-foreground block mb-2">{t('settings.profile.avatar')}</label>
                       <AvatarUpload
                         key={profile.updated_at}
                         currentAvatarUrl={profile.avatar_url}
@@ -535,26 +538,26 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                     {/* Ad & Soyad */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="first_name">Ad</label>
+                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="first_name">{t('settings.profile.first_name')}</label>
                         <input
                           id="first_name"
                           name="first_name"
                           type="text"
                           defaultValue={profile.first_name ?? ''}
                           maxLength={50}
-                          placeholder="Adınız"
+                          placeholder={t('settings.profile.first_name_placeholder')}
                           className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="last_name">Soyad</label>
+                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="last_name">{t('settings.profile.last_name')}</label>
                         <input
                           id="last_name"
                           name="last_name"
                           type="text"
                           defaultValue={profile.last_name ?? ''}
                           maxLength={50}
-                          placeholder="Soyadınız"
+                          placeholder={t('settings.profile.last_name_placeholder')}
                           className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                         />
                       </div>
@@ -562,8 +565,8 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
 
                     {/* Username */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="username">Kullanıcı Adı</label>
-                      <p className="text-[10px] text-muted-foreground -mt-0.5">Profilinde küçük yazıyla görünür; benzersiz olmalıdır.</p>
+                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="username">{t('settings.profile.username')}</label>
+                      <p className="text-[10px] text-muted-foreground -mt-0.5">{t('settings.profile.username_hint')}</p>
                       <input
                         id="username"
                         name="username"
@@ -578,14 +581,14 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
 
                     {/* Bio */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="bio">Hakkımda</label>
+                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="bio">{t('settings.profile.bio')}</label>
                       <textarea
                         id="bio"
                         name="bio"
                         defaultValue={profile.bio ?? ''}
                         rows={3}
                         maxLength={160}
-                        placeholder="Kendinden kısaca bahset..."
+                        placeholder={t('settings.profile.bio_placeholder')}
                         className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none placeholder:text-muted-foreground"
                       />
                     </div>
@@ -593,23 +596,23 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                     {/* Ülke & Şehir Seçimi */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground">Ülke</label>
+                        <label className="text-xs font-semibold text-muted-foreground">{t('settings.profile.country')}</label>
                         <SearchableSelect
                           value={selectedCountry}
                           onChange={handleCountryChange}
                           options={countriesList}
-                          placeholder="Ülke Seçin"
+                          placeholder={t('settings.profile.country_placeholder')}
                           selectClassName="bg-background py-3"
                         />
                         <input type="hidden" name="country" value={selectedCountry} />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground">Şehir</label>
+                        <label className="text-xs font-semibold text-muted-foreground">{t('settings.profile.city')}</label>
                         <SearchableSelect
                           value={selectedCity}
                           onChange={setSelectedCity}
                           options={citiesList}
-                          placeholder={loadingGeo ? "Yükleniyor..." : "Şehir Seçin"}
+                          placeholder={loadingGeo ? t('settings.profile.city_loading') : t('settings.profile.city_placeholder')}
                           disabled={!selectedCountry || loadingGeo}
                           selectClassName="bg-background py-3"
                         />
@@ -619,35 +622,35 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
 
                     {/* Sosyal Medya Bağlantıları */}
                     <div className="pt-4 border-t border-border/40 space-y-4">
-                      <h3 className="text-xs font-bold text-foreground">Sosyal Medya Bağlantıları</h3>
+                      <h3 className="text-xs font-bold text-foreground">{t('settings.profile.social')}</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-semibold text-muted-foreground">Twitter / X</label>
+                          <label className="text-[10px] font-semibold text-muted-foreground">{t('settings.profile.social.twitter')}</label>
                           <input
                             type="text"
                             value={twitter}
                             onChange={(e) => setTwitter(e.target.value)}
-                            placeholder="Kullanıcı Adı"
+                            placeholder={t('settings.profile.social.username_placeholder')}
                             className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-semibold text-muted-foreground">Instagram</label>
+                          <label className="text-[10px] font-semibold text-muted-foreground">{t('settings.profile.social.instagram')}</label>
                           <input
                             type="text"
                             value={instagram}
                             onChange={(e) => setInstagram(e.target.value)}
-                            placeholder="Kullanıcı Adı"
+                            placeholder={t('settings.profile.social.username_placeholder')}
                             className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-semibold text-muted-foreground">GitHub</label>
+                          <label className="text-[10px] font-semibold text-muted-foreground">{t('settings.profile.social.github')}</label>
                           <input
                             type="text"
                             value={github}
                             onChange={(e) => setGithub(e.target.value)}
-                            placeholder="Kullanıcı Adı"
+                            placeholder={t('settings.profile.social.username_placeholder')}
                             className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
                           />
                         </div>
@@ -657,7 +660,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                     {profileResult && (
                       <StatusMsg
                         type={profileResult.error ? 'error' : 'success'}
-                        msg={profileResult.error ?? 'Profil başarıyla güncellendi!'}
+                        msg={profileResult.error ? t(profileResult.error as any) : t('settings.profile.success')}
                       />
                     )}
 
@@ -672,7 +675,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                       }}
                     >
                       {profilePending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                      Kaydet
+                      {t('settings.save')}
                     </motion.button>
                   </form>
                 </div>
@@ -686,10 +689,10 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.15 }}
               >
-                <Section title="Şifre Değiştir" icon={Lock}>
+                <Section title={t('settings.password.title')} icon={Lock}>
                   <form onSubmit={handlePasswordSubmit} className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-muted-foreground">Mevcut Şifre</label>
+                      <label className="text-xs font-semibold text-muted-foreground">{t('settings.password.current')}</label>
                       <input
                         type="password"
                         required
@@ -700,14 +703,14 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-muted-foreground">Yeni Şifre</label>
+                      <label className="text-xs font-semibold text-muted-foreground">{t('settings.password.new')}</label>
                       <input
                         type="password"
                         required
                         minLength={8}
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
-                        placeholder="En az 8 karakter"
+                        placeholder={t('settings.password.new_hint')}
                         className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                       />
                     </div>
@@ -715,7 +718,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                     {passwordResult && (
                       <StatusMsg
                         type={passwordResult.error ? 'error' : 'success'}
-                        msg={passwordResult.error ?? 'Şifre başarıyla değiştirildi!'}
+                        msg={passwordResult.error ? t(passwordResult.error as any) : t('settings.password.success')}
                       />
                     )}
 
@@ -726,7 +729,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                       className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold border border-border text-foreground hover:bg-accent transition-all cursor-pointer"
                     >
                       {passwordPending ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-                      Şifreyi Güncelle
+                      {t('settings.password.submit')}
                     </motion.button>
                   </form>
 
@@ -738,16 +741,16 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                         onClick={handleForgotPassword}
                         className="text-xs font-bold text-primary hover:underline cursor-pointer text-left w-fit disabled:opacity-50"
                       >
-                        {resetPending ? 'Sıfırlama bağlantısı gönderiliyor...' : 'Mevcut Şifremi Unuttum'}
+                        {resetPending ? t('settings.password.forgot_sending') : t('settings.password.forgot')}
                       </button>
                       {resetSent && (
                         <p className="text-xs text-green-500 font-semibold mt-1">
-                          Şifre sıfırlama bağlantısı e-posta adresinize ({email}) gönderildi. E-postayı kontrol edin.
+                          {t('settings.password.forgot_sent', { email })}
                         </p>
                       )}
                       {resetError && (
                         <p className="text-xs text-destructive font-semibold mt-1">
-                          {resetError}
+                          {t(resetError as any)}
                         </p>
                       )}
                     </div>
@@ -762,11 +765,11 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.15 }}
               >
-                <Section title="Görünüm Ayarları" icon={Palette}>
+                <Section title={t('settings.appearance.title')} icon={Palette}>
                   <div className="space-y-6">
                     {/* Tema seçimi */}
                     <div className="space-y-2">
-                      <p className="text-xs font-semibold text-muted-foreground">Uygulama Teması</p>
+                      <p className="text-xs font-semibold text-muted-foreground">{t('settings.appearance.theme')}</p>
                       <div className="max-w-xs">
                         <ThemeToggle variant="sidebar" />
                       </div>
@@ -775,16 +778,16 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                     {/* Renk Teması */}
                     <div className="space-y-3 pt-4 border-t border-border/40">
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground">Renk Teması (Accent Color)</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Uygulama genelindeki birincil vurgu rengini seçin.</p>
+                        <p className="text-xs font-semibold text-muted-foreground">{t('settings.appearance.accent')}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{t('settings.appearance.accent_hint')}</p>
                       </div>
                       <div className="flex flex-wrap gap-2.5">
                         {[
-                          { id: "purple", label: "Havn Moru", start: "oklch(0.48 0.22 264)", end: "oklch(0.55 0.22 290)" },
-                          { id: "indigo", label: "İndigo", start: "oklch(0.50 0.20 280)", end: "oklch(0.58 0.20 305)" },
-                          { id: "rose", label: "Gül Kurusu", start: "oklch(0.55 0.22 350)", end: "oklch(0.62 0.20 15)" },
-                          { id: "amber", label: "Amber", start: "oklch(0.62 0.20 50)", end: "oklch(0.68 0.18 70)" },
-                          { id: "teal", label: "Turkuaz", start: "oklch(0.50 0.18 170)", end: "oklch(0.58 0.15 195)" },
+                          { id: "purple", label: t('settings.appearance.accent.purple'), start: "oklch(0.48 0.22 264)", end: "oklch(0.55 0.22 290)" },
+                          { id: "indigo", label: t('settings.appearance.accent.indigo'), start: "oklch(0.50 0.20 280)", end: "oklch(0.58 0.20 305)" },
+                          { id: "rose", label: t('settings.appearance.accent.rose'), start: "oklch(0.55 0.22 350)", end: "oklch(0.62 0.20 15)" },
+                          { id: "amber", label: t('settings.appearance.accent.amber'), start: "oklch(0.62 0.20 50)", end: "oklch(0.68 0.18 70)" },
+                          { id: "teal", label: t('settings.appearance.accent.teal'), start: "oklch(0.50 0.18 170)", end: "oklch(0.58 0.15 195)" },
                         ].map((item) => (
                           <button
                             key={item.id}
@@ -822,19 +825,19 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.15 }}
               >
-                <Section title="Tercihler" icon={Sliders}>
+                <Section title={t('settings.preferences.title')} icon={Sliders}>
                   <div className="relative">
                     {preferencesPending && (
                       <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center rounded-2xl gap-3">
                         <div className="flex items-center gap-2 bg-card border border-border/80 px-4 py-3 rounded-2xl shadow-lg">
                           <Loader2 size={16} className="animate-spin text-primary" />
-                          <span className="text-xs font-bold text-foreground">Değişiklikler Kaydediliyor...</span>
+                          <span className="text-xs font-bold text-foreground">{t('settings.saving_changes')}</span>
                         </div>
                       </div>
                     )}
                     <form onSubmit={handlePreferencesSubmit} className="space-y-6">
                       <p className="text-xs text-muted-foreground">
-                        Hesap gizliliğini, çevrimiçi görünürlüğünü ve XP seviyesi gösterim tercihlerini buradan yönetebilirsin.
+                        {t('settings.preferences.subtitle')}
                       </p>
                       
                       <div className="bg-muted/10 border border-border/60 rounded-2xl px-5 py-1">
@@ -842,39 +845,47 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                         <Switch
                           checked={isPrivate}
                           onChange={setIsPrivate}
-                          label="Gizli Profil"
-                          description="Hesabını gizlediğinde gönderilerini yalnızca takipçilerin görebilir."
+                          label={t('settings.preferences.private')}
+                          description={t('settings.preferences.private_desc')}
                         />
 
                         {/* Çevrimiçi Durumu */}
                         <Switch
                           checked={showStatus}
                           onChange={setShowStatus}
-                          label="Çevrimiçi Durumunu Paylaş"
-                          description="Açık olduğunda, diğer kullanıcılar çevrimiçi veya en son aktif olduğunuz zamanı görebilir."
+                          label={t('settings.preferences.show_status_label')}
+                          description={t('settings.preferences.show_status_desc_new')}
                         />
 
                         {/* XP ve Seviye Gösterimi */}
                         <Switch
                           checked={showXp}
                           onChange={setShowXp}
-                          label="XP ve Seviyeyi Göster"
-                          description="Açık olduğunda, profilinizde ve gönderilerinizde XP seviyeniz diğer kullanıcılara gösterilir."
+                          label={t('settings.preferences.show_xp_label')}
+                          description={t('settings.preferences.show_xp_desc_new')}
                         />
 
                         {/* Rozet Gösterimi */}
                         <Switch
                           checked={showBadges}
                           onChange={setShowBadges}
-                          label="Rozetleri Profilimde Göster"
-                          description="Açık olduğunda, kazandığınız rozetler profil kartınızda sergilenir."
+                          label={t('settings.preferences.show_badges_label')}
+                          description={t('settings.preferences.show_badges_desc_new')}
+                        />
+
+                        {/* Aktivite Haritası Gösterimi */}
+                        <Switch
+                          checked={showActivityMap}
+                          onChange={setShowActivityMap}
+                          label={t('settings.preferences.show_activity_map_label')}
+                          description={t('settings.preferences.show_activity_map_desc')}
                         />
                       </div>
 
                       {preferencesResult && (
                         <StatusMsg
                           type={preferencesResult.error ? 'error' : 'success'}
-                          msg={preferencesResult.error ?? 'Tercihleriniz başarıyla güncellendi!'}
+                          msg={preferencesResult.error ? t(preferencesResult.error as any) : t('settings.preferences.success')}
                         />
                       )}
 
@@ -889,7 +900,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                         }}
                       >
                         {preferencesPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                        Kaydet
+                        {t('settings.save')}
                       </motion.button>
                     </form>
                   </div>
@@ -903,37 +914,37 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.15 }}
               >
-                <Section title="Bildirim Tercihleri" icon={Bell}>
+                <Section title={t('settings.notifications.title')} icon={Bell}>
                   <div className="space-y-6">
                     {/* Toggles */}
                     <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-foreground mb-3 select-none">Bildirim Türleri</h3>
+                      <h3 className="text-xs font-bold text-foreground mb-3 select-none">{t('settings.notifications.types')}</h3>
                       <div className="bg-muted/10 border border-border/60 rounded-2xl px-5 py-1">
                         <Switch
                           checked={notifPrefs.all}
                           onChange={(val) => updateNotifPref('all', val)}
-                          label="Tüm Bildirimler"
-                          description="Bildirimlerin genel olarak gösterilmesini kontrol eder"
+                          label={t('settings.notifications.all')}
+                          description={t('settings.notifications.all_desc_new')}
                         />
                         {notifPrefs.all && (
                           <>
                             <Switch
                               checked={notifPrefs.likes}
                               onChange={(val) => updateNotifPref('likes', val)}
-                              label="Beğeniler"
-                              description="Gönderileriniz ve yorumlarınız beğenildiğinde bildirim alın"
+                              label={t('settings.notifications.likes_label')}
+                              description={t('settings.notifications.likes_desc_new')}
                             />
                             <Switch
                               checked={notifPrefs.comments}
                               onChange={(val) => updateNotifPref('comments', val)}
-                              label="Yorumlar ve Yanıtlar"
-                              description="Gönderilerinize yorum yapıldığında veya yorumunuza yanıt geldiğinde bildirim alın"
+                              label={t('settings.notifications.comments_label')}
+                              description={t('settings.notifications.comments_desc_new')}
                             />
                             <Switch
                               checked={notifPrefs.support}
                               onChange={(val) => updateNotifPref('support', val)}
-                              label="Destek Talepleri ve Öneriler"
-                              description="Destek talepleriniz veya önerileriniz güncellendiğinde, ya da yöneticiden bildirim geldiğinde bildirim alın"
+                              label={t('settings.notifications.support_label')}
+                              description={t('settings.notifications.support_desc_new')}
                             />
                           </>
                         )}
@@ -943,8 +954,8 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                     {/* Muted Users list */}
                     <div className="space-y-3 pt-2">
                       <div>
-                        <h3 className="text-xs font-bold text-foreground select-none">Sessize Alınan Kullanıcılar</h3>
-                        <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">Sessize aldığınız kullanıcıların beğeni, yorum veya takip bildirimleri size gösterilmez.</p>
+                        <h3 className="text-xs font-bold text-foreground select-none">{t('settings.notifications.muted_users')}</h3>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{t('settings.notifications.mute_desc_new')}</p>
                       </div>
                       
                       {/* Manual mute input with Autocomplete Suggestions */}
@@ -955,7 +966,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Kullanıcı adı girin... (Örn: melih)"
+                            placeholder={t('settings.notifications.mute_placeholder')}
                             className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary transition-all"
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
@@ -972,13 +983,13 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                             onClick={() => {
                               const val = searchQuery.trim()
                               if (val) {
-                                muteUser(val)
-                                setSearchQuery('')
+                                  muteUser(val)
+                                  setSearchQuery('')
                               }
                             }}
                             className="px-4 py-2.5 rounded-xl text-xs font-bold border border-border text-foreground hover:bg-accent transition-all cursor-pointer flex-shrink-0"
                           >
-                            Sessize Al
+                            {t('settings.notifications.mute_add')}
                           </button>
                         </div>
 
@@ -1032,7 +1043,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                                       </div>
                                     </div>
                                     <span className="text-[10px] font-bold text-primary flex-shrink-0">
-                                      {isAlreadyMuted ? 'Sessizde' : 'Sessize Al'}
+                                      {isAlreadyMuted ? (locale === 'tr' ? 'Sessizde' : 'Muted') : t('settings.notifications.mute_add')}
                                     </span>
                                   </div>
                                 )
@@ -1046,7 +1057,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                       <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                         {mutedUsers.length === 0 ? (
                           <div className="text-center py-6 border border-dashed border-border/80 rounded-2xl text-[11px] text-muted-foreground">
-                            Henüz sessize alınan bir kullanıcı yok.
+                            {t('settings.notifications.empty_muted')}
                           </div>
                         ) : (
                           mutedUsers.map((username) => (
@@ -1060,7 +1071,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                                 onClick={() => unmuteUser(username)}
                                 className="px-2.5 py-1.5 rounded-lg border border-border text-[10px] font-bold text-muted-foreground hover:text-destructive hover:border-destructive/20 hover:bg-destructive/5 transition-all cursor-pointer flex-shrink-0"
                               >
-                                Sesi Aç
+                                {t('settings.notifications.unmute')}
                               </button>
                             </div>
                           ))
@@ -1078,30 +1089,30 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.15 }}
               >
-                <Section title="Destek Talebi Gönder" icon={HelpCircle}>
+                <Section title={t('settings.support.title')} icon={HelpCircle}>
                   <form onSubmit={handleSupportSubmit} className="space-y-4">
                     <p className="text-xs text-muted-foreground">
-                      Uygulamayla ilgili bir hata bildiriminde bulunmak, öneri sunmak veya destek almak için talebini iletebilirsin. Talebin doğrudan destek e-posta adresimize gönderilecektir.
+                      {t('settings.support.desc')}
                     </p>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="support_subject">Konu</label>
+                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="support_subject">{t('settings.support.subject')}</label>
                       <input
                         id="support_subject"
                         name="subject"
                         type="text"
                         required
-                        placeholder="Örn: Profil fotoğrafı yükleme hatası"
+                        placeholder={t('settings.support.subject_placeholder_new')}
                         className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="support_message">Mesajınız</label>
+                      <label className="text-xs font-semibold text-muted-foreground" htmlFor="support_message">{t('settings.support.message')}</label>
                       <textarea
                         id="support_message"
                         name="message"
                         required
                         rows={5}
-                        placeholder="Karşılaştığınız sorunu veya önerinizi detaylıca yazınız..."
+                        placeholder={t('settings.support.message_placeholder_new')}
                         className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none placeholder:text-muted-foreground"
                       />
                     </div>
@@ -1109,7 +1120,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                     {supportResult && (
                       <StatusMsg
                         type={supportResult.error ? 'error' : 'success'}
-                        msg={supportResult.error ?? 'Destek talebiniz başarıyla gönderildi! Teşekkür ederiz.'}
+                        msg={supportResult.error ? t(supportResult.error as any) : t('settings.support.success_new')}
                       />
                     )}
 
@@ -1124,7 +1135,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                       }}
                     >
                       {supportPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                      Talebi Gönder
+                      {t('settings.support.submit')}
                     </motion.button>
                   </form>
                 </Section>
@@ -1137,11 +1148,11 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.15 }}
               >
-                <Section title="Hesap Yönetimi" icon={LogOut}>
+                <Section title={t('settings.account.title')} icon={LogOut}>
                   <div className="space-y-4">
                     <div className="bg-destructive/5 border border-destructive/10 rounded-xl p-4">
-                      <h3 className="text-xs font-bold text-destructive mb-1">Oturumu Kapat</h3>
-                      <p className="text-xs text-muted-foreground mb-3">Hesabınızdan güvenli bir şekilde çıkış yapın.</p>
+                      <h3 className="text-xs font-bold text-destructive mb-1">{t('settings.account.logout')}</h3>
+                      <p className="text-xs text-muted-foreground mb-3">{t('settings.account.logout_desc')}</p>
                       <form action={signOut}>
                         <motion.button
                           type="submit"
@@ -1153,7 +1164,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                             background: 'color-mix(in oklch, var(--destructive) 8%, transparent)',
                           }}
                         >
-                          Çıkış Yap
+                          {t('settings.account.logout')}
                         </motion.button>
                       </form>
                     </div>

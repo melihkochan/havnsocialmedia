@@ -24,6 +24,7 @@ import {
   FileText
 } from 'lucide-react'
 import { getRankInfo } from '@/lib/gamification'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 import { updateUserRole, getHQUsers } from '@/lib/actions/hq-admin'
 import { getTeamMembers, getHQModLogs, getHQNotes } from '@/lib/actions/hq-chat'
 
@@ -70,6 +71,7 @@ const ROLE_DETAILS: Record<string, { bg: string; text: string; border: string; l
 }
 
 export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUserId: string; currentUserRole: string }) {
+  const { locale } = useLocale()
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [logs, setLogs] = useState<any[]>([])
   const [notes, setNotes] = useState<any[]>([])
@@ -140,9 +142,9 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
     startTransition(async () => {
       const res = await updateUserRole(userId, role)
       if (res.error) {
-        setActionMsg({ type: 'error', text: `Yetkilendirme hatası: ${res.error}` })
+        setActionMsg({ type: 'error', text: locale === 'tr' ? `Yetkilendirme hatası: ${res.error}` : `Authorization error: ${res.error}` })
       } else {
-        setActionMsg({ type: 'success', text: `@${username} başarıyla yetkilendirildi.` })
+        setActionMsg({ type: 'success', text: locale === 'tr' ? `@${username} başarıyla yetkilendirildi.` : `@${username} successfully authorized.` })
         setShowAddModal(false)
         setSearchQuery('')
         setSearchResults([])
@@ -154,15 +156,15 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
   }
 
   const handleDemote = async (userId: string, username: string) => {
-    if (!confirm(`@${username} kullanıcısının tüm yetkilerini alıp ekip dışı bırakmak istediğinize emin misiniz?`)) return
+    if (!confirm(locale === 'tr' ? `@${username} kullanıcısının tüm yetkilerini alıp ekip dışı bırakmak istediğinize emin misiniz?` : `Are you sure you want to revoke all authorization for @${username} and remove them from the staff team?`)) return
     
     setActionMsg(null)
     startTransition(async () => {
       const res = await updateUserRole(userId, 'member')
       if (res.error) {
-        setActionMsg({ type: 'error', text: `Hata: ${res.error}` })
+        setActionMsg({ type: 'error', text: locale === 'tr' ? `Hata: ${res.error}` : `Error: ${res.error}` })
       } else {
-        setActionMsg({ type: 'success', text: `@${username} yetkileri alınarak üye yapıldı.` })
+        setActionMsg({ type: 'success', text: locale === 'tr' ? `@${username} yetkileri alınarak üye yapıldı.` : `@${username} demoted back to member.` })
         await loadData()
       }
       setTimeout(() => setActionMsg(null), 4000)
@@ -171,25 +173,25 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
 
   const getOnlineStatus = (member: TeamMember) => {
     if (member.show_status === false || !member.last_seen_at) {
-      return { label: 'Çevrimdışı', color: 'bg-slate-500/85' }
+      return { label: locale === 'tr' ? 'Çevrimdışı' : 'Offline', color: 'bg-slate-500/85' }
     }
     const lastSeen = new Date(member.last_seen_at)
     const now = new Date()
     const diffMins = Math.floor((now.getTime() - lastSeen.getTime()) / 60000)
 
     if (diffMins < 3) {
-      return { label: 'Çevrimiçi', color: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' }
+      return { label: locale === 'tr' ? 'Çevrimiçi' : 'Online', color: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' }
     } else if (diffMins < 10) {
-      return { label: 'Boşta', color: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' }
+      return { label: locale === 'tr' ? 'Boşta' : 'Idle', color: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' }
     }
-    return { label: 'Çevrimdışı', color: 'bg-slate-500/85' }
+    return { label: locale === 'tr' ? 'Çevrimdışı' : 'Offline', color: 'bg-slate-500/85' }
   }
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-3">
         <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-xs text-muted-foreground">Ekip verileri yükleniyor...</p>
+        <p className="text-xs text-muted-foreground">{locale === 'tr' ? 'Ekip verileri yükleniyor...' : 'Loading team data...'}</p>
       </div>
     )
   }
@@ -211,13 +213,15 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-white/5">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-slate-400 flex items-center gap-1.5">
-            <span>Davranış Kontrol Paneli</span>
+            <span>{locale === 'tr' ? 'Davranış Kontrol Paneli' : 'Behavior Control Panel'}</span>
             <span>&gt;</span>
-            <span className="text-violet-400 font-extrabold">Ekip Yönetimi</span>
+            <span className="text-violet-400 font-extrabold">{locale === 'tr' ? 'Ekip Yönetimi' : 'Team Management'}</span>
           </p>
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Ekip Yönetimi</h1>
+          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">{locale === 'tr' ? 'Ekip Yönetimi' : 'Team Management'}</h1>
           <p className="text-xs text-slate-400 mt-1">
-            Platform yöneticileri ve moderatörlerin rollerini ve yetkili işlemlerini denetleyin.
+            {locale === 'tr'
+              ? 'Platform yöneticileri ve moderatörlerin rollerini ve yetkili işlemlerini denetleyin.'
+              : 'Audit the roles and staff actions of platform administrators and moderators.'}
           </p>
         </div>
 
@@ -236,7 +240,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
               className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-primary hover:bg-primary/95 text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-primary/10"
             >
               <Plus size={14} />
-              <span>Yeni Yetkili Ekle</span>
+              <span>{locale === 'tr' ? 'Yeni Yetkili Ekle' : 'Add Staff Member'}</span>
             </button>
           )}
         </div>
@@ -268,7 +272,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
             <Users size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Toplam Yetkili</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{locale === 'tr' ? 'Toplam Yetkili' : 'Total Staff'}</span>
             <h3 className="text-2xl font-black text-white mt-0.5">{teamMembers.length}</h3>
           </div>
         </div>
@@ -278,9 +282,9 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
             <Activity size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Çevrimiçi Yetkili</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{locale === 'tr' ? 'Çevrimiçi Yetkili' : 'Online Staff'}</span>
             <h3 className="text-2xl font-black text-white mt-0.5">
-              {teamMembers.filter(m => getOnlineStatus(m).label === 'Çevrimiçi').length}
+              {teamMembers.filter(m => getOnlineStatus(m).label === (locale === 'tr' ? 'Çevrimiçi' : 'Online')).length}
             </h3>
           </div>
         </div>
@@ -290,7 +294,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
             <ShieldCheck size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Toplam Mod Eylemi</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{locale === 'tr' ? 'Toplam Mod Eylemi' : 'Total Mod Actions'}</span>
             <h3 className="text-2xl font-black text-white mt-0.5">{logs.length}</h3>
           </div>
         </div>
@@ -300,7 +304,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
       <div className="space-y-4">
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 select-none">
           <Shield size={14} className="text-violet-400" />
-          <span>Platform Yetkili Kadrosu</span>
+          <span>{locale === 'tr' ? 'Platform Yetkili Kadrosu' : 'Platform Staff & Officers'}</span>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -369,7 +373,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                   {/* Role Badge */}
                   <div className={`px-2.5 py-1 rounded-xl border flex items-center gap-1 text-[9px] font-black uppercase tracking-wider ${roleConf.bg} ${roleConf.text} ${roleConf.border}`}>
                     <Icon size={10} />
-                    <span>{roleConf.label}</span>
+                    <span>{role === 'founder' ? (locale === 'tr' ? 'Kurucu' : 'Founder') : role === 'admin' ? (locale === 'tr' ? 'Yönetici' : 'Admin') : role === 'moderator' ? (locale === 'tr' ? 'Moderatör' : 'Moderator') : (locale === 'tr' ? 'Üye' : 'Member')}</span>
                   </div>
                 </div>
 
@@ -387,8 +391,8 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                       <Shield size={12} />
                     </div>
                     <div>
-                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Moderatör Eylemi</p>
-                      <p className="text-xs font-black text-white font-mono mt-0.5">{actionsCount} işlem</p>
+                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">{locale === 'tr' ? 'Moderatör Eylemi' : 'Moderator Action'}</p>
+                      <p className="text-xs font-black text-white font-mono mt-0.5">{actionsCount} {locale === 'tr' ? 'işlem' : 'actions'}</p>
                     </div>
                   </div>
 
@@ -397,8 +401,8 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                       <FileText size={12} />
                     </div>
                     <div>
-                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Ekip Notu</p>
-                      <p className="text-xs font-black text-white font-mono mt-0.5">{notesCount} not</p>
+                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">{locale === 'tr' ? 'Ekip Notu' : 'Team Note'}</p>
+                      <p className="text-xs font-black text-white font-mono mt-0.5">{notesCount} {locale === 'tr' ? 'not' : 'notes'}</p>
                     </div>
                   </div>
                 </div>
@@ -412,7 +416,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                         onClick={() => handlePromote(member.id, member.username, 'admin')}
                         className="px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 transition-all cursor-pointer"
                       >
-                        Yönetici Yap
+                        {locale === 'tr' ? 'Yönetici Yap' : 'Make Admin'}
                       </button>
                     )}
                     {role === 'admin' && (
@@ -420,7 +424,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                         onClick={() => handlePromote(member.id, member.username, 'moderator')}
                         className="px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 transition-all cursor-pointer"
                       >
-                        Moderatör Yap
+                        {locale === 'tr' ? 'Moderatör Yap' : 'Make Moderator'}
                       </button>
                     )}
                     <button
@@ -428,7 +432,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                       className="px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase bg-rose-950/20 hover:bg-rose-950/40 text-rose-500 border border-rose-500/10 hover:border-rose-500/20 transition-all cursor-pointer flex items-center gap-1"
                     >
                       <Trash2 size={10} />
-                      <span>Yetkileri Al</span>
+                      <span>{locale === 'tr' ? 'Yetkileri Al' : 'Revoke Staff Role'}</span>
                     </button>
                   </div>
                 )}
@@ -452,7 +456,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
               <div className="flex items-center justify-between pb-3.5 border-b border-white/5 select-none">
                 <h3 className="text-sm font-black text-white flex items-center gap-2">
                   <UserCheck className="text-primary" size={16} />
-                  <span>Yeni Yetkili Ekle</span>
+                  <span>{locale === 'tr' ? 'Yeni Yetkili Ekle' : 'Add Staff Member'}</span>
                 </h3>
                 <button
                   onClick={() => {
@@ -469,7 +473,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
               {/* Form Input */}
               <div className="mt-4 space-y-4">
                 <div className="space-y-1 select-none">
-                  <label className="text-[9px] font-black uppercase text-slate-500">Rol Ata</label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">{locale === 'tr' ? 'Rol Ata' : 'Assign Role'}</label>
                   <div className="grid grid-cols-2 gap-2 mt-1">
                     <button
                       type="button"
@@ -480,7 +484,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                           : 'bg-white/5 hover:bg-white/10 text-slate-400 border-white/5'
                       }`}
                     >
-                      Moderatör
+                      {locale === 'tr' ? 'Moderatör' : 'Moderator'}
                     </button>
                     <button
                       type="button"
@@ -491,13 +495,13 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                           : 'bg-white/5 hover:bg-white/10 text-slate-400 border-white/5'
                       }`}
                     >
-                      Yönetici
+                      {locale === 'tr' ? 'Yönetici' : 'Admin'}
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase text-slate-500 select-none">Kullanıcı Ara</label>
+                  <label className="text-[9px] font-black uppercase text-slate-500 select-none">{locale === 'tr' ? 'Kullanıcı Ara' : 'Search User'}</label>
                   <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 bg-[#0e0e1b] border border-white/5 focus-within:border-primary/45 mt-1 transition-colors">
                     <Search size={13} className="text-slate-400 flex-shrink-0" />
                     <input
@@ -505,7 +509,7 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                       required
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Kullanıcı adı ara... (Örn: @melih)"
+                      placeholder={locale === 'tr' ? 'Kullanıcı adı ara... (Örn: @melih)' : 'Search username... (E.g., @melih)'}
                       className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-slate-600"
                     />
                     {searching && <Loader2 size={11} className="animate-spin text-primary" />}
@@ -542,20 +546,20 @@ export function HQTeamManagement({ currentUserId, currentUserRole }: { currentUs
                       ) : (
                         <Plus size={10} />
                       )}
-                      <span>Yetki Ver</span>
+                      <span>{locale === 'tr' ? 'Yetki Ver' : 'Authorize'}</span>
                     </button>
                   </div>
                 ))}
 
                 {searchQuery.trim() !== '' && searchResults.length === 0 && !searching && (
                   <div className="text-center py-8 text-xs text-slate-500 font-bold select-none">
-                    Eşleşen üye bulunamadı veya kullanıcı zaten yetkili.
+                    {locale === 'tr' ? 'Eşleşen üye bulunamadı veya kullanıcı zaten yetkili.' : 'No matching members found or user is already staff.'}
                   </div>
                 )}
                 
                 {searchQuery.trim() === '' && (
                   <div className="text-center py-8 text-xs text-slate-500 font-bold select-none">
-                    Kullanıcı adı yazarak aramaya başlayın.
+                    {locale === 'tr' ? 'Kullanıcı adı yazarak aramaya başlayın.' : 'Start searching by typing a username.'}
                   </div>
                 )}
               </div>
