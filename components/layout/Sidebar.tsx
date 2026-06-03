@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles, Lightbulb, X, Sun, Moon, Monitor, Shield, Terminal, Globe } from "lucide-react";
+import { Compass, Users, User, Settings, Bell, ChevronRight, LogOut, Bookmark, MessageSquare, HelpCircle, Search, Loader2, Info, Sparkles, Lightbulb, X, Sun, Moon, Monitor, Shield, Terminal, Globe, Gamepad2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { HavnLogo } from "@/components/havn/HavnLogo";
@@ -24,6 +24,7 @@ const navItems = [
   { href: "/messages", labelKey: "nav.messages" as const, icon: MessageSquare },
   { href: "/notifications", labelKey: "nav.notifications" as const, icon: Bell },
   { href: "/bookmarks", labelKey: "nav.bookmarks" as const, icon: Bookmark },
+  { href: "/play", labelKey: "nav.games" as const, icon: Gamepad2 },
   { href: "/profile", labelKey: "nav.profile" as const, icon: User },
 ];
 
