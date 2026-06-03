@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useEffect } from 'react'
 import { Check, Loader2, AlertCircle, Sparkles, Eye, EyeOff, Lock, Mail, Info, MapPin } from 'lucide-react'
@@ -10,6 +10,8 @@ import { SearchableSelect } from '@/components/havn/SearchableSelect'
 import { getInitials } from '@/lib/profile-display'
 import { getCountriesAction, getCitiesAction } from '@/lib/actions/location'
 import type { Profile } from '@/lib/supabase/types'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t } from '@/lib/i18n'
 
 interface ProfileSetupClientProps {
   profile: Profile
@@ -18,6 +20,7 @@ interface ProfileSetupClientProps {
 }
 
 export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileSetupClientProps) {
+  const { locale } = useLocale()
   const [username, setUsername] = useState(profile.username || '')
   const [firstName, setFirstName] = useState(profile.first_name || '')
   const [lastName, setLastName] = useState(profile.last_name || '')
@@ -73,23 +76,23 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
 
     const cleanUsername = username.trim()
     if (!cleanUsername) {
-      setError('Kullanıcı adı zorunludur.')
+      setError(locale === 'tr' ? 'Kullanıcı adı zorunludur.' : 'Username is required.')
       return
     }
 
     if (RESERVED_USERNAMES.includes(cleanUsername.toLowerCase())) {
-      setError('Bu kullanıcı adı sistem tarafından rezerve edilmiştir.')
+      setError(locale === 'tr' ? 'Bu kullanıcı adı sistem tarafından rezerve edilmiştir.' : 'This username is reserved by the system.')
       return
     }
 
     const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/
     if (!usernameRegex.test(cleanUsername)) {
-      setError('Kullanıcı adı 3-30 karakter olmalı, sadece harf, rakam ve alt çizgi (_) içermelidir.')
+      setError(locale === 'tr' ? 'Kullanıcı adı 3-30 karakter olmalı, sadece harf, rakam ve alt çizgi (_) içermelidir.' : 'Username must be 3-30 characters, containing only letters, numbers, and underscores (_).')
       return
     }
 
     if (isOAuthUser && !skipPassword && password && password.length < 8) {
-      setError('Şifre en az 8 karakter olmalıdır.')
+      setError(locale === 'tr' ? 'Şifre en az 8 karakter olmalıdır.' : 'Password must be at least 8 characters.')
       return
     }
 
@@ -129,9 +132,11 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
         <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary/10 text-primary mb-1">
           <Sparkles size={22} className="animate-pulse" />
         </div>
-        <h2 className="text-xl font-black text-foreground tracking-tight">Profilini Kur</h2>
+        <h2 className="text-xl font-black text-foreground tracking-tight">
+          {locale === 'tr' ? 'Profilini Kur' : 'Setup Your Profile'}
+        </h2>
         <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-          HAVN'a hoş geldin! Toplulukla tanışmadan önce profilini tamamla.
+          {locale === 'tr' ? "HAVN'a hoş geldin! Toplulukla tanışmadan önce profilini tamamla." : 'Welcome to HAVN! Complete your profile before meeting the community.'}
         </p>
       </div>
 
@@ -139,7 +144,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
         {/* Avatar */}
         <div className="flex flex-col items-center">
           <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 block text-center select-none">
-            Profil Resmi
+            {locale === 'tr' ? 'Profil Resmi' : 'Profile Picture'}
           </label>
           <AvatarUpload
             currentAvatarUrl={(profile as any).avatar_url}
@@ -148,7 +153,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
           />
           {(profile as any).avatar_url && !avatarFile && (
             <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-              Google profil resmin kullanılıyor — değiştirmek için üstüne tıkla
+              {locale === 'tr' ? 'Google profil resmin kullanılıyor — değiştirmek için üstüne tıkla' : 'Your Google profile picture is in use — click to change it'}
             </p>
           )}
         </div>
@@ -157,27 +162,27 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground" htmlFor="setup-first-name">
-              Ad
+              {t('auth.register.first_name', locale)}
             </label>
             <input
               id="setup-first-name"
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Adınız"
+              placeholder={locale === 'tr' ? 'Adınız' : 'First Name'}
               className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground" htmlFor="setup-last-name">
-              Soyad
+              {t('auth.register.last_name', locale)}
             </label>
             <input
               id="setup-last-name"
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              placeholder="Soyadınız"
+              placeholder={locale === 'tr' ? 'Soyadınız' : 'Last Name'}
               className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
             />
           </div>
@@ -186,7 +191,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
         {/* Username */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-muted-foreground" htmlFor="setup-username">
-            Kullanıcı Adı
+            {t('auth.register.username', locale)}
           </label>
           <input
             id="setup-username"
@@ -198,7 +203,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
             className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
           />
           <p className="text-[10px] text-muted-foreground leading-normal">
-            Profilinizde @ile görünür. Harf, rakam ve alt çizgi (_) kullanabilirsiniz.
+            {locale === 'tr' ? 'Profilinizde @ ile görünür. Harf, rakam ve alt çizgi (_) kullanabilirsiniz.' : 'Shown as @handle on your profile. Letters, numbers, and underscores (_) are allowed.'}
           </p>
         </div>
 
@@ -207,25 +212,25 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground flex items-center gap-1">
               <MapPin size={11} />
-              Ülke
+              {t('settings.profile.country', locale)}
             </label>
             <SearchableSelect
               value={selectedCountry}
               onChange={handleCountryChange}
               options={countriesList}
-              placeholder="Ülke Seçin"
+              placeholder={t('settings.profile.country_placeholder', locale)}
               selectClassName="py-2.5"
             />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground">
-              Şehir
+              {t('settings.profile.city', locale)}
             </label>
             <SearchableSelect
               value={selectedCity}
               onChange={setSelectedCity}
               options={citiesList}
-              placeholder={loadingGeo ? 'Yükleniyor...' : 'Şehir Seçin'}
+              placeholder={loadingGeo ? t('settings.profile.city_loading', locale) : t('settings.profile.city_placeholder', locale)}
               disabled={!selectedCountry || loadingGeo}
               selectClassName="py-2.5"
             />
@@ -237,7 +242,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground flex items-center gap-1">
               <Mail size={11} />
-              E-posta
+              {t('auth.register.email', locale)}
             </label>
             <div className="relative">
               <input
@@ -247,7 +252,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
                 className="w-full px-4 py-3 rounded-xl border border-border/60 bg-muted/30 text-foreground/60 text-sm outline-none cursor-not-allowed select-none"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground/60 uppercase tracking-wider bg-muted px-1.5 py-0.5 rounded">
-                Kilitli
+                {locale === 'tr' ? 'Kilitli' : 'Locked'}
               </span>
             </div>
           </div>
@@ -259,7 +264,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-muted-foreground flex items-center gap-1">
                 <Lock size={11} />
-                Şifre Belirle <span className="text-muted-foreground/60 font-normal">(opsiyonel)</span>
+                {locale === 'tr' ? 'Şifre Belirle' : 'Set Password'} <span className="text-muted-foreground/60 font-normal">({locale === 'tr' ? 'opsiyonel' : 'optional'})</span>
               </label>
               <button
                 type="button"
@@ -269,7 +274,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
                 }}
                 className="text-[10px] font-semibold text-primary hover:underline transition-colors"
               >
-                {skipPassword ? 'Şifre Belirle' : 'Atla'}
+                {skipPassword ? (locale === 'tr' ? 'Şifre Belirle' : 'Set Password') : (locale === 'tr' ? 'Atla' : 'Skip')}
               </button>
             </div>
             <AnimatePresence>
@@ -287,7 +292,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="En az 8 karakter"
+                      placeholder={locale === 'tr' ? 'En az 8 karakter' : 'At least 8 characters'}
                       minLength={8}
                       className="w-full pl-4 pr-12 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                     />
@@ -309,7 +314,9 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
                   >
                     <Info size={12} className="flex-shrink-0 mt-0.5" />
                     <span>
-                      Şifre belirleyerek daha sonra kullanıcı adı + şifre ile de giriş yapabilirsin. Atlarsan sadece Google ile giriş yapabilirsin.
+                      {locale === 'tr'
+                        ? 'Şifre belirleyerek daha sonra kullanıcı adı + şifre ile de giriş yapabilirsin. Atlarsan sadece Google ile giriş yapabilirsin.'
+                        : 'By setting a password, you can log in later with username + password. If you skip, you can only log in with Google.'}
                     </span>
                   </div>
                 </motion.div>
@@ -351,7 +358,7 @@ export function ProfileSetupClient({ profile, userEmail, isOAuthUser }: ProfileS
           ) : (
             <>
               <Check size={16} />
-              Kurulumu Tamamla
+              {locale === 'tr' ? 'Kurulumu Tamamla' : 'Complete Setup'}
             </>
           )}
         </motion.button>

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -9,8 +9,11 @@ import { RESERVED_USERNAMES } from '@/lib/reserved-usernames'
 import { AvatarUpload } from '@/components/havn/AvatarUpload'
 import { SearchableSelect } from '@/components/havn/SearchableSelect'
 import { getCountriesAction, getCitiesAction } from '@/lib/actions/location'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t } from '@/lib/i18n'
 
 export default function RegisterPage() {
+  const { locale } = useLocale()
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -59,7 +62,6 @@ export default function RegisterPage() {
     }
   }
 
-
   const strength = [
     password.length >= 8,
     /[A-Z]/.test(password),
@@ -75,7 +77,7 @@ export default function RegisterPage() {
 
     const usernameVal = usernameInput.trim()
     if (RESERVED_USERNAMES.includes(usernameVal.toLowerCase())) {
-      setError('Bu kullanıcı adı sistem tarafından rezerve edilmiştir.')
+      setError(locale === 'tr' ? 'Bu kullanıcı adı sistem tarafından rezerve edilmiştir.' : 'This username is reserved by the system.')
       setLoading(false)
       return
     }
@@ -96,8 +98,8 @@ export default function RegisterPage() {
       transition={{ duration: 0.4 }}
     >
       <div className="mb-8">
-        <h1 className="text-3xl font-black text-foreground mb-2">Topluluğa Katıl</h1>
-        <p className="text-muted-foreground">HAVN'da hesabını oluştur, limanını bul.</p>
+        <h1 className="text-3xl font-black text-foreground mb-2">{t('auth.register.title', locale)}</h1>
+        <p className="text-muted-foreground">{t('auth.register.subtitle', locale)}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -113,26 +115,26 @@ export default function RegisterPage() {
         {/* Ad & Soyad */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground" htmlFor="first_name">Ad</label>
+            <label className="text-sm font-medium text-foreground" htmlFor="first_name">{t('auth.register.first_name', locale)}</label>
             <input
               id="first_name"
               name="first_name"
               type="text"
               required
               maxLength={50}
-              placeholder="Adınız"
+              placeholder={locale === 'tr' ? 'Adınız' : 'First Name'}
               className="w-full px-4 py-3 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground" htmlFor="last_name">Soyad</label>
+            <label className="text-sm font-medium text-foreground" htmlFor="last_name">{t('auth.register.last_name', locale)}</label>
             <input
               id="last_name"
               name="last_name"
               type="text"
               required
               maxLength={50}
-              placeholder="Soyadınız"
+              placeholder={locale === 'tr' ? 'Soyadınız' : 'Last Name'}
               className="w-full px-4 py-3 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
@@ -141,9 +143,11 @@ export default function RegisterPage() {
         {/* Username */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-foreground" htmlFor="username">
-            Kullanıcı Adı
+            {t('auth.register.username', locale)}
           </label>
-          <p className="text-xs text-muted-foreground -mt-0.5">Profilinde @ ile görünen benzersiz takma ad.</p>
+          <p className="text-xs text-muted-foreground -mt-0.5">
+            {locale === 'tr' ? 'Profilinde @ ile görünen benzersiz takma ad.' : 'Unique handle shown with @ on your profile.'}
+          </p>
           <div className="relative">
             <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -160,13 +164,15 @@ export default function RegisterPage() {
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
-          <p className="text-xs text-muted-foreground">Yalnızca harf, rakam ve alt çizgi</p>
+          <p className="text-xs text-muted-foreground">
+            {locale === 'tr' ? 'Yalnızca harf, rakam ve alt çizgi' : 'Only letters, numbers, and underscores'}
+          </p>
         </div>
 
         {/* Email */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-foreground" htmlFor="email">
-            E-posta
+            {t('auth.register.email', locale)}
           </label>
           <div className="relative">
             <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -185,23 +191,23 @@ export default function RegisterPage() {
         {/* Ülke & Şehir Seçimi */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Ülke</label>
+            <label className="text-sm font-medium text-foreground">{t('settings.profile.country', locale)}</label>
             <SearchableSelect
               value={selectedCountry}
               onChange={handleCountryChange}
               options={countriesList}
-              placeholder="Ülke Seçin"
+              placeholder={t('settings.profile.country_placeholder', locale)}
               selectClassName="bg-card py-3"
             />
             <input type="hidden" name="country" value={selectedCountry} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Şehir</label>
+            <label className="text-sm font-medium text-foreground">{t('settings.profile.city', locale)}</label>
             <SearchableSelect
               value={selectedCity}
               onChange={setSelectedCity}
               options={citiesList}
-              placeholder={loadingGeo ? "Yükleniyor..." : "Şehir Seçin"}
+              placeholder={loadingGeo ? t('settings.profile.city_loading', locale) : t('settings.profile.city_placeholder', locale)}
               disabled={!selectedCountry || loadingGeo}
               selectClassName="bg-card py-3"
             />
@@ -209,11 +215,10 @@ export default function RegisterPage() {
           </div>
         </div>
 
-
         {/* Password */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-foreground" htmlFor="reg-password">
-            Şifre
+            {t('auth.register.password', locale)}
           </label>
           <div className="relative">
             <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -257,10 +262,10 @@ export default function RegisterPage() {
               </div>
               <div className="grid grid-cols-2 gap-1">
                 {[
-                  [strength[0], '8+ karakter'],
-                  [strength[1], 'Büyük harf'],
-                  [strength[2], 'Rakam'],
-                  [strength[3], 'Özel karakter'],
+                  [strength[0], locale === 'tr' ? '8+ karakter' : '8+ characters'],
+                  [strength[1], locale === 'tr' ? 'Büyük harf' : 'Uppercase letter'],
+                  [strength[2], locale === 'tr' ? 'Rakam' : 'Number'],
+                  [strength[3], locale === 'tr' ? 'Özel karakter' : 'Special character'],
                 ].map(([ok, label]) => (
                   <div key={label as string} className="flex items-center gap-1.5 text-xs">
                     <Check size={11} className={ok ? 'text-emerald-500' : 'text-muted-foreground'} />
@@ -299,14 +304,21 @@ export default function RegisterPage() {
             color: 'var(--primary-foreground)',
           }}
         >
-          {loading ? <Loader2 size={16} className="animate-spin" /> : <><ArrowRight size={16} />Hesap Oluştur</>}
+          {loading ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <>
+              <ArrowRight size={16} />
+              {t('auth.register.submit', locale)}
+            </>
+          )}
         </motion.button>
       </form>
 
       <p className="text-center text-sm text-muted-foreground mt-6">
-        Zaten hesabın var mı?{' '}
+        {t('auth.register.has_account', locale)}{' '}
         <Link href="/login" className="font-semibold text-primary hover:underline">
-          Giriş Yap
+          {t('auth.register.login', locale)}
         </Link>
       </p>
     </motion.div>

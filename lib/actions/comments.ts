@@ -47,10 +47,11 @@ export async function createComment(postId: string, content: string, parentComme
     }
   }
 
-  // NSFW check
-  const { containsNsfw } = await import('@/lib/nsfw-filter')
-  if (containsNsfw(content)) {
-    return { error: 'Yorumunuz NSFW/uygunsuz içerik tespiti nedeniyle engellenmiştir.' }
+  // Two-layer content moderation
+  const { checkContent } = await import('@/lib/actions/content-moderation')
+  const contentCheck = await checkContent(content)
+  if (contentCheck.blocked) {
+    return { error: contentCheck.message }
   }
 
   const { data: comment, error } = await supabase

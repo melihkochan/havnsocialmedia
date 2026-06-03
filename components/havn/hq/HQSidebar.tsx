@@ -19,6 +19,7 @@ import {
   LogOut,
   UserCheck,
   Megaphone,
+  ShieldAlert,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { signOut } from '@/lib/actions/auth'
@@ -84,6 +85,12 @@ const NAV = [
     icon: MapPin,
     label: 'Katılım Haritası',
     sub: 'Bölgesel üye yoğunluğu',
+  },
+  {
+    href: '/havn-hq-control/content-filter',
+    icon: ShieldAlert,
+    label: 'İçerik Filtresi',
+    sub: 'Yasaklı kelimeler listesi',
   },
   {
     href: '/havn-hq-control/settings',

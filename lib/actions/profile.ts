@@ -63,14 +63,10 @@ export async function updateProfile(formData: FormData) {
   const country = (formData.get('country') as string | null)?.trim() || null
   const city = (formData.get('city') as string | null)?.trim() || null
 
-  // NSFW check
-  const { containsNsfw } = await import('@/lib/nsfw-filter')
-  if (
-    containsNsfw(username || '') ||
-    containsNsfw(firstName || '') ||
-    containsNsfw(lastName || '') ||
-    containsNsfw(bio || '')
-  ) {
+  // Two-layer content moderation for profile fields
+  const { checkMultipleContent } = await import('@/lib/actions/content-moderation')
+  const profileCheck = await checkMultipleContent([username || '', firstName || '', lastName || '', bio || ''])
+  if (profileCheck.blocked) {
     return { error: 'Profil bilgileri uygunsuz içerik tespiti nedeniyle güncellenemedi.' }
   }
 
@@ -546,13 +542,10 @@ export async function completeProfileSetup(formData: FormData) {
     return { error: 'Şifre en az 8 karakter olmalıdır.' }
   }
 
-  // NSFW validation
-  const { containsNsfw } = await import('@/lib/nsfw-filter')
-  if (
-    containsNsfw(username) ||
-    containsNsfw(firstName || '') ||
-    containsNsfw(lastName || '')
-  ) {
+  // Two-layer content moderation for profile setup fields
+  const { checkMultipleContent } = await import('@/lib/actions/content-moderation')
+  const setupCheck = await checkMultipleContent([username, firstName || '', lastName || ''])
+  if (setupCheck.blocked) {
     return { error: 'Seçtiğiniz bilgiler uygunsuz içerik filtrelerimize takıldı.' }
   }
 

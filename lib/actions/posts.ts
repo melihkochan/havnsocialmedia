@@ -147,10 +147,11 @@ export async function createPost(formData: FormData) {
 
   const content = formData.get('content') as string
   
-  // NSFW keyword check
-  const { containsNsfw } = await import('@/lib/nsfw-filter')
-  if (containsNsfw(content)) {
-    return { error: 'Paylaşımınız NSFW/uygunsuz içerik tespiti nedeniyle engellenmiştir.' }
+  // Two-layer content moderation (keyword cache + OpenAI)
+  const { checkContent } = await import('@/lib/actions/content-moderation')
+  const contentCheck = await checkContent(content)
+  if (contentCheck.blocked) {
+    return { error: contentCheck.message }
   }
 
   const communityId = formData.get('communityId') as string | null
@@ -162,8 +163,9 @@ export async function createPost(formData: FormData) {
     if (await checkMediaUploadLock()) {
       return { error: 'Platform genelinde medya/görsel yüklemeleri acil durum nedeniyle geçici olarak kapatılmıştır.' }
     }
-    if (imageFile.name && containsNsfw(imageFile.name)) {
-      return { error: 'Görsel ismi NSFW/uygunsuz kelimeler içerdiği için engellenmiştir.' }
+    const imageNameCheck = await checkContent(imageFile.name)
+    if (imageNameCheck.blocked) {
+      return { error: 'Görsel ismi uygunsuz kelimeler içerdiği için engellenmiştir.' }
     }
     const ext = imageFile.name.split('.').pop()
     const path = `${user.id}/${Date.now()}.${ext}`
@@ -631,10 +633,11 @@ export async function editPost(postId: string, content: string) {
     return { error: 'Platform şu anda acil durum nedeniyle geçici olarak salt okunur (read-only) modundadır.' }
   }
 
-  // NSFW check
-  const { containsNsfw } = await import('@/lib/nsfw-filter')
-  if (containsNsfw(content)) {
-    return { error: 'Paylaşımınız NSFW/uygunsuz içerik tespiti nedeniyle engellenmiştir.' }
+  // Two-layer content moderation
+  const { checkContent } = await import('@/lib/actions/content-moderation')
+  const contentCheck = await checkContent(content)
+  if (contentCheck.blocked) {
+    return { error: contentCheck.message }
   }
 
   const { error } = await supabase

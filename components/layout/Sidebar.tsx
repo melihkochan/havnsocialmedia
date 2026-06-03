@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -16,14 +16,15 @@ import { isFounder } from "@/lib/founder";
 import { cleanBio } from "@/lib/profile-enrich";
 import { switchSession } from "@/lib/actions/auth";
 import { useGlobalStore } from "@/lib/store/useGlobalStore";
+import { useLocale } from "@/lib/i18n/LocaleContext";
 
 const navItems = [
-  { href: "/feed", label: "Anasayfa", icon: Compass },
-  { href: "/communities", label: "Topluluklar", icon: Users },
-  { href: "/messages", label: "Mesajlar", icon: MessageSquare },
-  { href: "/notifications", label: "Bildirimler", icon: Bell },
-  { href: "/bookmarks", label: "Kaydedilenler", icon: Bookmark },
-  { href: "/profile", label: "Profil", icon: User },
+  { href: "/feed", labelKey: "nav.feed" as const, icon: Compass },
+  { href: "/communities", labelKey: "nav.communities" as const, icon: Users },
+  { href: "/messages", labelKey: "nav.messages" as const, icon: MessageSquare },
+  { href: "/notifications", labelKey: "nav.notifications" as const, icon: Bell },
+  { href: "/bookmarks", labelKey: "nav.bookmarks" as const, icon: Bookmark },
+  { href: "/profile", labelKey: "nav.profile" as const, icon: User },
 ];
 
 function Avatar({ username, avatarUrl, updatedAt }: { username: string; avatarUrl: string | null; updatedAt?: string | null }) {
@@ -90,6 +91,7 @@ export function Sidebar({
   isCollapsed = false,
   onExpand,
 }: SidebarProps) {
+  const { t } = useLocale();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -696,7 +698,7 @@ export function Sidebar({
           <Link
             href="/help"
             className="p-1.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 hover:border-primary/20 border border-transparent transition-all cursor-pointer shadow-sm select-none flex items-center justify-center group/info"
-            title="Kısayollar & Platform Rehberi"
+            title={t("nav.help.title")}
           >
             <HelpCircle size={16} className="group-hover/info:rotate-12 transition-transform duration-200" />
           </Link>
@@ -712,7 +714,7 @@ export function Sidebar({
             }
             setShowSearchModal(true);
           }}
-          title={isCollapsed ? "Kullanıcı/Topluluk Ara" : undefined}
+          title={isCollapsed ? t("nav.search.title") : undefined}
           className={cn(
             "flex items-center transition-all border border-border bg-accent/30 hover:bg-accent/60 text-muted-foreground hover:text-foreground cursor-pointer",
             isCollapsed
@@ -721,13 +723,13 @@ export function Sidebar({
           )}
         >
           <Search size={14} className="text-muted-foreground flex-shrink-0" />
-          {!isCollapsed && <span>Kullanıcı/Topluluk Ara...</span>}
+          {!isCollapsed && <span>{t("nav.search.placeholder")}</span>}
         </button>
       </div>
 
       {/* Navigation */}
       <nav className={cn("flex flex-col gap-1 w-full", isCollapsed ? "items-center" : "items-center lg:items-stretch")}>
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, labelKey, icon: Icon }) => {
           const isActive =
             pathname === href ||
             (href === "/feed" && pathname === "/") ||
@@ -738,7 +740,7 @@ export function Sidebar({
           if (href === "/messages") count = activeUnreadDMs;
 
           return (
-            <Link key={href} href={href} title={isCollapsed ? label : undefined}>
+            <Link key={href} href={href} title={isCollapsed ? t(labelKey) : undefined}>
               <motion.div
                 whileHover={isCollapsed ? { scale: 1.05 } : { x: 3 }}
                 whileTap={{ scale: 0.97 }}
@@ -778,7 +780,7 @@ export function Sidebar({
                 </div>
                 {!isCollapsed && (
                   <>
-                    <span className="truncate">{label}</span>
+                    <span className="truncate">{t(labelKey)}</span>
                     {count > 0 && (
                       <span
                         className={cn(
@@ -814,7 +816,7 @@ export function Sidebar({
       <div className="flex-1" />
 
       {/* Öneriler Link */}
-      <Link href="/suggestions" title={isCollapsed ? "Öneriler" : undefined}>
+      <Link href="/suggestions" title={isCollapsed ? t("nav.suggestions") : undefined}>
         <motion.div
           whileHover={isCollapsed ? { scale: 1.05 } : { x: 3 }}
           whileTap={{ scale: 0.97 }}
@@ -841,7 +843,7 @@ export function Sidebar({
           </div>
           {!isCollapsed && (
             <>
-              <span className="truncate">Öneriler</span>
+              <span className="truncate">{t("nav.suggestions")}</span>
               {pathname.startsWith("/suggestions") && (
                 <ChevronRight className="w-4 h-4 ml-auto opacity-60 text-sky-500" />
               )}
@@ -851,7 +853,7 @@ export function Sidebar({
       </Link>
 
       {/* Destek Link */}
-      <Link href="/support" title={isCollapsed ? "Destek Talepleri" : undefined}>
+      <Link href="/support" title={isCollapsed ? t("nav.support") : undefined}>
         <motion.div
           whileHover={isCollapsed ? { scale: 1.05 } : { x: 3 }}
           whileTap={{ scale: 0.97 }}
@@ -883,7 +885,7 @@ export function Sidebar({
           </div>
           {!isCollapsed && (
             <>
-              <span className="truncate">Destek Talepleri</span>
+              <span className="truncate">{t("nav.support")}</span>
               {openSupportTickets > 0 && (
                 <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full flex items-center justify-center min-w-[18px] h-[18px] leading-none bg-amber-500 text-white ml-auto">
                   {openSupportTickets}

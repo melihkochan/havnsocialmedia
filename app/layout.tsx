@@ -10,6 +10,12 @@ import { redirect } from "next/navigation";
 import { ensureHavnOfficialProfile } from "@/lib/actions/system-init";
 import { GlobalStoreProvider } from "@/components/providers/GlobalStoreProvider";
 import Script from "next/script";
+import { LocaleProvider } from "@/lib/i18n/LocaleContext";
+import {
+  detectLocaleFromAcceptLanguage,
+  detectLocaleFromCountry,
+  type Locale,
+} from "@/lib/i18n";
 
 
 const inter = Inter({
@@ -97,8 +103,54 @@ export default async function RootLayout({
     redirect("/maintenance");
   }
 
+  // ── Locale Detection (priority: DB → profile country → Accept-Language header → default)
+  let initialLocale: Locale = 'tr'
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('bio, country')
+        .eq('id', user.id)
+        .single()
+
+      if (profile) {
+        // 1. Check bio metadata for preferred_language
+        if (profile.bio) {
+          const parts = profile.bio.split('\u200B')
+          if (parts.length > 1) {
+            try {
+              const meta = JSON.parse(parts[1])
+              if (meta.preferred_language === 'tr' || meta.preferred_language === 'en') {
+                initialLocale = meta.preferred_language
+              }
+            } catch {}
+          }
+        }
+
+        // 2. Fallback: detect from profile country
+        if (!profile.bio || initialLocale === 'tr') {
+          const countryCode = (profile as any).country as string | null
+          const countryLocale = detectLocaleFromCountry(countryCode)
+          if (countryLocale && !profile.bio?.includes('preferred_language')) {
+            initialLocale = countryLocale
+          }
+        }
+      }
+    } else {
+      // 3. No user: detect from Accept-Language header
+      const acceptLang = headerList.get('accept-language')
+      initialLocale = detectLocaleFromAcceptLanguage(acceptLang)
+    }
+  } catch {
+    // silent — use default locale
+    const acceptLang = headerList.get('accept-language')
+    initialLocale = detectLocaleFromAcceptLanguage(acceptLang)
+  }
+
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang={initialLocale} suppressHydrationWarning>
       <head>
         <Script
           id="accent-theme-init"
@@ -123,9 +175,11 @@ export default async function RootLayout({
           <Suspense fallback={null}>
             <TopProgressBar />
           </Suspense>
-          <GlobalStoreProvider>
-            {children}
-          </GlobalStoreProvider>
+          <LocaleProvider initialLocale={initialLocale}>
+            <GlobalStoreProvider>
+              {children}
+            </GlobalStoreProvider>
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

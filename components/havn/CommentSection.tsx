@@ -11,6 +11,8 @@ import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
 import { insertIntoField } from '@/lib/insert-text'
 import { FormattedMessage } from '@/components/havn/FormattedMessage'
 import { createClient } from '@/lib/supabase/client'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t, type Locale } from '@/lib/i18n'
 
 function Avatar({ username, avatarUrl, size = 'sm' }: { username: string; avatarUrl: string | null; size?: 'xs' | 'sm' }) {
   const sizeCls = size === 'xs' ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'
@@ -31,15 +33,22 @@ function Avatar({ username, avatarUrl, size = 'sm' }: { username: string; avatar
   )
 }
 
-function formatRelativeTime(dateStr: string) {
+function formatRelativeTime(dateStr: string, locale: Locale) {
   const diff = Date.now() - new Date(dateStr).getTime()
   const m = Math.floor(diff / 60000)
   const h = Math.floor(m / 60)
   const d = Math.floor(h / 24)
-  if (m < 1) return 'şimdi'
-  if (m < 60) return `${m}d`
-  if (h < 24) return `${h}s`
-  return `${d}g`
+  if (locale === 'tr') {
+    if (m < 1) return 'şimdi'
+    if (m < 60) return `${m}dk`
+    if (h < 24) return `${h}sa`
+    return `${d}g`
+  } else {
+    if (m < 1) return 'just now'
+    if (m < 60) return `${m}m`
+    if (h < 24) return `${h}h`
+    return `${d}d`
+  }
 }
 
 interface CommentItem {
@@ -59,6 +68,7 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ postId, initialComments, currentUser }: CommentSectionProps) {
+  const { locale } = useLocale()
   const [comments, setComments] = useState<CommentItem[]>(initialComments)
   const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false)
 
@@ -243,7 +253,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
 
   async function handleLike(commentId: string) {
     if (!currentUser) {
-      showToast('Yorumları beğenmek için giriş yapmalısınız.', 'error')
+      showToast(locale === 'tr' ? 'Yorumları beğenmek için giriş yapmalısınız.' : 'You must log in to like comments.', 'error')
       return
     }
 
@@ -298,7 +308,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
                     nameClassName="text-xs"
                   />
                 </Link>
-                <span className="text-[10px] text-muted-foreground">{formatRelativeTime(comment.created_at)}</span>
+                <span className="text-[10px] text-muted-foreground">{formatRelativeTime(comment.created_at, locale)}</span>
               </div>
               <FormattedMessage text={comment.content} className="text-sm text-foreground/90 leading-relaxed" />
             </div>
@@ -335,7 +345,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
                   )}
                 >
                   <Reply size={12} />
-                  <span>Yanıtla</span>
+                  <span>{t('comment.reply', locale)}</span>
                 </button>
               )}
 
@@ -346,7 +356,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
                   className="text-[11px] font-medium text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors cursor-pointer ml-auto opacity-0 group-hover:opacity-100"
                 >
                   <Trash2 size={11} />
-                  <span>{currentUserIsAdmin && !isOwn ? 'Sil (Admin)' : 'Sil'}</span>
+                  <span>{currentUserIsAdmin && !isOwn ? (locale === 'tr' ? 'Sil (Admin)' : 'Delete (Admin)') : t('comment.delete', locale)}</span>
                 </button>
               )}
             </div>
@@ -369,7 +379,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
                       autoFocus
                       value={content}
                       onChange={e => setContent(e.target.value)}
-                      placeholder={`@${username} kullanıcısına yanıt yaz...`}
+                      placeholder={locale === 'tr' ? `@${username} kullanıcısına yanıt yaz...` : `Write a reply to @${username}...`}
                       maxLength={300}
                       className="flex-1 px-3 py-1.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                     />
@@ -381,7 +391,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
                       }}
                       className="px-2 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-accent text-xs flex items-center justify-center transition-colors cursor-pointer"
                     >
-                      Vazgeç
+                      {t('ui.cancel', locale)}
                     </button>
                     <motion.button
                       type="submit"
@@ -416,7 +426,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-foreground">
-          Yorumlar <span className="text-muted-foreground font-normal text-xs">({comments.length})</span>
+          {locale === 'tr' ? 'Yorumlar' : 'Comments'} <span className="text-muted-foreground font-normal text-xs">({comments.length})</span>
         </h2>
       </div>
 
@@ -430,7 +440,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
               ref={mainInputRef}
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="Yorum yaz..."
+              placeholder={t('comment.placeholder', locale)}
               maxLength={300}
               className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
@@ -450,8 +460,8 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
         </form>
       ) : (
         <div className="px-4 py-3 rounded-xl bg-muted text-sm text-muted-foreground text-center">
-          Yorum yazmak için{' '}
-          <Link href="/login" className="text-primary font-semibold hover:underline">giriş yap</Link>
+          {locale === 'tr' ? 'Yorum yazmak için ' : 'To write a comment '}
+          <Link href="/login" className="text-primary font-semibold hover:underline">{locale === 'tr' ? 'giriş yap' : 'sign in'}</Link>
         </div>
       )}
 
@@ -461,7 +471,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
 
         {comments.length === 0 && (
           <p className="text-center text-xs text-muted-foreground py-8">
-            Henüz yorum yok. İlk yorumu sen yap!
+            {t('comment.empty', locale)}
           </p>
         )}
       </div>

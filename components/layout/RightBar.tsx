@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, startTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -17,6 +17,8 @@ import { parseCommunityDescription } from '@/lib/community-rules'
 import { getRightBarData } from '@/lib/actions/rightbar'
 import { FormattedMessage } from '@/components/havn/FormattedMessage'
 import { Award, Volume2 } from 'lucide-react'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t } from '@/lib/i18n'
 
 interface CommunityData {
   id: string
@@ -81,6 +83,7 @@ function Avatar({ username, avatarUrl, size = 'sm', updatedAt, isOnline }: { use
 }
 
 function RoleChip({ role }: { role: string }) {
+  const { locale } = useLocale()
   if (role === 'owner') {
     return (
       <div
@@ -91,7 +94,7 @@ function RoleChip({ role }: { role: string }) {
           border: '1px solid color-mix(in oklch, var(--owner-color) 25%, transparent)',
         }}
       >
-        <Crown size={9} fill="currentColor" /> KURUCU
+        <Crown size={9} fill="currentColor" /> {t('ui.founder', locale).toUpperCase()}
       </div>
     )
   }
@@ -115,6 +118,7 @@ function RoleChip({ role }: { role: string }) {
 // ─── Global RightBar (no community context) ───────────────────────────────────
 
 function GlobalRightBar() {
+  const { locale } = useLocale()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -179,9 +183,9 @@ function GlobalRightBar() {
             >
               <Sparkles size={12} className="stroke-[2.5]" />
             </div>
-            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">HAVN İstatistikleri</h2>
+            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">{t('rightbar.stats', locale)}</h2>
           </div>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wide">Canlı</span>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wide">{locale === 'tr' ? 'Canlı' : 'Live'}</span>
         </div>
         <div className="grid grid-cols-2 gap-2.5">
           {/* Communities Stat — clickable */}
@@ -191,7 +195,7 @@ function GlobalRightBar() {
           >
             <div className="absolute top-0 right-0 w-12 h-12 bg-violet-500/10 blur-lg rounded-full -mr-3 -mt-3 pointer-events-none group-hover/stat:bg-violet-500/20 transition-all duration-300" />
             <div className="flex items-center justify-between text-violet-500 dark:text-violet-400 mb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider">Topluluklar</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">{t('ui.communities', locale)}</span>
               <div className="p-1 rounded-lg bg-violet-500/10 border border-violet-500/10">
                 <Hash size={12} className="stroke-[2.5]" />
               </div>
@@ -205,12 +209,12 @@ function GlobalRightBar() {
           >
             <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-500/10 blur-lg rounded-full -mr-3 -mt-3 pointer-events-none group-hover/stat:bg-emerald-500/20 transition-all duration-300" />
             <div className="flex items-center justify-between text-emerald-500 dark:text-emerald-400 mb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider">Üyeler</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">{t('rightbar.members', locale)}</span>
               <div className="p-1 rounded-lg bg-emerald-500/10 border border-emerald-500/10">
                 <Users size={12} className="stroke-[2.5]" />
               </div>
             </div>
-            <p className="text-2xl font-black text-foreground tracking-tight drop-shadow-[0_0_12px_rgba(16,185,129,0.15)]">{(data?.totalMembers ?? 0).toLocaleString('tr-TR')}</p>
+            <p className="text-2xl font-black text-foreground tracking-tight drop-shadow-[0_0_12px_rgba(16,185,129,0.15)]">{(data?.totalMembers ?? 0).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')}</p>
           </Link>
         </div>
       </div>
@@ -225,7 +229,7 @@ function GlobalRightBar() {
             >
               <Crown size={12} className="text-black fill-black" />
             </div>
-            <h2 className="text-xs font-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 bg-clip-text text-transparent uppercase tracking-wider">Havn Ekibi</h2>
+            <h2 className="text-xs font-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 bg-clip-text text-transparent uppercase tracking-wider">{t('rightbar.team', locale)}</h2>
           </div>
           <div className="flex flex-col gap-2">
             {data.team.map((member: any) => {
@@ -247,7 +251,7 @@ function GlobalRightBar() {
                     </div>
                   </Link>
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase border bg-amber-500/10 border-amber-500/20 text-amber-500 select-none">
-                    Kurucu
+                    {t('ui.founder', locale)}
                   </span>
                 </div>
               )
@@ -266,7 +270,7 @@ function GlobalRightBar() {
             >
               <Volume2 size={12} className="text-white" />
             </div>
-            <h2 className="text-xs font-black bg-gradient-to-r from-[#8b5cf6] via-[#ec4899] to-[#f97316] bg-clip-text text-transparent uppercase tracking-wider">Resmi Duyuru</h2>
+            <h2 className="text-xs font-black bg-gradient-to-r from-[#8b5cf6] via-[#ec4899] to-[#f97316] bg-clip-text text-transparent uppercase tracking-wider">{t('rightbar.announcement', locale)}</h2>
           </div>
           <div className="p-3.5 rounded-xl bg-accent/25 border border-border/40 text-xs leading-relaxed flex flex-col gap-2">
             <FormattedMessage text={data.announcement.content || ''} className="text-muted-foreground text-xs font-medium" />
@@ -275,9 +279,9 @@ function GlobalRightBar() {
                 <span className="w-3 h-3 rounded bg-gradient-to-tr from-[#8b5cf6] via-[#ec4899] to-[#f97316] inline-flex items-center justify-center">
                   <span className="text-[5px] font-black text-white">H</span>
                 </span>
-                HAVN Sistemi
+                {locale === 'tr' ? 'HAVN Sistemi' : 'HAVN System'}
               </span>
-              <span>{new Date(data.announcement.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+              <span>{new Date(data.announcement.created_at).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { day: 'numeric', month: 'short' })}</span>
             </div>
           </div>
         </div>
@@ -292,14 +296,14 @@ function GlobalRightBar() {
             >
               <Hash size={12} className="stroke-[3]" />
             </div>
-            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">Havn Gündemi</h2>
+            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">{t('rightbar.trending_tags', locale)}</h2>
           </div>
           <div className="flex flex-col gap-2">
-            {data.trendingTags.map((t: any, idx: number) => {
-              const cleanTagName = t.tag.replace('#', '')
+            {data.trendingTags.map((tItem: any, idx: number) => {
+              const cleanTagName = tItem.tag.replace('#', '')
               return (
                 <Link
-                  key={t.tag}
+                  key={tItem.tag}
                   href={`/feed?tag=${cleanTagName}`}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-accent/10 border border-border/30 hover:border-primary/45 hover:bg-primary/[0.02] active:scale-[0.98] transition-all cursor-pointer group"
                 >
@@ -314,11 +318,11 @@ function GlobalRightBar() {
                       {idx + 1}.
                     </span>
                     <span className="text-xs font-black text-primary font-mono group-hover:text-primary transition-colors truncate">
-                      {t.tag}
+                      {tItem.tag}
                     </span>
                   </div>
                   <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/40 group-hover:bg-primary/20 group-hover:border-primary/30 group-hover:text-primary transition-all font-mono flex-shrink-0">
-                    {t.count} paylaşım
+                    {t('rightbar.posts_count', locale, { count: String(tItem.count) })}
                   </span>
                 </Link>
               )
@@ -336,7 +340,7 @@ function GlobalRightBar() {
             >
               <Award size={12} />
             </div>
-            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">Liderlik Tablosu</h2>
+            <h2 className="text-xs font-black text-foreground uppercase tracking-wider">{t('rightbar.leaderboard', locale)}</h2>
           </div>
           <div className="flex flex-col gap-2">
             {data.leaderboard.map((u: any, idx: number) => {
@@ -397,10 +401,10 @@ function GlobalRightBar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TrendingUp size={13} className="text-primary" />
-              <h2 className="text-xs font-black text-foreground uppercase tracking-wider">Popüler Topluluklar</h2>
+              <h2 className="text-xs font-black text-foreground uppercase tracking-wider">{t('rightbar.popular_communities', locale)}</h2>
             </div>
             <Link href="/communities" className="text-[10px] font-semibold text-primary hover:opacity-80 transition-opacity flex items-center gap-0.5">
-              Tümü <ArrowRight size={10} />
+              {t('rightbar.see_all', locale)} <ArrowRight size={10} />
             </Link>
           </div>
 
@@ -424,7 +428,7 @@ function GlobalRightBar() {
                   <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">{c.name}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                      <Users size={9} /> {c.memberCount.toLocaleString('tr-TR')} üye
+                      <Users size={9} /> {c.memberCount.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')} {t('communities.members', locale)}
                     </span>
                     <span
                       className="text-[9px] px-1 py-0.5 rounded font-semibold"
@@ -445,7 +449,7 @@ function GlobalRightBar() {
 
       {/* Footer note */}
       <p className="text-[10px] text-muted-foreground text-center px-2 pb-2">
-        HAVN — Topluluk Platformu
+        {locale === 'tr' ? 'HAVN — Topluluk Platformu' : 'HAVN — Community Platform'}
       </p>
     </aside>
   )
@@ -463,6 +467,7 @@ export function RightBar({ communityId: propCommunityId, currentUserRole: propUs
 }
 
 function CommunityRightBar({ communityId: propCommunityId, currentUserRole: propUserRole }: RightBarProps) {
+  const { locale } = useLocale()
   const [activeTab, setActiveTab] = useState<'about' | 'members'>('about')
   const [memberFilter, setMemberFilter] = useState<'all' | 'staff'>('all')
   const [community, setCommunity] = useState<CommunityData | null>(null)
@@ -573,7 +578,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
 
   async function handleKick(member: Member) {
     if (!community) return
-    const confirmKick = confirm(`@${member.profiles.username} kullanıcısını topluluktan çıkarmak istediğinize emin misiniz?`)
+    const confirmKick = confirm(t('rightbar.kick_confirm', locale, { username: member.profiles.username }))
     if (!confirmKick) return
 
     setActionUserId(member.user_id)
@@ -619,7 +624,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Hakkında
+          {t('ui.about', locale)}
         </button>
         <button
           onClick={() => setActiveTab('members')}
@@ -630,7 +635,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Üyeler ({memberCount})
+          {t('rightbar.members_count', locale, { count: String(memberCount) })}
         </button>
       </div>
 
@@ -639,7 +644,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
           {/* About Panel */}
           <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-4 flex-shrink-0">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-foreground">Topluluk Hakkında</h2>
+              <h2 className="text-sm font-bold text-foreground">{t('rightbar.about_community', locale)}</h2>
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
                 style={{
@@ -648,7 +653,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
                   border: community.type === 'public' ? '1px solid color-mix(in oklch, var(--primary) 25%, transparent)' : '1px solid color-mix(in oklch, var(--owner-color) 25%, transparent)',
                 }}
               >
-                {community.type === 'public' ? <><Globe size={9} /> Açık</> : <><Lock size={9} /> Başvurulu</>}
+                {community.type === 'public' ? <><Globe size={9} /> {t('rightbar.open', locale)}</> : <><Lock size={9} /> {t('rightbar.private', locale)}</>}
               </span>
             </div>
             <div>
@@ -666,11 +671,11 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
             {/* Standard Stats */}
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-muted/40 border border-border/40 rounded-xl p-3">
-                <div className="flex items-center gap-1 text-muted-foreground mb-1"><Users size={12} /><span className="text-[11px] font-medium">Üyeler</span></div>
-                <p className="text-lg font-black text-foreground">{memberCount.toLocaleString('tr-TR')}</p>
+                <div className="flex items-center gap-1 text-muted-foreground mb-1"><Users size={12} /><span className="text-[11px] font-medium">{t('rightbar.members', locale)}</span></div>
+                <p className="text-lg font-black text-foreground">{memberCount.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')}</p>
               </div>
               <div className="bg-muted/40 border border-border/40 rounded-xl p-3">
-                <div className="flex items-center gap-1 text-muted-foreground mb-1"><TrendingUp size={12} /><span className="text-[11px] font-medium">Haftalık Büyüme</span></div>
+                <div className="flex items-center gap-1 text-muted-foreground mb-1"><TrendingUp size={12} /><span className="text-[11px] font-medium">{t('rightbar.weekly_growth', locale)}</span></div>
                 <p className="text-lg font-black text-foreground">+{stats?.newMembersThisWeek ?? Math.floor(memberCount * 0.05)}</p>
               </div>
             </div>
@@ -681,24 +686,24 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
             <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3 flex-shrink-0">
               <div className="flex items-center gap-1.5 border-b border-border/60 pb-2 mb-1">
                 <ShieldCheck size={14} className="text-primary" />
-                <h3 className="text-xs font-bold text-foreground">Yönetici İstatistikleri</h3>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary ml-auto">Yönetici</span>
+                <h3 className="text-xs font-bold text-foreground">{t('rightbar.admin_stats', locale)}</h3>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary ml-auto">{t('ui.admin', locale)}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-muted/30 border border-border/30 rounded-xl p-2.5 text-center">
                   <FileText size={14} className="mx-auto mb-1 text-muted-foreground" />
                   <p className="text-base font-black text-foreground">{stats.postCount}</p>
-                  <p className="text-[9px] text-muted-foreground font-semibold">Gönderi</p>
+                  <p className="text-[9px] text-muted-foreground font-semibold">{t('rightbar.post', locale)}</p>
                 </div>
                 <div className="bg-muted/30 border border-border/30 rounded-xl p-2.5 text-center">
                   <Eye size={14} className="mx-auto mb-1 text-muted-foreground" />
                   <p className="text-base font-black text-foreground">{stats.totalPostViews}</p>
-                  <p className="text-[9px] text-muted-foreground font-semibold">Görüntülenme</p>
+                  <p className="text-[9px] text-muted-foreground font-semibold">{t('rightbar.views', locale)}</p>
                 </div>
                 <div className="bg-muted/30 border border-border/30 rounded-xl p-2.5 text-center">
                   <TrendingUp size={14} className="mx-auto mb-1 text-muted-foreground" />
                   <p className="text-base font-black text-foreground">+{stats.newMembersThisWeek}</p>
-                  <p className="text-[9px] text-muted-foreground font-semibold">Bu Hafta</p>
+                  <p className="text-[9px] text-muted-foreground font-semibold">{t('rightbar.this_week', locale)}</p>
                 </div>
               </div>
             </div>
@@ -706,7 +711,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
 
           {/* Rules Panel */}
           <div className="bg-card border border-border rounded-2xl p-4 flex-shrink-0">
-            <h2 className="text-sm font-bold text-foreground mb-3">Topluluk Kuralları</h2>
+            <h2 className="text-sm font-bold text-foreground mb-3">{t('rightbar.rules', locale)}</h2>
             <ol className="flex flex-col gap-2">
               {(() => {
                 const parsed = parseCommunityDescription(community.description)
@@ -715,7 +720,9 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
                   : parsed.rules
                 const displayRules = dbRules.length > 0 
                   ? dbRules 
-                  : ['Saygılı ve yapıcı ol', 'Yalnızca ilgili içerik paylaş', 'Spam ve reklam yasaktır', 'Kaynakları atıfla belirt']
+                  : (locale === 'tr'
+                      ? ['Saygılı ve yapıcı ol', 'Yalnızca ilgili içerik paylaş', 'Spam ve reklam yasaktır', 'Kaynakları atıfla belirt']
+                      : ['Be respectful and constructive', 'Share only relevant content', 'Spam and ads are prohibited', 'Attribute sources appropriately'])
                 return displayRules.map((rule, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-xs text-muted-foreground">
                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-px" style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)', color: 'var(--primary)' }}>{i + 1}</span>
@@ -730,7 +737,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
         /* Members Tab */
         <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3 flex-shrink-0">
           <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2.5 mb-1 flex-wrap">
-            <h2 className="text-sm font-bold text-foreground">Topluluk Üyeleri</h2>
+            <h2 className="text-sm font-bold text-foreground">{t('rightbar.community_members', locale)}</h2>
             <div className="flex items-center gap-1 p-0.5 bg-muted/40 border border-border/60 rounded-xl select-none">
               <button
                 onClick={() => setMemberFilter('all')}
@@ -741,7 +748,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                Tümü
+                {t('rightbar.see_all', locale)}
               </button>
               <button
                 onClick={() => setMemberFilter('staff')}
@@ -752,7 +759,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                Yöneticiler
+                {t('ui.admin', locale)}
               </button>
             </div>
           </div>
@@ -767,7 +774,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
               if (filteredMembers.length === 0) {
                 return (
                   <p className="text-xs text-muted-foreground text-center py-8 select-none">
-                    Bu rolde üye bulunmamaktadır.
+                    {t('rightbar.no_members', locale)}
                   </p>
                 )
               }
@@ -807,7 +814,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
                             {canPromoteDemote && (
                               <button
                                 onClick={() => handleToggleMod(m)}
-                                title={isTargetMod ? "Moderatörlüğü Kaldır" : "Moderatör Yap"}
+                                title={isTargetMod ? t('rightbar.remove_mod', locale) : t('rightbar.make_mod', locale)}
                                 className={cn(
                                   "p-1.5 rounded-lg border transition-all cursor-pointer",
                                   isTargetMod
@@ -822,7 +829,7 @@ function CommunityRightBar({ communityId: propCommunityId, currentUserRole: prop
                             {canKick && (
                               <button
                                 onClick={() => handleKick(m)}
-                                title="Topluluktan Çıkar"
+                                title={t('rightbar.kick', locale)}
                                 className="p-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-all cursor-pointer"
                               >
                                 <UserMinus size={12} />

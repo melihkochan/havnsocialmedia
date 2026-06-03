@@ -19,6 +19,8 @@ import type { UserRole } from '@/lib/supabase/types'
 import { cn } from '@/lib/utils'
 import { enrichProfile, shouldShowXp } from '@/lib/profile-enrich'
 import { ProfileHoverCard } from '@/components/havn/ProfileHoverCard'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t, type Locale } from '@/lib/i18n'
 
 function Avatar({ username, avatarUrl, xp, isGold, showXp = true }: { username: string; avatarUrl: string | null; xp?: number; isGold?: boolean | null; showXp?: boolean }) {
   const isHavn = username.toLowerCase() === 'havn'
@@ -57,15 +59,22 @@ function Avatar({ username, avatarUrl, xp, isGold, showXp = true }: { username: 
   )
 }
 
-function formatRelativeTime(dateStr: string) {
+function formatRelativeTime(dateStr: string, locale: Locale) {
   const diff = Date.now() - new Date(dateStr).getTime()
   const m = Math.floor(diff / 60000)
   const h = Math.floor(m / 60)
   const d = Math.floor(h / 24)
-  if (m < 1) return 'şimdi'
-  if (m < 60) return `${m}d`
-  if (h < 24) return `${h}s`
-  return `${d}g`
+  if (locale === 'tr') {
+    if (m < 1) return 'şimdi'
+    if (m < 60) return `${m}d`
+    if (h < 24) return `${h}s`
+    return `${d}g`
+  } else {
+    if (m < 1) return 'just now'
+    if (m < 60) return `${m}m`
+    if (h < 24) return `${h}h`
+    return `${d}d`
+  }
 }
 
 const emojis = ['❤️', '🔥', '😂', '😮', '😢']
@@ -116,6 +125,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, role = 'member', currentUserId, viewerRole, pinContext, index = 0, viewCount }: PostCardProps) {
+  const { locale } = useLocale()
   const router = useRouter()
   // Unique channel token per mounted instance to avoid Supabase channel collisions
   const channelToken = useRef(`${Date.now()}_${Math.random().toString(36).substring(2, 7)}`)
@@ -279,7 +289,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
 
   const handleSelectReaction = (emoji: string) => {
     if (!currentUserId) {
-      showToast('Beğenmek için giriş yapmalısınız.', 'error')
+      showToast(locale === 'tr' ? 'Beğenmek için giriş yapmalısınız.' : 'You must sign in to react.', 'error')
       return
     }
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
@@ -386,18 +396,18 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       open={showDeleteDialog}
       onClose={() => !isPending && setShowDeleteDialog(false)}
       onConfirm={executeDelete}
-      title={isModRemoval ? (currentUserIsAdmin ? 'Gönderiyi kaldır (Admin)' : 'Gönderiyi kaldır') : 'Gönderiyi sil'}
+      title={isModRemoval ? (currentUserIsAdmin ? (locale === 'tr' ? 'Gönderiyi kaldır (Admin)' : 'Remove post (Admin)') : (locale === 'tr' ? 'Gönderiyi kaldır' : 'Remove post')) : (locale === 'tr' ? 'Gönderiyi sil' : 'Delete post')}
       description={
         isModRemoval
-          ? 'Bu gönderi topluluk veya sistem yöneticisi olarak kaldırılacak. Gönderi sahibine bildirim gidecek.'
-          : 'Bu işlem geri alınamaz. Gönderin kalıcı olarak silinecek.'
+          ? (locale === 'tr' ? 'Bu gönderi topluluk veya sistem yöneticisi olarak kaldırılacak. Gönderi sahibine bildirim gidecek.' : 'This post will be removed as community or system admin. The author will be notified.')
+          : (locale === 'tr' ? 'Bu işlem geri alınamaz. Gönderin kalıcı olarak silinecek.' : 'This action cannot be undone. Your post will be permanently deleted.')
       }
-      confirmLabel={isModRemoval ? 'Kaldır' : 'Sil'}
+      confirmLabel={isModRemoval ? (locale === 'tr' ? 'Kaldır' : 'Remove') : t('post.delete', locale)}
       pending={isPending}
       error={deleteError}
       variant="destructive"
       showReason={isModRemoval}
-      reasonPlaceholder="Örn: Topluluk kurallarına aykırı içerik"
+      reasonPlaceholder={locale === 'tr' ? 'Örn: Topluluk kurallarına aykırı içerik' : 'e.g. Content violates community guidelines'}
     />
   )
 
@@ -518,7 +528,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
     const res = await sendDirectMessage(targetUserId, messageContent)
     setSendingUserId(null)
     if (!res.error) {
-      showToast("Gönderi başarıyla paylaşıldı!", "success")
+      showToast(locale === 'tr' ? "Gönderi başarıyla paylaşıldı!" : "Post shared successfully!", "success")
       setShowDMShareModal(false)
     } else {
       showToast(res.error, "error")
@@ -544,7 +554,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-semibold">
             <Repeat size={12} className="text-emerald-500" />
             <Link href={`/profile/${username}`} className="hover:underline text-foreground">{getDisplayName(post.profiles ?? { username })}</Link>
-            <span>yeniden paylaştı</span>
+            <span>{locale === 'tr' ? 'yeniden paylaştı' : 'reposted'}</span>
           </div>
           {canDelete && (
             <div className="relative flex-shrink-0" ref={menuRef}>
@@ -567,7 +577,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-accent transition-colors text-left cursor-pointer"
                       style={{ color: 'var(--destructive)' }}
                     >
-                      <Trash2 size={13} /> {isModRemoval ? (currentUserIsAdmin ? 'Kaldır (Admin)' : 'Kaldır (Mod)') : 'Kaldır'}
+                      <Trash2 size={13} /> {isModRemoval ? (currentUserIsAdmin ? (locale === 'tr' ? 'Kaldır (Admin)' : 'Remove (Admin)') : (locale === 'tr' ? 'Kaldır (Mod)' : 'Remove (Mod)')) : (locale === 'tr' ? 'Kaldır' : 'Remove')}
                     </button>
                   </div>
               )}
@@ -576,7 +586,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
         </div>
         <div className="flex items-center gap-2 px-3 py-3 rounded-xl bg-muted/50 border border-border/40 text-xs text-muted-foreground">
           <span className="text-base">🗑️</span>
-          <span>Orijinal gönderi silinmiş.</span>
+          <span>{locale === 'tr' ? 'Orijinal gönderi silinmiş.' : 'Original post was deleted.'}</span>
         </div>
       </motion.article>
       {deleteDialog}
@@ -586,7 +596,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
 
   function handleLike() {
     if (!currentUserId) {
-      showToast('Beğenmek için giriş yapmalısınız.', 'error')
+      showToast(locale === 'tr' ? 'Beğenmek için giriş yapmalısınız.' : 'You must sign in to like.', 'error')
       return
     }
     if (liked) {
@@ -611,7 +621,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
 
   function handleBookmark() {
     if (!currentUserId) {
-      showToast('Yer işaretlerine eklemek için giriş yapmalısınız.', 'error')
+      showToast(locale === 'tr' ? 'Yer işaretlerine eklemek için giriş yapmalısınız.' : 'You must sign in to bookmark.', 'error')
       return
     }
     setBookmarked(b => !b)
@@ -622,7 +632,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
 
   function handleRepost() {
     if (!currentUserId) {
-      showToast('Yeniden paylaşmak için giriş yapmalısınız.', 'error')
+      showToast(locale === 'tr' ? 'Yeniden paylaşmak için giriş yapmalısınız.' : 'You must sign in to repost.', 'error')
       return
     }
     setShowShareMenu(false)
@@ -635,7 +645,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       } else if (res && 'reposted' in res) {
         const isCurrentlyReposted = !!res.reposted
         setReposted(isCurrentlyReposted)
-        showToast(isCurrentlyReposted ? 'Yeniden paylaşıldı!' : 'Yeniden paylaşım geri alındı.', 'success')
+        showToast(isCurrentlyReposted ? (locale === 'tr' ? 'Yeniden paylaşıldı!' : 'Reposted!') : (locale === 'tr' ? 'Yeniden paylaşım geri alındı.' : 'Repost removed.'), 'success')
         
         // Broadcast custom event to sync other PostCard instances of this post in the DOM instantly
         window.dispatchEvent(new CustomEvent('repost-updated', {
@@ -703,7 +713,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       {isPinned && (
         <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary mb-3 -mt-1">
           <Pin size={12} className="fill-current" />
-          Sabitlendi
+          {t('post.pinned', locale)}
         </div>
       )}
       {/* Repost Header */}
@@ -715,7 +725,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
               {getDisplayName(post.profiles ?? { username })}
             </Link>
           </ProfileHoverCard>
-          <span>yeniden paylaştı</span>
+          <span>{locale === 'tr' ? 'yeniden paylaştı' : 'reposted'}</span>
         </div>
       )}
 
@@ -763,7 +773,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
         {/* Options menu */}
         <div className="flex items-center gap-1.5 flex-shrink-0 relative" ref={menuRef}>
           <span className="text-[10px] text-muted-foreground font-semibold select-none mt-1">
-            {formatRelativeTime(displayPost.created_at)}
+            {formatRelativeTime(displayPost.created_at, locale)}
           </span>
           <button
             type="button"
@@ -784,14 +794,14 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                   href={`/post/${displayPost.id}`}
                   className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150"
                 >
-                  <ExternalLink size={13} /> Gönderiyi Aç
+                  <ExternalLink size={13} /> {locale === 'tr' ? 'Gönderiyi Aç' : 'Open Post'}
                 </Link>
                 {isOwnOriginal && !isEditing && (
                   <button
                     onClick={() => { setIsEditing(true); setShowMenu(false); setEditContent(postContent); }}
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150 text-left cursor-pointer"
                   >
-                    <Pencil size={13} /> Düzenle
+                    <Pencil size={13} /> {t('post.edit', locale)}
                   </button>
                 )}
                 {canPin && (
@@ -802,7 +812,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150 text-left cursor-pointer"
                   >
                     <Pin size={13} className={cn(isPinned && 'fill-primary text-primary')} />
-                    {isPinned ? 'Sabitlemeyi Kaldır' : 'Sabitle'}
+                    {isPinned ? t('post.unpin', locale) : t('post.pin', locale)}
                   </button>
                 )}
                 {canDelete && (
@@ -812,7 +822,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                     disabled={isPending}
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-destructive/10 hover:text-destructive transition-all duration-150 text-left cursor-pointer"
                   >
-                    <Trash2 size={13} /> {isModRemoval ? (currentUserIsAdmin ? 'Sil (Admin)' : 'Kaldır (Mod)') : 'Sil'}
+                    <Trash2 size={13} /> {isModRemoval ? (currentUserIsAdmin ? (locale === 'tr' ? 'Kaldır (Admin)' : 'Remove (Admin)') : (locale === 'tr' ? 'Kaldır (Mod)' : 'Remove (Mod)')) : t('post.delete', locale)}
                   </button>
                 )}
               </div>
@@ -826,7 +836,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
             <RichTextEditor
               value={editContent}
               onChange={setEditContent}
-              placeholder="Düzenle..."
+              placeholder={locale === 'tr' ? 'Düzenle...' : 'Edit...'}
               maxLength={500}
               autoFocus
             />
@@ -838,7 +848,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                 onClick={() => setIsEditing(false)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all cursor-pointer"
               >
-                Vazgeç
+                {t('ui.cancel', locale)}
               </button>
               <button
                 onClick={handleSaveEdit}
@@ -846,7 +856,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-primary-foreground bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {editLoading && <Loader2 size={12} className="animate-spin" />}
-                Kaydet
+                {t('ui.save', locale)}
               </button>
             </div>
           </div>
@@ -902,7 +912,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
               <div className="relative w-full aspect-video">
                 <Image
                   src={displayPost.image_url}
-                  alt="Gönderi görseli"
+                  alt={t('post.image_alt', locale)}
                   fill
                   className="object-cover group-hover/image:scale-[1.01] transition-transform duration-200"
                   unoptimized
@@ -1005,7 +1015,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                   }
                 }}
                 className="pr-2.5 pl-1 py-1.5 text-xs font-bold cursor-pointer hover:underline select-none bg-transparent border-0 outline-none"
-                title="Beğenenleri Gör"
+                title={locale === 'tr' ? 'Beğenenleri Gör' : 'See Likes'}
               >
                 {likeCount}
               </button>
@@ -1043,10 +1053,10 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
               {!showRepostOption ? <Share2 size={15} /> : <Repeat size={15} className={cn(reposted && 'text-emerald-500')} />}
               <span>
                 {!showRepostOption 
-                  ? 'Paylaş' 
+                  ? (locale === 'tr' ? 'Paylaş' : 'Share') 
                   : reposted 
-                    ? 'Yeniden Paylaşıldı' 
-                    : 'Yeniden Paylaş'}
+                    ? (locale === 'tr' ? 'Yeniden Paylaşıldı' : 'Reposted') 
+                    : (locale === 'tr' ? 'Yeniden Paylaş' : 'Repost')}
               </span>
             </button>
 
@@ -1062,7 +1072,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                       )}
                     >
                       <Repeat size={13} />
-                      {reposted ? "Paylaşımı Geri Al" : "Yeniden Paylaş"}
+                      {reposted ? (locale === 'tr' ? "Paylaşımı Geri Al" : "Undo Repost") : (locale === 'tr' ? "Yeniden Paylaş" : "Repost")}
                     </button>
                   )}
                   <button
@@ -1070,7 +1080,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                     className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150 text-left w-full cursor-pointer"
                   >
                     <ExternalLink size={13} />
-                    {shared ? "Kopyalandı!" : "Bağlantıyı Kopyala"}
+                    {shared ? (locale === 'tr' ? "Kopyalandı!" : "Copied!") : (locale === 'tr' ? "Bağlantıyı Kopyala" : "Copy Link")}
                   </button>
                   {currentUserId && (
                     <button
@@ -1081,7 +1091,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                       className="flex items-center gap-2 px-3 py-2.5 text-xs text-foreground hover:bg-primary/8 hover:text-primary transition-all duration-150 text-left w-full cursor-pointer border-t border-border/40"
                     >
                       <Send size={13} />
-                      Mesajla Paylaş
+                      {locale === 'tr' ? 'Mesajla Paylaş' : 'Share via Message'}
                     </button>
                   )}
                 </div>
@@ -1115,22 +1125,22 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
             className="bg-card border border-border rounded-3xl w-full max-w-sm overflow-hidden shadow-xl"
           >
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground">Gönderiyi Paylaş</h3>
+              <h3 className="font-bold text-sm text-foreground">{locale === 'tr' ? 'Gönderiyi Paylaş' : 'Share Post'}</h3>
               <button
                 onClick={() => setShowDMShareModal(false)}
                 className="px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground rounded-lg border border-border/80 transition-colors"
               >
-                Kapat
+                {t('ui.close', locale)}
               </button>
             </div>
             <div className="p-4 max-h-60 overflow-y-auto space-y-2">
               {shareLoading ? (
                 <div className="p-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 size={12} className="animate-spin" /> Yükleniyor...
+                  <Loader2 size={12} className="animate-spin" /> {t('ui.loading', locale)}
                 </div>
               ) : followedUsers.length === 0 ? (
                 <div className="p-4 text-center text-xs text-muted-foreground leading-relaxed">
-                  Henüz takip ettiğiniz kimse bulunmuyor. Paylaşmak için kullanıcıları takip edin!
+                  {locale === 'tr' ? 'Henüz takip ettiğiniz kimse bulunmuyor. Paylaşmak için kullanıcıları takip edin!' : 'You are not following anyone yet. Follow users to share!'}
                 </div>
               ) : (
                 followedUsers.map(user => (
@@ -1151,7 +1161,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                       <ProfileName profile={user} layout="stacked" nameClassName="text-xs" showHandle={true} disableHoverCard={true} />
                     </div>
                     <div className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold">
-                      {sendingUserId === user.id ? <Loader2 size={10} className="animate-spin" /> : "Gönder"}
+                      {sendingUserId === user.id ? <Loader2 size={10} className="animate-spin" /> : (locale === 'tr' ? "Gönder" : "Send")}
                     </div>
                   </button>
                 ))
@@ -1197,7 +1207,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               className="p-2.5 rounded-full border border-border/80 bg-card/60 hover:bg-accent text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer shadow-sm flex items-center justify-center w-10 h-10"
-              title="Görseli İndir / Yeni Sekmede Aç"
+              title={locale === 'tr' ? 'Görseli İndir / Yeni Sekmede Aç' : 'Download Image / Open in New Tab'}
             >
               <Download size={16} />
             </a>
@@ -1209,7 +1219,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
                 setShowImageZoom(false)
               }}
               className="p-2.5 rounded-full border border-border/80 bg-card/60 hover:bg-accent text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer shadow-sm flex items-center justify-center w-10 h-10"
-              title="Kapat"
+              title={t('ui.close', locale)}
             >
               <X size={16} />
             </button>
@@ -1233,7 +1243,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
           >
             <img
               src={displayPost.image_url}
-              alt="Gönderi görseli önizleme"
+              alt={locale === 'tr' ? 'Gönderi görseli önizleme' : 'Post image preview'}
               className="max-w-full max-h-[85vh] object-contain rounded-3xl"
             />
           </motion.div>
@@ -1263,7 +1273,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
           >
             {/* Header */}
             <div className="px-5 py-4 border-b border-border/80 flex items-center justify-between bg-muted/20">
-              <span className="text-xs font-black tracking-wider uppercase text-foreground">Beğenenler ({likeCount})</span>
+              <span className="text-xs font-black tracking-wider uppercase text-foreground">{locale === 'tr' ? 'Beğenenler' : 'Likes'} ({likeCount})</span>
               <button
                 onClick={() => setShowLikersModal(false)}
                 className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
@@ -1276,11 +1286,11 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
             <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin">
               {loadingLikers ? (
                 <div className="p-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 size={14} className="animate-spin" /> Yükleniyor...
+                  <Loader2 size={14} className="animate-spin" /> {t('ui.loading', locale)}
                 </div>
               ) : likers.length === 0 ? (
                 <div className="p-8 text-center text-xs text-muted-foreground">
-                  Beğeni bulunamadı.
+                  {locale === 'tr' ? 'Beğeni bulunamadı.' : 'No likes found.'}
                 </div>
               ) : (
                 likers.map((user) => (

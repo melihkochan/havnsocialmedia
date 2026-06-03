@@ -1,8 +1,8 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Lock, Palette, Loader2, Check, AlertCircle, Camera, LogOut, ArrowLeft, HelpCircle, Send, Bell, Volume2, VolumeX, Undo, Sliders } from 'lucide-react'
+import { User, Lock, Palette, Loader2, Check, AlertCircle, Camera, LogOut, ArrowLeft, HelpCircle, Send, Bell, Volume2, VolumeX, Undo, Sliders, Globe } from 'lucide-react'
 import { updateProfile, changePassword, updateAccentTheme, updatePreferences } from '@/lib/actions/profile'
 import { signOut } from '@/lib/actions/auth'
 import { ThemeToggle } from '@/components/havn/ThemeToggle'
@@ -15,6 +15,8 @@ import { sendSupportRequest } from '@/lib/actions/support'
 import { createClient } from '@/lib/supabase/client'
 import { SearchableSelect } from '@/components/havn/SearchableSelect'
 import { getCountriesAction, getCitiesAction } from '@/lib/actions/location'
+import { LanguageSwitcher } from '@/components/havn/LanguageSwitcher'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 interface SettingsClientProps { profile: Profile; email?: string }
 
@@ -105,7 +107,8 @@ function Switch({ checked, onChange, label, description }: { checked: boolean; o
 
 
 export function SettingsClient({ profile, email }: SettingsClientProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'appearance' | 'preferences' | 'notifications' | 'support' | 'account'>('profile')
+  const { t } = useLocale()
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'appearance' | 'preferences' | 'notifications' | 'support' | 'language' | 'account'>('profile')
   const [notifPrefs, setNotifPrefs] = useState({
     all: true,
     support: true,
@@ -401,13 +404,14 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   }
 
   const tabs = [
-    { id: 'profile' as const, label: 'Profil Bilgileri', icon: User },
-    { id: 'password' as const, label: 'Şifre Değiştir', icon: Lock },
-    { id: 'appearance' as const, label: 'Görünüm', icon: Palette },
-    { id: 'preferences' as const, label: 'Tercihler', icon: Sliders },
-    { id: 'notifications' as const, label: 'Bildirim Tercihleri', icon: Bell },
-    { id: 'support' as const, label: 'Destek Talebi', icon: HelpCircle },
-    { id: 'account' as const, label: 'Hesap Yönetimi', icon: LogOut },
+    { id: 'profile' as const, label: t('settings.tab.profile'), icon: User },
+    { id: 'password' as const, label: t('settings.tab.password'), icon: Lock },
+    { id: 'appearance' as const, label: t('settings.tab.appearance'), icon: Palette },
+    { id: 'preferences' as const, label: t('settings.tab.preferences'), icon: Sliders },
+    { id: 'notifications' as const, label: t('settings.tab.notifications'), icon: Bell },
+    { id: 'support' as const, label: t('settings.tab.support'), icon: HelpCircle },
+    { id: 'language' as const, label: t('settings.tab.language'), icon: Globe },
+    { id: 'account' as const, label: t('settings.tab.account'), icon: LogOut },
   ]
 
   return (
@@ -415,15 +419,15 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
       {/* Page Header (Sitting naturally on the background, no card layout) */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-black text-foreground tracking-tight">Ayarlar</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Profilini, şifreni ve görünüm tercihlerini yönet.</p>
+          <h1 className="text-xl font-black text-foreground tracking-tight">{t('settings.title')}</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('settings.subtitle')}</p>
         </div>
         <Link
           href={`/profile/${profile.username}`}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all group"
         >
           <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
-          <span>Profile Dön</span>
+          <span>{t('settings.back_to_profile')}</span>
         </Link>
       </div>
 
@@ -1154,6 +1158,18 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                       </form>
                     </div>
                   </div>
+                </Section>
+              </motion.div>
+            )}
+
+            {activeTab === 'language' && (
+              <motion.div
+                key="language"
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Section title={t('settings.language.title')} icon={Globe}>
+                  <LanguageSwitcher variant="settings" />
                 </Section>
               </motion.div>
             )}

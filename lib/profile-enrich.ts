@@ -28,6 +28,7 @@ export interface EnrichedProfile {
   is_setup_completed?: boolean
   show_xp?: boolean
   show_badges?: boolean
+  preferred_language?: 'tr' | 'en'
 }
 
 
@@ -78,6 +79,7 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
   let is_setup_completed = true
   let show_xp = profile.show_xp !== undefined ? profile.show_xp !== false : true
   let show_badges = profile.show_badges !== undefined ? profile.show_badges !== false : true
+  let preferred_language: 'tr' | 'en' | undefined = undefined
   
   let cleanBioText = cleanBio(bio)
 
@@ -101,6 +103,9 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
       if (meta.is_setup_completed !== undefined) is_setup_completed = !!meta.is_setup_completed
       if (profile.show_xp === undefined && meta.show_xp !== undefined) show_xp = !!meta.show_xp
       if (profile.show_badges === undefined && meta.show_badges !== undefined) show_badges = !!meta.show_badges
+      if (meta.preferred_language !== undefined && (meta.preferred_language === 'tr' || meta.preferred_language === 'en')) {
+        preferred_language = meta.preferred_language
+      }
     } catch (e) {
       // ignore
     }
@@ -123,5 +128,6 @@ export function enrichProfile(profile: any): EnrichedProfile | null {
     is_setup_completed,
     show_xp,
     show_badges,
+    preferred_language,
   }
 }

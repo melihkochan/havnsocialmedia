@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useGlobalStore } from '@/lib/store/useGlobalStore'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t, type Locale } from '@/lib/i18n'
 
 type NotificationItem = {
   id: string
@@ -62,9 +64,9 @@ type GroupedNotification = {
   ids: string[]
 }
 
-function getGroupedNotificationText(group: GroupedNotification) {
+function getGroupedNotificationText(group: GroupedNotification, locale: Locale) {
   const count = group.actors.length
-  const actor1 = group.actors[0]?.username ?? 'Anonim'
+  const actor1 = group.actors[0]?.username ?? (locale === 'tr' ? 'Anonim' : 'Anonymous')
   
   let nameSpan: React.ReactNode = ''
   if (count === 1) {
@@ -74,13 +76,13 @@ function getGroupedNotificationText(group: GroupedNotification) {
       </Link>
     )
   } else if (count === 2) {
-    const actor2 = group.actors[1]?.username ?? 'Anonim'
+    const actor2 = group.actors[1]?.username ?? (locale === 'tr' ? 'Anonim' : 'Anonymous')
     nameSpan = (
       <>
         <Link href={`/profile/${actor1}`} className="font-bold text-foreground hover:underline">
           {actor1}
         </Link>{' '}
-        ve{' '}
+        {locale === 'tr' ? 've' : 'and'}{' '}
         <Link href={`/profile/${actor2}`} className="font-bold text-foreground hover:underline">
           {actor2}
         </Link>
@@ -92,18 +94,22 @@ function getGroupedNotificationText(group: GroupedNotification) {
         <Link href={`/profile/${actor1}`} className="font-bold text-foreground hover:underline">
           {actor1}
         </Link>{' '}
-        ve <span className="font-bold text-foreground">diğer {count - 1} kişi</span>
+        {locale === 'tr' ? (
+          <>ve <span className="font-bold text-foreground">diğer {count - 1} kişi</span></>
+        ) : (
+          <>and <span className="font-bold text-foreground">{count - 1} others</span></>
+        )}
       </>
     )
   }
 
   let actionText = ''
   if (group.type === 'like') {
-    actionText = ' gönderini beğendi ❤️'
+    actionText = locale === 'tr' ? ' gönderini beğendi ❤️' : ' liked your post ❤️'
   } else if (group.type === 'comment_like') {
-    actionText = ' yanıtını beğendi ❤️'
+    actionText = locale === 'tr' ? ' yanıtını beğendi ❤️' : ' liked your reply ❤️'
   } else if (group.type === 'support_reply') {
-    actionText = ' yeni öneriler paylaştı ✨'
+    actionText = locale === 'tr' ? ' yeni öneriler paylaştı ✨' : ' shared new suggestions ✨'
   }
 
   return (
@@ -127,7 +133,9 @@ function groupNotifications(items: NotificationItem[]): GroupedNotification[] {
     } else if (item.type === 'support_reply' && item.message && (
       item.message.includes('Yeni bir öneri paylaşıldı') || 
       item.message.includes('yeni bir öneri') ||
-      item.message.includes('Yeni bir öneri')
+      item.message.includes('Yeni bir öneri') ||
+      item.message.includes('A new suggestion') ||
+      item.message.includes('new suggestion')
     )) {
       groupKey = 'new_suggestions_group'
     }
@@ -209,7 +217,7 @@ interface NotificationsClientProps {
   currentUser?: EnrichedProfile | null
 }
 
-function formatRelativeTime(dateStr: string) {
+function formatRelativeTime(dateStr: string, locale: Locale) {
   const date = new Date(dateStr)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -217,16 +225,25 @@ function formatRelativeTime(dateStr: string) {
   const diffHours = Math.floor(diffMins / 60)
   const diffDays = Math.floor(diffHours / 24)
 
-  if (diffMins < 1) return 'Şimdi'
-  if (diffMins < 60) return `${diffMins}d önce`
-  if (diffHours < 24) return `${diffHours}s önce`
-  if (diffDays === 1) return 'Dün'
-  return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
+  if (locale === 'tr') {
+    if (diffMins < 1) return 'Şimdi'
+    if (diffMins < 60) return `${diffMins}d önce`
+    if (diffHours < 24) return `${diffHours}s önce`
+    if (diffDays === 1) return 'Dün'
+    return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
+  } else {
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays === 1) return 'Yesterday'
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+  }
 }
 
 import { ConfirmationModal } from '@/components/havn/ConfirmationModal'
 
 export function NotificationsClient({ initialNotifications, followingIds, currentUser }: NotificationsClientProps) {
+  const { locale } = useLocale()
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications)
   const [followingList, setFollowingList] = useState<string[]>(followingIds || [])
   const [followRequestsList, setFollowRequestsList] = useState<string[]>(currentUser?.follow_requests || [])
@@ -255,9 +272,9 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
   const showErrorAlert = (errorMsg: string) => {
     setModalConfig({
       isOpen: true,
-      title: 'Hata',
-      message: errorMsg || 'Bir hata oluştu. Lütfen tekrar deneyin.',
-      confirmText: 'Tamam',
+      title: t('ui.error', locale),
+      message: errorMsg || (locale === 'tr' ? 'Bir hata oluştu. Lütfen tekrar deneyin.' : 'Something went wrong. Please try again.'),
+      confirmText: locale === 'tr' ? 'Tamam' : 'OK',
       onConfirm: () => {},
       isDanger: false,
       isAlert: true
@@ -291,17 +308,17 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
   async function handleDeleteNotification(notifIds: string[]) {
     setModalConfig({
       isOpen: true,
-      title: 'Bildirimi Sil',
-      message: 'Bu bildirimi silmek istediğinizden emin misiniz?',
-      confirmText: 'Sil',
-      cancelText: 'İptal',
+      title: locale === 'tr' ? 'Bildirimi Sil' : 'Delete Notification',
+      message: locale === 'tr' ? 'Bu bildirimi silmek istediğinizden emin misiniz?' : 'Are you sure you want to delete this notification?',
+      confirmText: locale === 'tr' ? 'Sil' : 'Delete',
+      cancelText: locale === 'tr' ? 'İptal' : 'Cancel',
       isDanger: true,
       onConfirm: async () => {
         try {
           await Promise.all(notifIds.map(id => deleteNotification(id)))
           setNotifications(prev => prev.filter(n => !notifIds.includes(n.id)))
         } catch (e) {
-          showErrorAlert('Bildirim silinirken bir hata oluştu.')
+          showErrorAlert(locale === 'tr' ? 'Bildirim silinirken bir hata oluştu.' : 'An error occurred while deleting the notification.')
         }
       }
     })
@@ -408,9 +425,11 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
         >
           <Bell size={28} className="opacity-80" />
         </div>
-        <h3 className="text-base font-bold text-foreground mb-1">Henüz bildiriminiz yok</h3>
+        <h3 className="text-base font-bold text-foreground mb-1">{t('notifications.empty', locale)}</h3>
         <p className="text-xs text-muted-foreground max-w-[280px]">
-          Beğeniler, yorumlar ve topluluk üyelik güncellemeleri burada görünecektir.
+          {locale === 'tr' 
+            ? 'Beğeniler, yorumlar ve topluluk üyelik güncellemeleri burada görünecektir.'
+            : 'Likes, comments, and community membership updates will appear here.'}
         </p>
       </div>
     )
@@ -443,10 +462,10 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
   async function handleClearAll() {
     setModalConfig({
       isOpen: true,
-      title: 'Tümünü Temizle',
-      message: 'Tüm bildirimlerinizi kalıcı olarak silmek istediğinizden emin misiniz?',
-      confirmText: 'Temizle',
-      cancelText: 'İptal',
+      title: locale === 'tr' ? 'Tümünü Temizle' : 'Clear All',
+      message: locale === 'tr' ? 'Tüm bildirimlerinizi kalıcı olarak silmek istediğinizden emin misiniz?' : 'Are you sure you want to permanently delete all your notifications?',
+      confirmText: locale === 'tr' ? 'Temizle' : 'Clear',
+      cancelText: locale === 'tr' ? 'İptal' : 'Cancel',
       isDanger: true,
       onConfirm: async () => {
         setIsClearing(true)
@@ -478,9 +497,9 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between px-1 gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-black text-foreground">Bildirimler</h1>
+          <h1 className="text-xl font-black text-foreground">{t('notifications.title', locale)}</h1>
           <p className="text-[10px] text-muted-foreground font-semibold">
-            Son 50 bildirim gösteriliyor
+            {locale === 'tr' ? 'Son 50 bildirim gösteriliyor' : 'Showing last 50 notifications'}
           </p>
         </div>
         
@@ -491,7 +510,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-destructive/20 hover:border-destructive/40 text-destructive bg-destructive/5 hover:bg-destructive/10 rounded-xl transition-all cursor-pointer disabled:opacity-50 select-none active:scale-95"
           >
             {isClearing ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-            Tümünü Temizle
+            {locale === 'tr' ? 'Tümünü Temizle' : 'Clear All'}
           </button>
         )}
       </div>
@@ -499,11 +518,11 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
       {/* Category Tabs */}
       <div className="flex flex-wrap gap-1.5 p-1 bg-card/40 border border-border/60 rounded-xl w-fit">
         {[
-          { key: 'all', label: 'Tümü', count: countAll },
-          { key: 'likes', label: 'Beğeniler', count: countLikes },
-          { key: 'comments', label: 'Yorumlar', count: countComments },
-          { key: 'follows', label: 'Takip', count: countFollows },
-          { key: 'system', label: 'Destek, Öneri & Sistem', count: countSystem }
+          { key: 'all', label: locale === 'tr' ? 'Tümü' : 'All', count: countAll },
+          { key: 'likes', label: locale === 'tr' ? 'Beğeniler' : 'Likes', count: countLikes },
+          { key: 'comments', label: locale === 'tr' ? 'Yorumlar' : 'Comments', count: countComments },
+          { key: 'follows', label: locale === 'tr' ? 'Takip' : 'Follows', count: countFollows },
+          { key: 'system', label: locale === 'tr' ? 'Destek, Öneri & Sistem' : 'Support, Suggestion & System', count: countSystem }
         ].map(tab => (
           <button
             key={tab.key}
@@ -532,7 +551,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
         <AnimatePresence initial={false}>
           {groupNotifications(filteredNotifications).map((group, index) => {
             const notif = group
-            const username = group.actors[0]?.username ?? 'Anonim'
+            const username = group.actors[0]?.username ?? (locale === 'tr' ? 'Anonim' : 'Anonymous')
             const avatarUrl = group.actors[0]?.avatar_url
             const community = Array.isArray(notif.communities)
               ? notif.communities[0]
@@ -556,84 +575,98 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                   if (reaction && reaction !== 'like') {
                     icon = <span className="text-sm select-none">{reaction}</span>
                     iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
-                    let verb = 'beğendi'
-                    if (reaction === '🔥') verb = 'gönderine alev attı 🔥'
-                    else if (reaction === '😂') verb = 'gönderine güldü 😂'
-                    else if (reaction === '😮') verb = 'gönderine şaşırdı 😮'
-                    else if (reaction === '😢') verb = 'gönderine üzüldü 😢'
-                    else verb = `gönderine ${reaction} tepkisi verdi`
+                    let verb = ''
+                    if (locale === 'tr') {
+                      if (reaction === '🔥') verb = 'gönderine alev attı 🔥'
+                      else if (reaction === '😂') verb = 'gönderine güldü 😂'
+                      else if (reaction === '😮') verb = 'gönderine şaşırdı 😮'
+                      else if (reaction === '😢') verb = 'gönderine üzüldü 😢'
+                      else verb = `gönderine ${reaction} tepkisi verdi`
+                    } else {
+                      if (reaction === '🔥') verb = 'reacted with 🔥 to your post'
+                      else if (reaction === '😂') verb = 'reacted with 😂 to your post'
+                      else if (reaction === '😮') verb = 'reacted with 😮 to your post'
+                      else if (reaction === '😢') verb = 'reacted with 😢 to your post'
+                      else verb = `reacted with ${reaction} to your post`
+                    }
                     contentText = verb
                   } else {
                     icon = <Heart size={14} className="fill-current" />
                     iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
-                    contentText = 'gönderini beğendi ❤️'
+                    contentText = locale === 'tr' ? 'gönderini beğendi ❤️' : 'liked your post ❤️'
                   }
                 } else {
                   icon = <Heart size={14} className="fill-current text-rose-500" />
                   iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
-                  contentText = getGroupedNotificationText(group)
+                  contentText = getGroupedNotificationText(group, locale)
                 }
                 break
               }
               case 'comment':
                 icon = <MessageCircle size={14} />
                 iconBg = 'bg-blue-500/10 text-blue-500 border border-blue-500/25'
-                contentText = 'gönderine yorum yaptı'
+                contentText = locale === 'tr' ? 'gönderine yorum yaptı' : 'commented on your post'
                 break
               case 'join_request':
                 icon = <UserPlus size={14} />
                 iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
                 contentText = community
-                  ? `${community.name} topluluğuna katılım başvurusu yaptı`
-                  : 'topluluğuna katılım başvurusu yaptı'
+                  ? (locale === 'tr' ? `${community.name} topluluğuna katılım başvurusu yaptı` : `requested to join the ${community.name} community`)
+                  : (locale === 'tr' ? 'topluluğuna katılım başvurusu yaptı' : 'requested to join the community')
                 break
               case 'approved':
                 icon = <CheckCircle2 size={14} />
                 iconBg = 'bg-green-500/10 text-green-500 border border-green-500/25'
                 contentText = community
-                  ? `${community.name} topluluğu katılım başvurunu onayladı`
-                  : 'takip isteğini onayladı'
+                  ? (locale === 'tr' ? `${community.name} topluluğu katılım başvurunu onayladı` : `approved your request to join ${community.name}`)
+                  : (locale === 'tr' ? 'takip isteğini onayladı' : 'approved your follow request')
                 break
               case 'repost':
                 icon = <Repeat size={14} />
                 iconBg = 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/25'
-                contentText = 'gönderini yeniden paylaştı'
+                contentText = locale === 'tr' ? 'gönderini yeniden paylaştı' : 'reposted your post'
                 break
               case 'comment_like':
                 if (group.actors.length === 1) {
                   icon = <Heart size={14} className="fill-current" />
                   iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
-                  contentText = 'yorumunu beğendi'
+                  contentText = locale === 'tr' ? 'yorumunu beğendi' : 'liked your comment'
                 } else {
                   icon = <Heart size={14} className="fill-current text-rose-500" />
                   iconBg = 'bg-rose-500/10 text-rose-500 border border-rose-500/25'
-                  contentText = getGroupedNotificationText(group)
+                  contentText = getGroupedNotificationText(group, locale)
                 }
                 break
               case 'reply':
                 icon = <MessageCircle size={14} />
                 iconBg = 'bg-blue-500/10 text-blue-500 border border-blue-500/25'
-                contentText = 'yorumuna yanıt verdi'
+                contentText = locale === 'tr' ? 'yorumuna yanıt verdi' : 'replied to your comment'
                 break
               case 'post_removed': {
-                const communityName = community?.name ?? 'bir topluluk'
+                const communityName = community?.name ?? (locale === 'tr' ? 'bir topluluk' : 'a community')
                 icon = <Trash2 size={14} />
                 iconBg = 'bg-destructive/10 text-destructive border border-destructive/25'
-                contentText = `${communityName} topluluğundaki gönderini kaldırdı`
+                contentText = locale === 'tr' 
+                  ? `${communityName} topluluğundaki gönderini kaldırdı` 
+                  : `removed your post in the ${communityName} community`
                 break
               }
               case 'post_pinned': {
-                const communityName = community?.name ?? 'bir topluluk'
+                const communityName = community?.name ?? (locale === 'tr' ? 'bir topluluk' : 'a community')
                 icon = <Pin size={14} className="fill-current" />
                 iconBg = 'bg-primary/10 text-primary border border-primary/25'
-                contentText = `${communityName} topluluğundaki gönderini sabitledi`
+                contentText = locale === 'tr' 
+                  ? `${communityName} topluluğundaki gönderini sabitledi` 
+                  : `pinned your post in the ${communityName} community`
                 break
               }
               case 'follow': {
                 const isRequest = followRequestsList.includes(notif.actor_id)
                 icon = <UserPlus size={14} />
                 iconBg = 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/25'
-                contentText = isRequest ? 'sana takip isteği gönderdi' : 'seni takip etmeye başladı'
+                contentText = isRequest 
+                  ? (locale === 'tr' ? 'sana takip isteği gönderdi' : 'sent you a follow request') 
+                  : (locale === 'tr' ? 'seni takip etmeye başladı' : 'started following you')
                 break
               }
               case 'warning': {
@@ -642,9 +675,9 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                 contentText = (
                   <span className="flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-rose-500/15 text-rose-500 border border-rose-500/25 select-none uppercase tracking-wider">
-                      Hesap Uyarısı
+                      {locale === 'tr' ? 'Hesap Uyarısı' : 'Account Warning'}
                     </span>
-                    <span className="font-semibold text-foreground/90">{notif.message ?? 'Hesabınız kuralları ihlal ettiği için uyarıldı.'}</span>
+                    <span className="font-semibold text-foreground/90">{notif.message ?? (locale === 'tr' ? 'Hesabınız kuralları ihlal ettiği için uyarıldı.' : 'Your account was warned for violating guidelines.')}</span>
                   </span>
                 )
                 break
@@ -655,9 +688,9 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                 contentText = (
                   <span className="flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-500/15 text-amber-500 border border-amber-500/25 select-none uppercase tracking-wider">
-                      Onur Ödülü (XP)
+                      {locale === 'tr' ? 'Onur Ödülü (XP)' : 'Honor Award (XP)'}
                     </span>
-                    <span className="font-semibold text-foreground/90">{notif.message ?? 'Yetkili tarafından ödüllendirildiniz.'}</span>
+                    <span className="font-semibold text-foreground/90">{notif.message ?? (locale === 'tr' ? 'Yetkili tarafından ödüllendirildiniz.' : 'You have been rewarded by an administrator.')}</span>
                   </span>
                 )
                 break
@@ -668,9 +701,9 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                 contentText = (
                   <span className="flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-blue-500/15 text-blue-500 border border-blue-500/25 select-none uppercase tracking-wider">
-                      Sistem Bildirimi
+                      {locale === 'tr' ? 'Sistem Bildirimi' : 'System Notification'}
                     </span>
-                    <span className="font-semibold text-foreground/90">{notif.message ?? 'Sistem bildirimi.'}</span>
+                    <span className="font-semibold text-foreground/90">{notif.message ?? (locale === 'tr' ? 'Sistem bildirimi.' : 'System notification.')}</span>
                   </span>
                 )
                 break
@@ -684,14 +717,21 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     contentText = (
                       <span className="flex items-center gap-1.5 flex-wrap">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-rose-500/15 text-rose-500 border border-rose-500/25 select-none uppercase tracking-wider">
-                          Talep Kapatıldı
+                          {locale === 'tr' ? 'Talep Kapatıldı' : 'Ticket Closed'}
                         </span>
-                        <span className="font-semibold text-foreground/90">Destek talebiniz kapatıldı: {ticket.subject}</span>
+                        <span className="font-semibold text-foreground/90">{locale === 'tr' ? `Destek talebiniz kapatıldı: ${ticket.subject}` : `Your support ticket has been closed: ${ticket.subject}`}</span>
                       </span>
                     )
                   } else if (ticket.status === 'replied') {
-                    const isNewConvo = notif.message && (notif.message.includes('yeni bir konuşma başlattı') || notif.message.includes('yeni bir destek talebi'))
-                    const badgeText = isNewConvo ? 'Yönetici Mesajı' : 'Destek Yanıtı'
+                    const isNewConvo = notif.message && (
+                      notif.message.includes('yeni bir konuşma başlattı') || 
+                      notif.message.includes('yeni bir destek talebi') ||
+                      notif.message.toLowerCase().includes('started a new conversation') ||
+                      notif.message.toLowerCase().includes('new support request')
+                    )
+                    const badgeText = isNewConvo 
+                      ? (locale === 'tr' ? 'Yönetici Mesajı' : 'Admin Message') 
+                      : (locale === 'tr' ? 'Destek Yanıtı' : 'Support Reply')
                     const badgeBg = isNewConvo 
                       ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25'
                       : 'bg-purple-500/15 text-purple-500 border border-purple-500/25'
@@ -706,7 +746,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                         <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black select-none uppercase tracking-wider", badgeBg)}>
                           {badgeText}
                         </span>
-                        <span className="font-semibold text-foreground/90">{notif.message ?? `Destek talebiniz yanıtlandı: ${ticket.subject}`}</span>
+                        <span className="font-semibold text-foreground/90">{notif.message ?? (locale === 'tr' ? `Destek talebiniz yanıtlandı: ${ticket.subject}` : `Your support ticket has been replied: ${ticket.subject}`)}</span>
                       </span>
                     )
                   } else {
@@ -715,9 +755,9 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     contentText = (
                       <span className="flex items-center gap-1.5 flex-wrap">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-500/15 text-amber-500 border border-amber-500/25 select-none uppercase tracking-wider">
-                          Açık Talep
+                          {locale === 'tr' ? 'Açık Talep' : 'Open Ticket'}
                         </span>
-                        <span className="font-semibold text-foreground/90">{notif.message ?? `Destek talebiniz açık: ${ticket.subject}`}</span>
+                        <span className="font-semibold text-foreground/90">{notif.message ?? (locale === 'tr' ? `Destek talebiniz açık: ${ticket.subject}` : `Your support ticket is open: ${ticket.subject}`)}</span>
                       </span>
                     )
                   }
@@ -726,7 +766,8 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     notif.message.includes('öneri') || 
                     notif.message.includes('Öneri') || 
                     notif.message.includes('öneriniz') || 
-                    notif.message.includes('Öneriniz')
+                    notif.message.includes('Öneriniz') ||
+                    notif.message.toLowerCase().includes('suggestion')
                   )
                   
                   const isAdminAction = !isSuggestion && notif.message && (
@@ -736,26 +777,37 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     notif.message.includes('tik') ||
                     notif.message.includes('kurucu') ||
                     notif.message.includes('mavi') ||
-                    notif.message.includes('sarı')
+                    notif.message.includes('sarı') ||
+                    notif.message.toLowerCase().includes('admin') ||
+                    notif.message.toLowerCase().includes('founder') ||
+                    notif.message.toLowerCase().includes('badge') ||
+                    notif.message.toLowerCase().includes('verify')
                   )
                   
-                  const isNewConvo = !isSuggestion && !isAdminAction && notif.message && (notif.message.includes('yeni bir konuşma başlattı') || notif.message.includes('yeni bir destek talebi'))
+                  const isNewConvo = !isSuggestion && !isAdminAction && notif.message && (
+                    notif.message.includes('yeni bir konuşma başlattı') || 
+                    notif.message.includes('yeni bir destek talebi') ||
+                    notif.message.toLowerCase().includes('started a new conversation') ||
+                    notif.message.toLowerCase().includes('new support request')
+                  )
                   
-                  let badgeText = 'Destek Yanıtı'
+                  let badgeText = locale === 'tr' ? 'Destek Yanıtı' : 'Support Reply'
                   let badgeBg = 'bg-purple-500/15 text-purple-500 border border-purple-500/25'
                   
                   if (isSuggestion) {
-                    badgeText = 'Öneri Bildirimi'
+                    badgeText = locale === 'tr' ? 'Öneri Bildirimi' : 'Suggestion Notification'
                     badgeBg = 'bg-sky-500/15 text-sky-500 border border-sky-500/25'
                     icon = <Sparkles size={14} className="text-sky-500" />
                     iconBg = 'bg-sky-500/10 text-sky-500 border border-sky-500/25'
                   } else if (isAdminAction) {
-                    badgeText = 'Sistem Bildirimi'
+                    badgeText = locale === 'tr' ? 'Sistem Bildirimi' : 'System Notification'
                     badgeBg = 'bg-amber-500/15 text-amber-500 border border-amber-500/25'
                     icon = <Shield size={14} className="text-amber-500 fill-amber-500/10" />
                     iconBg = 'bg-amber-500/10 text-amber-500 border border-amber-500/25'
                   } else {
-                    badgeText = isNewConvo ? 'Yönetici Mesajı' : 'Destek Yanıtı'
+                    badgeText = isNewConvo 
+                      ? (locale === 'tr' ? 'Yönetici Mesajı' : 'Admin Message') 
+                      : (locale === 'tr' ? 'Destek Yanıtı' : 'Support Reply')
                     badgeBg = isNewConvo 
                       ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25'
                       : 'bg-purple-500/15 text-purple-500 border border-purple-500/25'
@@ -770,7 +822,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black select-none uppercase tracking-wider", badgeBg)}>
                         {badgeText}
                       </span>
-                      <span className="font-semibold text-foreground/90">{notif.message ?? 'Destek talebiniz yanıtlandı'}</span>
+                      <span className="font-semibold text-foreground/90">{notif.message ?? (locale === 'tr' ? 'Destek talebiniz yanıtlandı' : 'Your support request has been replied')}</span>
                     </span>
                   )
                 }
@@ -785,9 +837,9 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     contentText = (
                       <span className="flex items-center gap-1.5 flex-wrap">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-rose-500/15 text-rose-500 border border-rose-500/25 select-none uppercase tracking-wider">
-                          Talep Kapatıldı
+                          {locale === 'tr' ? 'Talep Kapatıldı' : 'Ticket Closed'}
                         </span>
-                        <span className="font-semibold text-foreground/90">Destek talebi kapatıldı: {ticket.subject}</span>
+                        <span className="font-semibold text-foreground/90">{locale === 'tr' ? `Destek talebi kapatıldı: ${ticket.subject}` : `Support ticket has been closed: ${ticket.subject}`}</span>
                       </span>
                     )
                   } else if (ticket.status === 'replied') {
@@ -796,14 +848,22 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     contentText = (
                       <span className="flex items-center gap-1.5 flex-wrap">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-purple-500/15 text-purple-500 border border-purple-500/25 select-none uppercase tracking-wider">
-                          Talep Yanıtlandı
+                          {locale === 'tr' ? 'Talep Yanıtlandı' : 'Ticket Replied'}
                         </span>
-                        <span className="font-semibold text-foreground/90">Destek talebi yanıtlandı: {ticket.subject}</span>
+                        <span className="font-semibold text-foreground/90">{locale === 'tr' ? `Destek talebi yanıtlandı: ${ticket.subject}` : `Support ticket has been replied: ${ticket.subject}`}</span>
                       </span>
                     )
                   } else {
-                    const isFollowUp = notif.message && (notif.message.includes('yeni mesaj') || notif.message.includes('Takip Mesajı') || notif.message.includes('yeni bir konuşma'))
-                    const badgeText = isFollowUp ? 'Yeni Mesaj' : 'Yeni Destek Talebi'
+                    const isFollowUp = notif.message && (
+                      notif.message.includes('yeni mesaj') || 
+                      notif.message.includes('Takip Mesajı') || 
+                      notif.message.includes('yeni bir konuşma') ||
+                      notif.message.toLowerCase().includes('new message') ||
+                      notif.message.toLowerCase().includes('follow-up')
+                    )
+                    const badgeText = isFollowUp 
+                      ? (locale === 'tr' ? 'Yeni Mesaj' : 'New Message') 
+                      : (locale === 'tr' ? 'Yeni Destek Talebi' : 'New Support Request')
                     const badgeBg = isFollowUp 
                       ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25'
                       : 'bg-amber-500/15 text-amber-500 border border-amber-500/25 animate-pulse'
@@ -818,13 +878,21 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                         <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black select-none uppercase tracking-wider", badgeBg)}>
                           {badgeText}
                         </span>
-                        <span className="font-semibold text-foreground/90">{notif.message ?? `Yeni destek talebi gönderildi: ${ticket.subject}`}</span>
+                        <span className="font-semibold text-foreground/90">{notif.message ?? (locale === 'tr' ? `Yeni destek talebi gönderildi: ${ticket.subject}` : `New support ticket submitted: ${ticket.subject}`)}</span>
                       </span>
                     )
                   }
                 } else {
-                  const isFollowUp = notif.message && (notif.message.includes('yeni mesaj') || notif.message.includes('Takip Mesajı') || notif.message.includes('yeni bir konuşma'))
-                  const badgeText = isFollowUp ? 'Yeni Mesaj' : 'Yeni Destek Talebi'
+                  const isFollowUp = notif.message && (
+                    notif.message.includes('yeni mesaj') || 
+                    notif.message.includes('Takip Mesajı') || 
+                    notif.message.includes('yeni bir konuşma') ||
+                    notif.message.toLowerCase().includes('new message') ||
+                    notif.message.toLowerCase().includes('follow-up')
+                  )
+                  const badgeText = isFollowUp 
+                    ? (locale === 'tr' ? 'Yeni Mesaj' : 'New Message') 
+                    : (locale === 'tr' ? 'Yeni Destek Talebi' : 'New Support Request')
                   const badgeBg = isFollowUp 
                     ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25'
                     : 'bg-amber-500/15 text-amber-500 border border-amber-500/25 animate-pulse'
@@ -839,7 +907,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black select-none uppercase tracking-wider", badgeBg)}>
                         {badgeText}
                       </span>
-                      <span className="font-semibold text-foreground/90">{notif.message ?? 'Yeni destek talebi gönderildi'}</span>
+                      <span className="font-semibold text-foreground/90">{notif.message ?? (locale === 'tr' ? 'Yeni destek talebi gönderildi' : 'New support request submitted')}</span>
                     </span>
                   )
                 }
@@ -913,12 +981,12 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       </Link>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <span className="text-[10px] text-muted-foreground select-none">
-                          {formatRelativeTime(notif.created_at)}
+                          {formatRelativeTime(notif.created_at, locale)}
                         </span>
                         <button
                           onClick={() => handleDeleteNotification(group.ids)}
                           className="p-1.5 rounded-xl text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer select-none active:scale-95"
-                          title="Bildirimi Sil"
+                          title={locale === 'tr' ? 'Bildirimi Sil' : 'Delete Notification'}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -933,10 +1001,10 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                         notif.type === 'support_reply' ? (
                           <span className="flex items-center gap-1.5 flex-wrap">
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-sky-500/15 text-sky-500 border border-sky-500/25 select-none uppercase tracking-wider">
-                              Yeni Öneriler
+                              {locale === 'tr' ? 'Yeni Öneriler' : 'New Suggestions'}
                             </span>
                             <span className="font-semibold text-foreground/90">
-                              {getGroupedNotificationText(group)}
+                              {getGroupedNotificationText(group, locale)}
                             </span>
                           </span>
                         ) : (
@@ -955,12 +1023,12 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                     {isGroupedType && isMultiActor && (
                       <div className="flex items-center gap-1.5 flex-shrink-0 self-start mt-0.5">
                         <span className="text-[10px] text-muted-foreground select-none">
-                          {formatRelativeTime(notif.created_at)}
+                          {formatRelativeTime(notif.created_at, locale)}
                         </span>
                         <button
                           onClick={() => handleDeleteNotification(group.ids)}
                           className="p-1.5 rounded-xl text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer select-none active:scale-95"
-                          title="Bildirimi Sil"
+                          title={locale === 'tr' ? 'Bildirimi Sil' : 'Delete Notification'}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -970,7 +1038,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
 
                   {notif.type === 'post_removed' && notif.message && (
                     <p className="text-xs text-foreground/80 mt-1.5 italic">
-                      Neden: {notif.message}
+                      {locale === 'tr' ? 'Neden: ' : 'Reason: '}{notif.message}
                     </p>
                   )}
 
@@ -1000,7 +1068,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                             style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                           >
                             {actionActorId === `accept-${notif.actor_id}` ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
-                            Kabul Et
+                            {locale === 'tr' ? 'Kabul Et' : 'Accept'}
                           </button>
                           <button
                             onClick={() => handleDeclineFollow(notif.actor_id, notif.id)}
@@ -1008,13 +1076,13 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-accent/40 hover:bg-accent/80 active:scale-95 text-foreground text-xs font-bold transition-all cursor-pointer shadow-sm disabled:opacity-50"
                           >
                             {actionActorId === `decline-${notif.actor_id}` ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
-                            Reddet
+                            {locale === 'tr' ? 'Reddet' : 'Decline'}
                           </button>
                         </div>
                       ) : followingList.includes(notif.actor_id) ? (
                         <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground bg-muted/40 border border-border/50 rounded-lg px-2.5 py-1.5 w-fit select-none">
                           <UserCheck size={11} className="text-emerald-500" />
-                          Takip Ediyorsun
+                          {locale === 'tr' ? 'Takip Ediyorsun' : 'Following'}
                         </div>
                       ) : (
                         <button
@@ -1024,7 +1092,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                           style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                         >
                           {actionActorId === notif.actor_id ? <Loader2 size={10} className="animate-spin" /> : <UserPlus size={10} />}
-                          Geri Takip Et
+                          {locale === 'tr' ? 'Geri Takip Et' : 'Follow Back'}
                         </button>
                       )}
                     </div>
@@ -1036,7 +1104,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary hover:opacity-90 active:scale-95 text-primary-foreground text-xs font-bold transition-all cursor-pointer shadow-sm w-fit"
                       style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                     >
-                      Başvuruları İncele
+                      {locale === 'tr' ? 'Başvuruları İncele' : 'Review Requests'}
                     </Link>
                   )}
 
@@ -1046,7 +1114,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary hover:opacity-90 active:scale-95 text-primary-foreground text-xs font-bold transition-all cursor-pointer shadow-sm w-fit"
                       style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                     >
-                      Talebi Görüntüle
+                      {locale === 'tr' ? 'Talebi Görüntüle' : 'View Ticket'}
                     </Link>
                   )}
 
@@ -1056,7 +1124,7 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
                       className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary hover:opacity-90 active:scale-95 text-primary-foreground text-xs font-bold transition-all cursor-pointer shadow-sm w-fit"
                       style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                     >
-                      Talepleri Yönet
+                      {locale === 'tr' ? 'Talepleri Yönet' : 'Manage Tickets'}
                     </Link>
                   )}
                 </div>

@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { signIn } from '@/lib/actions/auth'
 import { createClient } from '@/lib/supabase/client'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t } from '@/lib/i18n'
 
 // Animated placeholder hook
 function useTypingPlaceholder(phrases: string[], speed = 60, pause = 1800) {
@@ -21,6 +23,7 @@ function useTypingPlaceholder(phrases: string[], speed = 60, pause = 1800) {
     if (focused) return
     function tick() {
       const phrase = phrases[phraseIdx.current]
+      if (!phrase) return
       if (!deleting.current) {
         if (charIdx.current < phrase.length) {
           setPlaceholder(phrase.slice(0, ++charIdx.current))
@@ -48,6 +51,7 @@ function useTypingPlaceholder(phrases: string[], speed = 60, pause = 1800) {
 }
 
 export default function LoginPage() {
+  const { locale } = useLocale()
   const searchParams = useSearchParams()
   const reason = searchParams?.get('reason')
   const errorParam = searchParams?.get('error')
@@ -74,8 +78,14 @@ export default function LoginPage() {
     }
   }, [])
 
+  const phrases = useMemo(() => {
+    return locale === 'tr'
+      ? ['sen@ornek.com', 'kullanici_adin', 'havn_kullanicisi']
+      : ['you@example.com', 'your_username', 'havn_user']
+  }, [locale])
+
   const { placeholder: identifierPlaceholder, setFocused: setTypingFocused } = useTypingPlaceholder(
-    ['sen@ornek.com', 'kullanici_adin', 'havn_kullanicisi'],
+    phrases,
     65,
     2000
   )
@@ -124,7 +134,7 @@ export default function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05, duration: 0.4 }}
         >
-          {isReturningUser ? 'Tekrar Hoşgeldin 👋' : 'Hoşgeldin 👋'}
+          {isReturningUser ? t('auth.login.welcome_back', locale) : t('auth.login.welcome', locale)}
         </motion.h1>
         <motion.p
           className="text-muted-foreground text-sm"
@@ -132,7 +142,7 @@ export default function LoginPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.12 }}
         >
-          Hesabına giriş yap ve topluluğuna katıl.
+          {t('auth.login.subtitle', locale)}
         </motion.p>
       </div>
 
@@ -152,9 +162,9 @@ export default function LoginPage() {
           >
             <AlertCircle size={16} className="mt-0.5 flex-shrink-0 animate-pulse" />
             <div>
-              <p className="font-extrabold uppercase tracking-wider text-[10px] mb-0.5">Oturum Sonlandırıldı</p>
+              <p className="font-extrabold uppercase tracking-wider text-[10px] mb-0.5">{t('auth.login.session_ended_title', locale)}</p>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
-                Başka bir cihazdan giriş yapıldığı için bu oturumunuz kapatıldı.
+                {t('auth.login.session_ended_desc', locale)}
               </p>
             </div>
           </motion.div>
@@ -170,7 +180,7 @@ export default function LoginPage() {
           transition={{ delay: 0.15 }}
         >
           <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block" htmlFor="identifier">
-            E-posta veya Kullanıcı Adı
+            {t('auth.login.identifier_label', locale)}
           </label>
           <div className="relative group">
             {/* Animated focus ring */}
@@ -216,13 +226,13 @@ export default function LoginPage() {
         >
           <div className="flex items-center justify-between">
             <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest" htmlFor="password">
-              Şifre
+              {t('auth.login.password_label', locale)}
             </label>
             <Link
               href="/forgot-password"
               className="text-[11px] font-bold text-primary hover:underline transition-colors"
             >
-              Şifremi Unuttum
+              {t('auth.login.forgot_password', locale)}
             </Link>
           </div>
           <div className="relative group">
@@ -351,7 +361,7 @@ export default function LoginPage() {
                   className="flex items-center gap-2"
                 >
                   <Loader2 size={17} className="animate-spin" />
-                  <span>Giriş yapılıyor…</span>
+                  <span>{t('auth.login.submitting', locale)}</span>
                 </motion.span>
               ) : (
                 <motion.span
@@ -361,7 +371,7 @@ export default function LoginPage() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   className="flex items-center gap-2"
                 >
-                  Giriş Yap
+                  {t('auth.login.submit', locale)}
                   <ArrowRight size={16} />
                 </motion.span>
               )}
@@ -374,7 +384,7 @@ export default function LoginPage() {
       <div className="relative my-7 flex items-center">
         <div className="flex-1 border-t border-border/60" />
         <span className="mx-4 text-[10px] font-black text-muted-foreground/50 uppercase tracking-widest">
-          Veya
+          {t('auth.login.or', locale)}
         </span>
         <div className="flex-1 border-t border-border/60" />
       </div>
@@ -438,9 +448,9 @@ export default function LoginPage() {
       </div>
 
       <p className="text-center text-sm text-muted-foreground mt-8">
-        Hesabın yok mu?{' '}
+        {t('auth.login.no_account', locale)}{' '}
         <Link href="/register" className="font-bold text-primary hover:underline transition-colors">
-          Kayıt Ol
+          {t('auth.login.register', locale)}
         </Link>
       </p>
     </motion.div>

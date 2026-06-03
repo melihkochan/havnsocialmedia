@@ -9,6 +9,7 @@ import { RichTextEditor } from '@/components/havn/RichTextEditor'
 import { ImageUpload } from '@/components/havn/ImageUpload'
 import { createPost } from '@/lib/actions/posts'
 import { cn } from '@/lib/utils'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 interface Community {
   id: string
@@ -42,6 +43,7 @@ function Avatar({ username, avatarUrl }: { username: string; avatarUrl: string |
 type PostTarget = 'personal' | string
 
 export function FeedPostForm({ communities, currentUser, defaultCommunityId }: FeedPostFormProps) {
+  const { t } = useLocale()
   const router = useRouter()
   const [content, setContent] = useState('')
   const [focused, setFocused] = useState(false)
@@ -71,7 +73,7 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
   }
 
   const selectedCommunity = target !== 'personal' ? communities.find(c => c.id === target) : null
-  const targetLabel = target === 'personal' ? 'Profilim' : (selectedCommunity?.name ?? 'Seç')
+  const targetLabel = target === 'personal' ? t('feed.my_profile') : (selectedCommunity?.name ?? 'Seç')
   const TargetIcon = target === 'personal' ? User : Users
 
   async function handleSubmit(e: React.FormEvent) {
@@ -148,8 +150,8 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
                     )}
                   >
                     <User size={13} />
-                    Profilim
-                    <span className="text-[10px] text-muted-foreground ml-auto">Kişisel</span>
+                    {t('feed.my_profile')}
+                    <span className="text-[10px] text-muted-foreground ml-auto">{t('feed.target_personal')}</span>
                   </button>
 
 
@@ -157,7 +159,7 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
                   {/* Divider */}
                   {communities.length > 0 && (
                     <div className="border-t border-border">
-                      <p className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Topluluklar</p>
+                      <p className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('ui.communities')}</p>
                     </div>
                   )}
 
@@ -196,7 +198,7 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
               editorRef={editorRef}
               value={content}
               onChange={setContent}
-              placeholder={target === 'personal' ? 'Ne düşünüyorsun? (Komutlar için / yazın...)' : `${selectedCommunity?.name ?? 'Topluluk'} ile paylaş... (Komutlar için / yazın...)`}
+              placeholder={target === 'personal' ? t('feed.post_placeholder_personal') : t('feed.post_placeholder_community', { name: selectedCommunity?.name ?? t('post.community') })}
               maxLength={500}
             />
           </div>
@@ -228,7 +230,7 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
                       )}
                     >
                       {showImageUpload ? <X size={14} /> : <ImagePlus size={14} />}
-                      <span className="hidden sm:inline">{showImageUpload ? 'Kapat' : 'Görsel'}</span>
+                      <span className="hidden sm:inline">{showImageUpload ? t('ui.close') : t('feed.image')}</span>
                     </button>
                   </div>
 
@@ -255,7 +257,7 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
                       }
                     >
                       {loading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                      Paylaş
+                      {t('feed.submit')}
                     </motion.button>
                   </div>
                 </div>

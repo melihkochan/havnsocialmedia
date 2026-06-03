@@ -5,8 +5,11 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Mail, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t } from '@/lib/i18n'
 
 export default function ForgotPasswordPage() {
+  const { locale } = useLocale()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -43,11 +46,11 @@ export default function ForgotPasswordPage() {
           href="/login"
           className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground mb-4 transition-colors"
         >
-          <ArrowLeft size={14} /> Giriş Sayfasına Dön
+          <ArrowLeft size={14} /> {t('auth.forgot.back_to_login', locale)}
         </Link>
-        <h1 className="text-3xl font-black text-foreground mb-2">Şifremi Unuttum</h1>
+        <h1 className="text-3xl font-black text-foreground mb-2">{t('auth.forgot.title', locale)}</h1>
         <p className="text-muted-foreground">
-          E-posta adresini girerek şifreni sıfırlamak için güvenli bir bağlantı al.
+          {t('auth.forgot.subtitle', locale)}
         </p>
       </div>
 
@@ -59,9 +62,13 @@ export default function ForgotPasswordPage() {
         >
           <CheckCircle2 size={36} className="text-green-500" />
           <div>
-            <h3 className="font-bold text-sm text-foreground">Sıfırlama Bağlantısı Gönderildi</h3>
+            <h3 className="font-bold text-sm text-foreground">
+              {locale === 'tr' ? 'Sıfırlama Bağlantısı Gönderildi' : 'Reset Link Sent'}
+            </h3>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              E-posta kutunu (ve spam klasörünü) kontrol et. Şifreni güncellemek için bağlantıya tıklayabilirsin.
+              {locale === 'tr'
+                ? 'E-posta kutunu (ve spam klasörünü) kontrol et. Şifreni güncellemek için bağlantıya tıklayabilirsin.'
+                : 'Check your inbox (and spam folder). You can click the link to update your password.'}
             </p>
           </div>
         </motion.div>
@@ -70,7 +77,7 @@ export default function ForgotPasswordPage() {
           {/* Email */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground" htmlFor="email">
-              E-posta Adresi
+              {t('auth.forgot.email', locale)}
             </label>
             <div className="relative">
               <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -117,7 +124,7 @@ export default function ForgotPasswordPage() {
             {loading ? (
               <Loader2 size={16} className="animate-spin" />
             ) : (
-              'Sıfırlama Bağlantısı Gönder'
+              t('auth.forgot.submit', locale)
             )}
           </motion.button>
         </form>
