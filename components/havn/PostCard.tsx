@@ -16,7 +16,7 @@ import { FormattedMessage } from '@/components/havn/FormattedMessage'
 import { RichTextEditor } from '@/components/havn/RichTextEditor'
 import { toggleLike, deletePost, repostPost, toggleBookmark, editPost, togglePinPost } from '@/lib/actions/posts'
 import type { UserRole } from '@/lib/supabase/types'
-import { cn } from '@/lib/utils'
+import { cn, getPlainTextLength, getParagraphCount } from '@/lib/utils'
 import { enrichProfile, shouldShowXp } from '@/lib/profile-enrich'
 import { ProfileHoverCard } from '@/components/havn/ProfileHoverCard'
 import { useLocale } from '@/lib/i18n/LocaleContext'
@@ -665,7 +665,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
   }
 
   async function handleSaveEdit() {
-    const hasText = !!editContent.replace(/<[^>]*>/g, '').trim()
+    const hasText = getPlainTextLength(editContent) > 0
     if (!hasText) return
     setEditLoading(true)
     const isAnlar = displayPost.content?.includes('\u200B[anlar]')
@@ -831,36 +831,51 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
       </div>
 
       {isEditing ? (
-        <div className="flex flex-col gap-2.5 mb-4">
-          <div className="w-full bg-accent/30 dark:bg-accent/15 border border-border/80 rounded-xl p-3 text-foreground transition-all duration-200 cursor-text focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10 focus-within:shadow-inner focus-within:bg-card">
-            <RichTextEditor
-              value={editContent}
-              onChange={setEditContent}
-              placeholder={locale === 'tr' ? 'Düzenle...' : 'Edit...'}
-              maxLength={500}
-              autoFocus
-            />
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-bold text-muted-foreground">{editContent.replace(/<[^>]*>/g, '').length}/500</span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all cursor-pointer"
-              >
-                {t('ui.cancel', locale)}
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={editLoading || !editContent.replace(/<[^>]*>/g, '').trim()}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-primary-foreground bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 cursor-pointer"
-              >
-                {editLoading && <Loader2 size={12} className="animate-spin" />}
-                {t('ui.save', locale)}
-              </button>
+        (() => {
+          const editParagraphCount = getParagraphCount(editContent)
+          const editTooManyLines = editParagraphCount > 10
+          return (
+            <div className="flex flex-col gap-2.5 mb-4">
+              <div className="w-full bg-accent/30 dark:bg-accent/15 border border-border/80 rounded-xl p-3 text-foreground transition-all duration-200 cursor-text focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10 focus-within:shadow-inner focus-within:bg-card">
+                <RichTextEditor
+                  value={editContent}
+                  onChange={setEditContent}
+                  placeholder={locale === 'tr' ? 'Düzenle...' : 'Edit...'}
+                  maxLength={500}
+                  showCounter={false}
+                  autoFocus
+                />
+              </div>
+              {editTooManyLines && (
+                <p className="text-xs font-bold text-destructive px-1">{t('post.too_many_lines', locale, { max: 10 })}</p>
+              )}
+              <div className="flex items-center justify-between gap-2">
+                <span className={cn(
+                  "text-[10px] font-bold transition-colors",
+                  getPlainTextLength(editContent) > 500 ? "text-destructive" : "text-muted-foreground"
+                )}>
+                  {getPlainTextLength(editContent)}/500
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-all cursor-pointer"
+                  >
+                    {t('ui.cancel', locale)}
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={editLoading || editTooManyLines || !getPlainTextLength(editContent)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-primary-foreground bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {editLoading && <Loader2 size={12} className="animate-spin" />}
+                    {t('ui.save', locale)}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          )
+        })()
       ) : (
         <div
           onClick={(e) => {
@@ -874,7 +889,7 @@ export function PostCard({ post, role = 'member', currentUserId, viewerRole, pin
         >
           <FormattedMessage
             text={postContent}
-            className="text-sm text-foreground leading-relaxed mb-4 block hover:opacity-90 transition-opacity"
+            className="text-sm text-foreground leading-relaxed mb-4 block hover:opacity-90 transition-opacity break-words"
           />
         </div>
       )}

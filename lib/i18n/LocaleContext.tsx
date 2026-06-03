@@ -35,14 +35,15 @@ interface LocaleProviderProps {
 }
 
 export function LocaleProvider({ children, initialLocale }: LocaleProviderProps) {
-  // Hydrate from localStorage first (client-side override), then fall back to server-determined locale
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('havn_locale') as Locale | null
-      if (saved && (saved === 'tr' || saved === 'en')) return saved
+  const [locale, setLocaleState] = useState<Locale>(initialLocale)
+
+  // Hydrate locale from localStorage after mount to prevent hydration mismatch
+  useEffect(() => {
+    const saved = localStorage.getItem('havn_locale') as Locale | null
+    if (saved && (saved === 'tr' || saved === 'en')) {
+      setLocaleState(saved)
     }
-    return initialLocale
-  })
+  }, [])
 
   // Sync html[lang] on mount and on change
   useEffect(() => {

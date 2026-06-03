@@ -8,7 +8,7 @@ import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
 import { RichTextEditor } from '@/components/havn/RichTextEditor'
 import { ImageUpload } from '@/components/havn/ImageUpload'
 import { createPost } from '@/lib/actions/posts'
-import { cn } from '@/lib/utils'
+import { cn, getPlainTextLength, getParagraphCount } from '@/lib/utils'
 import { useLocale } from '@/lib/i18n/LocaleContext'
 
 interface Community {
@@ -106,6 +106,10 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
   }
 
   const isActive = focused || !!content || showImageUpload
+  const paragraphCount = getParagraphCount(content)
+  const isTooManyLines = paragraphCount > 10
+  const plainTextLength = getPlainTextLength(content)
+  const isTooLong = plainTextLength > 500
 
   return (
     <motion.div
@@ -118,7 +122,7 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
     >
       <div className="flex gap-3">
         <Avatar username={currentUser.username} avatarUrl={currentUser.avatar_url} />
-        <form ref={formRef} onSubmit={handleSubmit} className="flex-1 flex flex-col gap-3">
+        <form ref={formRef} onSubmit={handleSubmit} className="flex-1 min-w-0 flex flex-col gap-3">
           {/* Target selector — Personal / Community */}
           <div className="relative">
             <button
@@ -200,6 +204,7 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
               onChange={setContent}
               placeholder={target === 'personal' ? t('feed.post_placeholder_personal') : t('feed.post_placeholder_community', { name: selectedCommunity?.name ?? t('post.community') })}
               maxLength={500}
+              showCounter={false}
             />
           </div>
 
@@ -212,6 +217,12 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
             )}
           </AnimatePresence>
 
+          {isTooManyLines && (
+            <p className="text-xs font-bold text-destructive mb-1">{t('post.too_many_lines', { max: 10 })}</p>
+          )}
+          {isTooLong && (
+            <p className="text-xs font-bold text-destructive mb-1">{t('post.too_long', { max: 500 })}</p>
+          )}
           {error && <p className="text-xs" style={{ color: 'var(--destructive)' }}>{error}</p>}
 
           {/* Action bar */}
@@ -235,20 +246,25 @@ export function FeedPostForm({ communities, currentUser, defaultCommunityId }: F
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-muted-foreground">{content.replace(/<[^>]*>/g, '').length}/500</span>
+                    <span className={cn(
+                      "text-[10px] font-bold transition-colors",
+                      isTooLong ? "text-destructive font-black scale-105" : "text-muted-foreground"
+                    )}>
+                      {plainTextLength}/500
+                    </span>
                     <motion.button
                       type="submit"
-                      disabled={loading || (!content.replace(/<[^>]*>/g, '').trim() && !imageFile)}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
+                      disabled={loading || isTooManyLines || isTooLong || (!plainTextLength && !imageFile)}
+                      whileHover={isTooManyLines || isTooLong ? {} : { scale: 1.03 }}
+                      whileTap={isTooManyLines || isTooLong ? {} : { scale: 0.97 }}
                       className={cn(
                         'flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all',
-                        content.replace(/<[^>]*>/g, '').trim() || imageFile
+                        (plainTextLength > 0 || imageFile) && !isTooManyLines && !isTooLong
                           ? 'shadow-sm hover:opacity-90'
                           : 'bg-muted text-muted-foreground cursor-not-allowed'
                       )}
                       style={
-                        content.replace(/<[^>]*>/g, '').trim() || imageFile
+                        (plainTextLength > 0 || imageFile) && !isTooManyLines && !isTooLong
                           ? {
                               background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
                               color: 'var(--primary-foreground)',

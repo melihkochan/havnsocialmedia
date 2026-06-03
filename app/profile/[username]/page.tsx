@@ -19,6 +19,7 @@ import { getProfileViewCount } from '@/lib/actions/analytics'
 import { getUserActivity } from '@/lib/actions/activity'
 import { ActivityMap } from '@/components/havn/ActivityMap'
 import { MutualFollowers } from '@/components/havn/MutualFollowers'
+import { CommunitiesModal } from '@/components/havn/CommunitiesModal'
 
 const Twitter = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -152,7 +153,7 @@ export default async function ProfilePage({
     // Memberships joined with communities directly to avoid waterfall
     supabase
       .from('community_members')
-      .select('community_id, role, status, communities(id, name, slug)')
+      .select('community_id, role, status, communities(id, name, slug, description)')
       .eq('user_id', profile.id)
       .eq('status', 'approved'),
     getProfileViewCount(profile.id),
@@ -231,12 +232,18 @@ export default async function ProfilePage({
   })
 
   // Extract memberships and communities from joined query
-  const memberships = (rawMemberships ?? []).map((m: any) => ({
-    community_id: m.community_id,
-    role: m.role,
-    status: m.status,
-    community: m.communities ?? null
-  }))
+  const memberships = (rawMemberships ?? []).map((m: any) => {
+    const community = m.communities ? {
+      ...m.communities,
+      avatar_url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/communities/${m.communities.id}/avatar`
+    } : null
+    return {
+      community_id: m.community_id,
+      role: m.role,
+      status: m.status,
+      community
+    }
+  })
   const comms = memberships.map((m: any) => m.community).filter(Boolean) as { id: string; name: string; slug: string }[]
 
   const sortedPosts = isLocked ? [] : sortPostsWithPinned(allPosts.filter((p: any) => !p.content?.includes('\u200B[anlar]') && !p.content?.includes('\u200B[kadraj]')))
@@ -421,7 +428,7 @@ export default async function ProfilePage({
 
             <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
               <span className="flex items-center gap-1.5"><CalendarDays size={14} className="opacity-70" />{new Date((profile as any).created_at || profile.updated_at).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })} katıldı</span>
-              <span className="flex items-center gap-1.5"><Users size={14} className="opacity-70" />{communityCount} topluluk</span>
+              <CommunitiesModal count={communityCount} memberships={memberships as any} />
               <span className="flex items-center gap-1.5"><Eye size={14} className="opacity-70" />{profileViews ?? 0} görüntülenme</span>
             </div>
 
@@ -479,39 +486,9 @@ export default async function ProfilePage({
               </div>
             )}
 
-            {/* Topluluklar — kompakt, max 3 görünür */}
-            {memberships.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-border/40">
-                <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2.5">Topluluklar</h2>
-                <div className="flex flex-wrap gap-1.5">
-                  {memberships.slice(0, 3).map((m) => {
-                    if (!m.community) return null
-                    return (
-                      <a
-                        key={m.community.id}
-                        href={`/communities/${m.community.slug}`}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border/80 bg-muted/20 hover:bg-muted/40 text-xs font-semibold text-foreground transition-all cursor-pointer"
-                      >
-                        {m.community.name}
-                        {m.role === 'owner' && (
-                          <span className="text-[9px] font-black text-amber-500 ml-0.5">👑</span>
-                        )}
-                        {m.role === 'moderator' && (
-                          <span className="text-[9px] font-black text-[#8b5cf6] ml-0.5">✦</span>
-                        )}
-                      </a>
-                    )
-                  })}
-                  {memberships.length > 3 && (
-                    <span className="flex items-center px-2.5 py-1 rounded-full border border-border/50 bg-muted/10 text-[10px] font-bold text-muted-foreground select-none">
-                      +{memberships.length - 3} daha
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+
+        </div>{/* /px-6 pb-6 */}
+        </div>{/* /bg-card */}
 
         {!isLocked && (isOwnProfile || profile.show_activity_map !== false) && (
           <ActivityMap activityData={activityData} />

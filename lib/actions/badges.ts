@@ -68,8 +68,10 @@ const BADGE_CONFIG: BadgeDefinition[] = [
     type: 'level',
     icon: 'ChevronsUp',
     tiers: [
-      { level: 1, target: 10, title: 'Yükselen Yıldız', gradient: 'from-lime-400 to-green-600', bg_color: 'bg-lime-500/10', border_color: 'border-lime-500/20', glow: '' },
-      { level: 2, target: 30, title: 'Efsane Üye', gradient: 'from-amber-400 to-yellow-600', bg_color: 'bg-amber-500/10', border_color: 'border-amber-400/40', glow: 'shadow-lg shadow-yellow-500/30' }
+      { level: 1, target: 6, title: 'Gezgin Üye', gradient: 'from-emerald-400 to-teal-500', bg_color: 'bg-emerald-500/10', border_color: 'border-emerald-500/20', glow: '' },
+      { level: 2, target: 16, title: 'Bilgi Kaynağı', gradient: 'from-purple-500 to-indigo-600', bg_color: 'bg-purple-500/10', border_color: 'border-purple-500/20', glow: 'shadow-md shadow-purple-500/20' },
+      { level: 3, target: 31, title: 'Efsane Üye', gradient: 'from-amber-400 to-yellow-600', bg_color: 'bg-amber-500/10', border_color: 'border-amber-400/40', glow: 'shadow-lg shadow-yellow-500/30' },
+      { level: 4, target: 50, title: 'Mitolojik Üye', gradient: 'from-rose-500 via-pink-500 to-purple-600', bg_color: 'bg-rose-500/10', border_color: 'border-rose-500/40', glow: 'shadow-xl shadow-rose-500/40 animate-pulse' }
     ]
   },
   {

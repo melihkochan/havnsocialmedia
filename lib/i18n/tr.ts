@@ -225,6 +225,8 @@ export const tr = {
   'post.pinned': 'Sabitlenmiş',
   'post.community': 'Topluluk',
   'post.nsfw_error': 'İçerik topluluk kurallarını ihlal ediyor.',
+  'post.too_many_lines': 'Gönderiniz çok fazla satır/paragraf içeriyor (en fazla {max} satır).',
+  'post.too_long': 'Gönderiniz çok uzun (en fazla {max} karakter).',
   'post.image_alt': 'Gönderi görseli',
   'post.load_replies': 'Yanıtları Gör',
   'post.hide_replies': 'Yanıtları Gizle',

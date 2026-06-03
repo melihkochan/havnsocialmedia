@@ -95,7 +95,7 @@ export function ActivityMap({ activityData }: ActivityMapProps) {
   return (
     <div
       ref={containerRef}
-      className="bg-card border border-border rounded-2xl p-5 shadow-sm backdrop-blur-md relative overflow-hidden select-none"
+      className="bg-card border border-border rounded-2xl p-5 shadow-sm backdrop-blur-md relative overflow-visible select-none"
     >
       {/* Decorative glow */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />

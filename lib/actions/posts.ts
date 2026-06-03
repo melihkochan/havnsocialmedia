@@ -145,11 +145,37 @@ export async function createPost(formData: FormData) {
     }
   }
 
-  const content = formData.get('content') as string
-  
+  let content = formData.get('content') as string
+  if (content) {
+    // Collapse consecutive empty lines (3 or more) to maximum 2
+    content = content.replace(/(<p>\s*<br\s*\/?>\s*<\/p>|<p>\s*<\/p>){3,}/gi, '<p><br></p><p><br></p>')
+
+    // Limit total paragraph/line count to prevent vertical scroll height spam
+    const paragraphCount = (content.match(/<p>/g) || []).length
+    if (paragraphCount > 10) {
+      const { getServerLocale } = await import('@/lib/i18n/server')
+      const locale = await getServerLocale()
+      const { t } = await import('@/lib/i18n')
+      return {
+        error: t('post.too_many_lines', locale, { max: 10 })
+      }
+    }
+
+    // Limit plain text character length to 500
+    const { getPlainTextLength } = await import('@/lib/utils')
+    if (getPlainTextLength(content) > 500) {
+      const { getServerLocale } = await import('@/lib/i18n/server')
+      const locale = await getServerLocale()
+      const { t } = await import('@/lib/i18n')
+      return {
+        error: t('post.too_long', locale, { max: 500 })
+      }
+    }
+  }
+
   // Two-layer content moderation (keyword cache + OpenAI)
   const { checkContent } = await import('@/lib/actions/content-moderation')
-  const contentCheck = await checkContent(content)
+  const contentCheck = await checkContent(content || '')
   if (contentCheck.blocked) {
     return { error: contentCheck.message }
   }
@@ -640,9 +666,37 @@ export async function editPost(postId: string, content: string) {
     return { error: contentCheck.message }
   }
 
+  let cleanedContent = content
+  if (cleanedContent) {
+    // Collapse consecutive empty lines (3 or more) to maximum 2
+    cleanedContent = cleanedContent.replace(/(<p>\s*<br\s*\/?>\s*<\/p>|<p>\s*<\/p>){3,}/gi, '<p><br></p><p><br></p>')
+
+    // Limit total paragraph/line count to prevent vertical scroll height spam
+    const paragraphCount = (cleanedContent.match(/<p>/g) || []).length
+    if (paragraphCount > 10) {
+      const { getServerLocale } = await import('@/lib/i18n/server')
+      const locale = await getServerLocale()
+      const { t } = await import('@/lib/i18n')
+      return {
+        error: t('post.too_many_lines', locale, { max: 10 })
+      }
+    }
+
+    // Limit plain text character length to 500
+    const { getPlainTextLength } = await import('@/lib/utils')
+    if (getPlainTextLength(cleanedContent) > 500) {
+      const { getServerLocale } = await import('@/lib/i18n/server')
+      const locale = await getServerLocale()
+      const { t } = await import('@/lib/i18n')
+      return {
+        error: t('post.too_long', locale, { max: 500 })
+      }
+    }
+  }
+
   const { error } = await supabase
     .from('posts')
-    .update({ content })
+    .update({ content: cleanedContent })
     .eq('id', postId)
     .eq('user_id', user.id)
 

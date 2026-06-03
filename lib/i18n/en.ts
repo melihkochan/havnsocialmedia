@@ -227,6 +227,8 @@ export const en: Record<TranslationKey, string> = {
   'post.pinned': 'Pinned',
   'post.community': 'Community',
   'post.nsfw_error': 'Content violates community guidelines.',
+  'post.too_many_lines': 'Your post contains too many lines/paragraphs (maximum {max} lines).',
+  'post.too_long': 'Your post is too long (maximum {max} characters).',
   'post.image_alt': 'Post image',
   'post.load_replies': 'View Replies',
   'post.hide_replies': 'Hide Replies',

@@ -310,7 +310,7 @@ export function CommentSection({ postId, initialComments, currentUser }: Comment
                 </Link>
                 <span className="text-[10px] text-muted-foreground">{formatRelativeTime(comment.created_at, locale)}</span>
               </div>
-              <FormattedMessage text={comment.content} className="text-sm text-foreground/90 leading-relaxed" />
+              <FormattedMessage text={comment.content} className="text-sm text-foreground/90 leading-relaxed break-words" />
             </div>
 
             {/* Actions: Like, Reply, Delete */}

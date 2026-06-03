@@ -542,13 +542,13 @@ export function FormattedMessage({ text, className, disableLinks = false }: Form
     // SSR / First-load plain text fallback
     const stripped = text.replace(/<[^>]*>/g, '')
     if (isHtml) {
-      return <div className={cn('whitespace-pre-wrap', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(stripped, disableLinks)}</div>
+      return <div className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(stripped, disableLinks)}</div>
     }
-    return <span className={cn('whitespace-pre-wrap', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(stripped, disableLinks)}</span>
+    return <span className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(stripped, disableLinks)}</span>
   }
 
   if (!isHtml) {
-    return <span className={cn('whitespace-pre-wrap', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(text, disableLinks)}</span>
+    return <span className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(text, disableLinks)}</span>
   }
 
   // Parse HTML client-side
@@ -684,6 +684,6 @@ export function FormattedMessage({ text, className, disableLinks = false }: Form
     return <div className={className} suppressHydrationWarning>{reactElements}</div>
   } catch (err) {
     // fallback
-    return <span className={cn('whitespace-pre-wrap', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(text, disableLinks)}</span>
+    return <span className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(text, disableLinks)}</span>
   }
 }

@@ -136,9 +136,9 @@ export default function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05, duration: 0.4 }}
         >
-          {mounted
-            ? (isReturningUser ? t('auth.login.welcome_back', locale) : t('auth.login.welcome', locale))
-            : t('auth.login.welcome', 'en')
+          {mounted && isReturningUser
+            ? t('auth.login.welcome_back', locale)
+            : t('auth.login.welcome', locale)
           }
         </motion.h1>
         <motion.p

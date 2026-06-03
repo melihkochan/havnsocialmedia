@@ -108,6 +108,7 @@ interface RichTextEditorProps {
   className?: string
   autoFocus?: boolean
   editorRef?: React.MutableRefObject<any>
+  showCounter?: boolean
 }
 
 export function RichTextEditor({
@@ -118,6 +119,7 @@ export function RichTextEditor({
   className,
   autoFocus = false,
   editorRef,
+  showCounter = true,
 }: RichTextEditorProps) {
   const [slashQuery, setSlashQuery] = useState<string | null>(null)
   const [showSlashMenu, setShowSlashMenu] = useState(false)
@@ -216,7 +218,7 @@ export function RichTextEditor({
     content: value,
     editorProps: {
       attributes: {
-        class: 'outline-none text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none min-h-[60px] cursor-text placeholder:text-muted-foreground',
+        class: 'outline-none text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none min-h-[60px] cursor-text placeholder:text-muted-foreground break-words w-full max-w-full prose-p:my-1 prose-headings:my-2 prose-blockquote:my-2 prose-pre:my-2',
       },
       handleKeyDown: (view, event) => {
         if (showSlashMenuRef.current && filteredCommandsRef.current.length > 0) {
@@ -333,7 +335,7 @@ export function RichTextEditor({
       )}
 
       {/* Length counter warning if close to limit */}
-      {charCount > 0 && (
+      {showCounter && charCount > 0 && (
         <div className={cn(
           'absolute right-0 bottom-[-22px] text-[10px] font-bold select-none transition-colors duration-200',
           charCount > maxLength ? 'text-destructive' : 'text-muted-foreground'

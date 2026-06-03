@@ -24,4 +24,19 @@ export function getSafeTimestamp(dateStr?: string | null): string {
   return isNaN(t) ? "" : String(t)
 }
 
+export function getPlainTextLength(html: string): number {
+  if (!html) return 0
+  const temp = html
+    .replace(/<\/p><p>/g, '\n')
+    .replace(/<br\s*\/?>/g, '\n')
+    .replace(/<[^>]*>/g, '')
+  return temp.length
+}
+
+export function getParagraphCount(html: string): number {
+  if (!html) return 0
+  const collapsed = html.replace(/(<p>\s*<br\s*\/?>\s*<\/p>|<p>\s*<\/p>){3,}/gi, '<p><br></p><p><br></p>')
+  return (collapsed.match(/<p>/g) || []).length
+}
+
 
