@@ -189,8 +189,14 @@ export default function HQOverviewClient({
   }
 
   // PDF Exporter (HTML template triggered print dialogue)
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     setShowExportMenu(false)
+    setActionMsg(locale === 'tr' ? "Sistem raporu hazırlanıyor..." : "Preparing system report...")
+    
+    // Fetch a larger user preview list for PDF report (up to 100 users)
+    const { users: allUsers } = await getHQUsers({ search: '', role: '', page: 0, pageSize: 100, sortBy: 'updated_at', sortOrder: 'desc' })
+    const pdfUsers = allUsers || []
+
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
 
@@ -297,7 +303,7 @@ export default function HQOverviewClient({
               </tr>
             </thead>
             <tbody>
-              ${users.slice(0, 30).map((u, idx) => `
+              ${pdfUsers.slice(0, 100).map((u, idx) => `
                 <tr>
                   <td>${idx + 1}</td>
                   <td>@${u.username}</td>
@@ -326,10 +332,22 @@ export default function HQOverviewClient({
   }
 
   // CSV Exporter
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     setShowExportMenu(false)
+    setActionMsg(locale === 'tr' ? "Kullanıcı verileri hazırlanıyor..." : "Preparing user data...")
+    
+    // Fetch a large page (up to 10000 users) containing all profiles for export
+    const { users: allUsers } = await getHQUsers({ search: '', role: '', page: 0, pageSize: 10000, sortBy: 'updated_at', sortOrder: 'desc' })
+    const csvUsers = allUsers || []
+
+    if (csvUsers.length === 0) {
+      setActionMsg(locale === 'tr' ? "İndirilecek kullanıcı bulunamadı." : "No users found to download.")
+      setTimeout(() => setActionMsg(null), 3000)
+      return
+    }
+
     let csvContent = locale === 'tr' ? "Kullanici Adi,Isim,Soyisim,Rol,Level,XP,Uyari Sayisi,Post Sayisi,Kayit Tarihi,Ulke\n" : "Username,First Name,Last Name,Role,Level,XP,Warn Count,Post Count,Registration Date,Country\n"
-    users.forEach((u) => {
+    csvUsers.forEach((u) => {
       const uName = `@${u.username}`
       const fName = u.first_name || ""
       const lName = u.last_name || ""
