@@ -258,8 +258,8 @@ export default async function ProfilePage({
     <MainLayout currentUser={currentProfile}>
       <ProfileViewTracker profileId={profile.id} />
       <div className="flex flex-col gap-6 w-full">
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="h-32 relative">
+        <div className="bg-card border border-border rounded-2xl">
+          <div className="h-32 relative overflow-hidden rounded-t-2xl">
             {profile.banner_url ? (
               <img
                 src={`${profile.banner_url}?t=${getSafeTimestamp(profile.updated_at)}`}
@@ -332,7 +332,7 @@ export default async function ProfilePage({
               </div>
             </div>
 
-            <div className="space-y-1.5 mb-4">
+            <div className="relative z-20 space-y-1.5 mb-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-black text-foreground flex items-center gap-1.5">
                   {getDisplayName(profile)}
@@ -364,7 +364,7 @@ export default async function ProfilePage({
 
               {/* Compact Achievements & Level Badge Row */}
               {(profile.show_badges !== false || isOwnProfile) && (
-                <div className="pt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                <div className="relative z-30 pt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
                   <ProfileBadgesShowcase
                     initialBadges={unlockedBadges || []}
                     isOwnProfile={isOwnProfile}

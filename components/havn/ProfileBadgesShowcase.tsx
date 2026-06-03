@@ -88,7 +88,7 @@ export function ProfileBadgesShowcase({
   ]
 
   return (
-    <div className="flex flex-wrap items-center gap-2.5 select-none py-1.5">
+    <div className="relative z-[100] flex flex-wrap items-center gap-2.5 select-none py-1.5">
       {allDisplayBadges.map((badge) => {
         const isTooltipActive = activeTooltip === badge.id
         const isLevel = badge.id === 'level_badge'
@@ -104,12 +104,16 @@ export function ProfileBadgesShowcase({
             onMouseLeave={() => setActiveTooltip(null)}
           >
             <motion.button
-              onClick={() => handleToggleVisibility(badge.id, badge.is_visible)}
-              disabled={(!isOwnProfile && !isLevel) || isPending}
+              onClick={() => {
+                if (isOwnProfile && !isLevel && !isPending) {
+                  handleToggleVisibility(badge.id, badge.is_visible)
+                }
+              }}
               whileHover={{ scale: 1.15 }}
-              whileTap={{ scale: 0.92 }}
+              whileTap={isOwnProfile && !isLevel && !isPending ? { scale: 0.92 } : {}}
               className={cn(
-                "relative transition-all cursor-pointer flex items-center justify-center select-none overflow-visible",
+                "relative transition-all flex items-center justify-center select-none overflow-visible",
+                isOwnProfile && !isLevel ? "cursor-pointer" : "cursor-default",
                 isLevel
                   ? ""
                   : badge.is_visible
@@ -143,7 +147,7 @@ export function ProfileBadgesShowcase({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.96 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 w-56 bg-[#090911]/98 border border-white/[0.08] text-white rounded-2xl p-4 shadow-[0_12px_32px_rgba(0,0,0,0.6)] z-50 text-center pointer-events-none select-none"
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 w-56 bg-[#090911]/98 border border-white/[0.08] text-white rounded-2xl p-4 shadow-[0_12px_32px_rgba(0,0,0,0.6)] z-[9999] text-center pointer-events-none select-none"
                 >
                   {/* Decorative glowing backplate */}
                   <div className="absolute inset-x-0 -bottom-8 h-16 bg-gradient-to-t from-primary/10 to-transparent blur-xl rounded-full pointer-events-none" />
