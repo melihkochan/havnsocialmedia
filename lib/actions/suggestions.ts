@@ -221,7 +221,7 @@ export async function voteSuggestion(suggestionId: string, voteType: number) {
   // Fetch the suggestion to check status
   const { data: suggestion, error: fetchErr } = await supabase
     .from('suggestions')
-    .select('status')
+    .select('status, user_id')
     .eq('id', suggestionId)
     .single()
 
@@ -260,6 +260,16 @@ export async function voteSuggestion(suggestionId: string, voteType: number) {
     if (error) {
       console.error('upsert vote error:', error)
       return { error: 'Oy kaydedilemedi.' }
+    }
+  }
+
+  // Trigger Badge Checks for the suggestion creator (runs in the background)
+  if (suggestion && (suggestion as any).user_id) {
+    try {
+      const { checkAllBadgesForUser } = await import('@/lib/actions/badges')
+      checkAllBadgesForUser((suggestion as any).user_id)
+    } catch (err) {
+      console.error('Badge trigger error in voteSuggestion:', err)
     }
   }
 

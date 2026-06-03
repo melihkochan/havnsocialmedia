@@ -162,11 +162,19 @@ export async function getProfileViewCount(profileId: string): Promise<number> {
 export async function getPostViewCount(postId: string): Promise<number> {
   try {
     const supabaseAdmin = await createServiceClient()
-    const { count } = await supabaseAdmin
-      .from('post_views')
-      .select('*', { count: 'exact', head: true })
-      .eq('post_id', postId)
-    return count ?? 0
+    const [viewsRes, likesRes] = await Promise.all([
+      supabaseAdmin
+        .from('post_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', postId),
+      supabaseAdmin
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', postId)
+    ])
+    const viewsCount = viewsRes.count ?? 0
+    const likesCount = likesRes.count ?? 0
+    return Math.max(viewsCount, likesCount)
   } catch {
     return 0
   }

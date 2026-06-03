@@ -121,6 +121,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
   const [isPrivate, setIsPrivate] = useState((profile as any).is_private || false)
   const [showStatus, setShowStatus] = useState((profile as any).show_status !== false)
   const [showXp, setShowXp] = useState((profile as any).show_xp !== false)
+  const [showBadges, setShowBadges] = useState((profile as any).show_badges !== false)
   const [twitter, setTwitter] = useState((profile as any).social_links?.twitter || '')
   const [instagram, setInstagram] = useState((profile as any).social_links?.instagram || '')
   const [github, setGithub] = useState((profile as any).social_links?.github || '')
@@ -351,6 +352,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
     fd.set('is_private', isPrivate.toString())
     fd.set('show_status', showStatus.toString())
     fd.set('show_xp', showXp.toString())
+    fd.set('show_badges', showBadges.toString())
     fd.set('twitter', twitter)
     fd.set('instagram', instagram)
     fd.set('github', github)
@@ -368,6 +370,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
       fd.set('is_private', isPrivate.toString())
       fd.set('show_status', showStatus.toString())
       fd.set('show_xp', showXp.toString())
+      fd.set('show_badges', showBadges.toString())
       const res = await updatePreferences(fd)
       setPreferencesResult(res)
     })
@@ -855,6 +858,14 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
                           onChange={setShowXp}
                           label="XP ve Seviyeyi Göster"
                           description="Açık olduğunda, profilinizde ve gönderilerinizde XP seviyeniz diğer kullanıcılara gösterilir."
+                        />
+
+                        {/* Rozet Gösterimi */}
+                        <Switch
+                          checked={showBadges}
+                          onChange={setShowBadges}
+                          label="Rozetleri Profilimde Göster"
+                          description="Açık olduğunda, kazandığınız rozetler profil kartınızda sergilenir."
                         />
                       </div>
 

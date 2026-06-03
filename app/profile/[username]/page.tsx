@@ -13,6 +13,9 @@ import { MuteProfileButton } from '@/components/havn/MuteProfileButton'
 import { getDisplayName, getFullName, getInitials, getOnlineStatus } from '@/lib/profile-display'
 import { cn, getSafeTimestamp } from '@/lib/utils'
 import { getRankInfo } from '@/lib/gamification'
+import { getUserBadges } from '@/lib/actions/badges'
+import { ProfileBadgesShowcase } from '@/components/havn/ProfileBadgesShowcase'
+import { getProfileViewCount } from '@/lib/actions/analytics'
 
 const Twitter = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -111,12 +114,13 @@ export default async function ProfilePage({
     currentProfileResult,
     { data: posts },
     { data: rawMemberships },
-    { count: profileViews },
+    profileViews,
     followersResult,
     followingResult,
     followToTargetResult,
     followToUserResult,
     suggestionsResultRow,
+    unlockedBadges,
   ] = await Promise.all([
     user
       ? supabase
@@ -140,10 +144,7 @@ export default async function ProfilePage({
       .select('community_id, role, status, communities(id, name, slug)')
       .eq('user_id', profile.id)
       .eq('status', 'approved'),
-    // View count inline — NO separate createClient
-    supabase
-      .from('profile_views')
-      .select('id', { count: 'exact', head: true }).eq('profile_id', profile.id),
+    getProfileViewCount(profile.id),
     // Followers count inline
     supabase
       .from('follows')
@@ -167,6 +168,7 @@ export default async function ProfilePage({
       `)
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false }),
+    getUserBadges(profile.id),
   ])
 
   const followToTarget = followToTargetResult.data
@@ -286,7 +288,7 @@ export default async function ProfilePage({
                   updatedAt={profile.updated_at}
                   size="lg"
                   showStatus={onlineStatus.status === 'online'}
-                  level={shouldShowXp(profile) ? rank.level : 1}
+                  level={isOwnProfile || shouldShowXp(profile) ? rank.level : 1}
                 />
                 
                 {/* Real-time Online/Offline status badge next to avatar */}
@@ -330,7 +332,7 @@ export default async function ProfilePage({
               </div>
             </div>
 
-            <div className="space-y-1 mb-4">
+            <div className="space-y-1.5 mb-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-black text-foreground flex items-center gap-1.5">
                   {getDisplayName(profile)}
@@ -359,6 +361,22 @@ export default async function ProfilePage({
                 <p className="text-xs text-muted-foreground">@{profile.username}</p>
               )}
               {profile.bio && <p className="text-xs text-muted-foreground leading-relaxed pt-1">{profile.bio}</p>}
+
+              {/* Compact Achievements & Level Badge Row */}
+              {(profile.show_badges !== false || isOwnProfile) && (
+                <div className="pt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                  <ProfileBadgesShowcase
+                    initialBadges={unlockedBadges || []}
+                    isOwnProfile={isOwnProfile}
+                    level={rank.level}
+                    xp={profile.xp ?? 0}
+                    rankName={rank.rankName}
+                    xpNeededForNext={rank.xpNeededForNext}
+                    progressPercent={rank.progressPercent}
+                    showXp={shouldShowXp(profile)}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
@@ -366,72 +384,6 @@ export default async function ProfilePage({
               <span className="flex items-center gap-1.5"><Users size={14} className="opacity-70" />{communityCount} topluluk</span>
               <span className="flex items-center gap-1.5"><Eye size={14} className="opacity-70" />{profileViews ?? 0} görüntülenme</span>
             </div>
-
-            {/* Gamification Level & XP Progress Card */}
-            {profile.xp !== undefined && shouldShowXp(profile) && (
-              <div className={cn(
-                "mt-5 p-4 rounded-2xl border shadow-sm backdrop-blur-md relative overflow-hidden group transition-all duration-300",
-                rank.level >= 31 ? "level-card-gold text-amber-900 dark:text-amber-100" :
-                rank.level >= 16 ? "level-card-purple text-purple-900 dark:text-purple-100" :
-                rank.level >= 6 ? "level-card-emerald bg-emerald-500/5 dark:bg-emerald-500/[0.02] border-emerald-500/20" :
-                "bg-card border-border/80"
-              )}>
-                {/* Background subtle glowing effect */}
-                <div 
-                  className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full opacity-[0.03] group-hover:opacity-[0.06] blur-2xl transition-opacity duration-500 pointer-events-none"
-                  style={{
-                    background: rank.level >= 31 ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' :
-                                rank.level >= 16 ? 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)' :
-                                'radial-gradient(circle, var(--primary) 0%, transparent 70%)'
-                  }}
-                />
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-lg text-[9px] font-black tracking-wider border uppercase shadow-sm select-none",
-                      rank.badgeClass
-                    )} style={rank.badgeStyle}>
-                      SEVİYE {rank.level}
-                    </span>
-                    <span className={cn(
-                      "text-xs font-black flex items-center gap-1",
-                      rank.level >= 31 ? "gold-shimmer-text" :
-                      rank.level >= 16 ? "purple-shimmer-text" :
-                      rank.level >= 6 ? "text-emerald-600 dark:text-emerald-400" :
-                      "text-foreground"
-                    )}>
-                      {rank.rankName}
-                    </span>
-                  </div>
-                  <span className={cn(
-                    "text-[10px] font-black px-2 py-0.5 rounded-md border",
-                    rank.level >= 31 ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400" :
-                    rank.level >= 16 ? "bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400" :
-                    rank.level >= 6 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" :
-                    "bg-primary/5 border-primary/10 text-primary"
-                  )}>
-                    {profile.xp} XP
-                  </span>
-                </div>
-                {/* Progress Bar Container */}
-                <div className="w-full h-2 rounded-full bg-muted/70 overflow-hidden relative border border-border/30">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all duration-1000 ease-out",
-                      rank.level >= 31 ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600" :
-                      rank.level >= 16 ? "bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500" :
-                      rank.level >= 6 ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" :
-                      "bg-gradient-to-r from-[#8b5cf6] via-[#ec4899] to-[#f97316]"
-                    )}
-                    style={{ width: `${rank.progressPercent}%` }}
-                  />
-                </div>
-                <div className="flex justify-between items-center mt-2 text-[9px] text-muted-foreground font-semibold">
-                  <span>Mevcut Seviye</span>
-                  <span>Sonraki seviyeye {rank.xpNeededForNext} XP kaldı</span>
-                </div>
-              </div>
-            )}
 
 
 

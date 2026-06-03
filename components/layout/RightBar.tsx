@@ -285,7 +285,7 @@ function GlobalRightBar() {
             <h2 className="text-xs font-black text-foreground uppercase tracking-wider">Havn Gündemi</h2>
           </div>
           <div className="flex flex-col gap-2">
-            {data.trendingTags.map((t: any) => {
+            {data.trendingTags.map((t: any, idx: number) => {
               const cleanTagName = t.tag.replace('#', '')
               return (
                 <Link
@@ -293,10 +293,21 @@ function GlobalRightBar() {
                   href={`/feed?tag=${cleanTagName}`}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-accent/10 border border-border/30 hover:border-primary/45 hover:bg-primary/[0.02] active:scale-[0.98] transition-all cursor-pointer group"
                 >
-                  <span className="text-xs font-black text-primary font-mono group-hover:text-primary transition-colors">
-                    {t.tag}
-                  </span>
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/40 group-hover:bg-primary/20 group-hover:border-primary/30 group-hover:text-primary transition-all font-mono">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className={cn(
+                      "text-[10px] font-black font-mono w-4 text-left flex-shrink-0",
+                      idx === 0 ? "text-amber-500 font-extrabold" :
+                      idx === 1 ? "text-slate-400 font-bold" :
+                      idx === 2 ? "text-amber-700 font-bold" :
+                      "text-muted-foreground/80"
+                    )}>
+                      {idx + 1}.
+                    </span>
+                    <span className="text-xs font-black text-primary font-mono group-hover:text-primary transition-colors truncate">
+                      {t.tag}
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/40 group-hover:bg-primary/20 group-hover:border-primary/30 group-hover:text-primary transition-all font-mono flex-shrink-0">
                     {t.count} paylaşım
                   </span>
                 </Link>

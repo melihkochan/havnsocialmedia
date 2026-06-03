@@ -201,6 +201,14 @@ export async function createPost(formData: FormData) {
   const { rewardXP } = await import('@/lib/xp')
   await rewardXP(user.id, 10)
 
+  // Trigger Badge Checks (runs asynchronously in background to ensure zero latency on UI)
+  try {
+    const { checkAllBadgesForUser } = await import('@/lib/actions/badges')
+    checkAllBadgesForUser(user.id)
+  } catch (err) {
+    console.error('Badge trigger error in createPost:', err)
+  }
+
   revalidatePath('/feed')
   revalidatePath('/communities')
   return { success: true }

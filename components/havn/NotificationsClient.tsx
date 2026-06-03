@@ -353,7 +353,6 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         async (payload) => {
-          console.log('[Realtime] NotificationsClient list received INSERT event:', payload)
           const newNotif = payload.new as any
           if (newNotif?.user_id !== currentUser.id) return
 
@@ -381,7 +380,6 @@ export function NotificationsClient({ initialNotifications, followingIds, curren
         }
       )
       .subscribe((status) => {
-        console.log(`[Realtime] NotificationsClient channel status for user ${currentUser.id}:`, status)
       })
 
     return () => {

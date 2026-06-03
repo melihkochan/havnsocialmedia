@@ -70,6 +70,14 @@ export async function createComment(postId: string, content: string, parentComme
   const { rewardXP } = await import('@/lib/xp')
   await rewardXP(user.id, 5)
 
+  // Trigger Badge Checks (runs asynchronously in background to ensure zero latency on UI)
+  try {
+    const { checkAllBadgesForUser } = await import('@/lib/actions/badges')
+    checkAllBadgesForUser(user.id)
+  } catch (err) {
+    console.error('Badge trigger error in createComment:', err)
+  }
+
   // Trigger notification
   const { createNotification } = await import('@/lib/actions/notifications')
   if (parentCommentId) {

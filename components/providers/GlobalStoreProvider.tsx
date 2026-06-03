@@ -126,7 +126,6 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
         'postgres_changes',
         { event: '*', schema: 'public', table: 'direct_messages' },
         (payload) => {
-          console.log('[Realtime] DM event received:', payload)
           const newMsg = payload.new as any
           const oldMsg = payload.old as any
           if (
@@ -142,7 +141,6 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications' },
         (payload) => {
-          console.log('[Realtime] Notification event received:', payload)
           const newNotif = payload.new as any
           const oldNotif = payload.old as any
           if (
@@ -158,12 +156,10 @@ export function GlobalStoreProvider({ children }: { children: React.ReactNode })
         'postgres_changes',
         { event: '*', schema: 'public', table: 'support_tickets' },
         (payload) => {
-          console.log('[Realtime] Support ticket event received:', payload)
           fetchTicketsCount()
         }
       )
       .subscribe((status) => {
-        console.log(`[Realtime] Global channel status for user ${currentUser.id}:`, status)
       })
 
     return () => {

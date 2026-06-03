@@ -655,6 +655,7 @@ export async function updatePreferences(formData: FormData) {
   const isPrivate = formData.get('is_private') === 'true'
   const showStatus = formData.get('show_status') === 'true'
   const showXp = formData.get('show_xp') === 'true'
+  const showBadges = formData.get('show_badges') === 'true'
 
   // Get current profile
   const { data: currentProfile } = await supabase
@@ -674,6 +675,7 @@ export async function updatePreferences(formData: FormData) {
     is_private: isPrivate,
     show_status: showStatus,
     show_xp: showXp,
+    show_badges: showBadges,
   }
   if (!showStatus) {
     metaUpdates.last_seen_at = null

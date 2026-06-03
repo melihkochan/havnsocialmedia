@@ -145,7 +145,6 @@ export async function createNotification(
 
   // Yeni sütunlar yoksa temel alanlarla tekrar dene
   if (error && (error.message.includes('message') || error.message.includes('community_id') || error.message.includes('post_preview'))) {
-    console.log('createNotification retrying with basic fields...')
     const { error: retryError } = await supabaseAdmin.from('notifications').insert({
       user_id: userId,
       actor_id: actorId,
