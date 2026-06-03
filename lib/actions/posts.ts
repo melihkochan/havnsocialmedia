@@ -429,14 +429,7 @@ export async function togglePinPost(postId: string, scope: 'community' | 'profil
   const profileData = (post as any).profiles
   const username = Array.isArray(profileData) ? profileData[0]?.username : profileData?.username
 
-  revalidatePath('/feed')
-  if (username) {
-    revalidatePath(`/profile/${username}`)
-  }
-  revalidatePath('/communities')
-  const communityData = post.communities as { slug: string } | { slug: string }[] | null
-  const slug = Array.isArray(communityData) ? communityData[0]?.slug : communityData?.slug
-  if (slug) revalidatePath(`/communities/${slug}`)
+  revalidatePath('/', 'layout')
 
   return { success: true, pinned: willPin }
 }
