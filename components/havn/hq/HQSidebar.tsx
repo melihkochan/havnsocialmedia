@@ -24,79 +24,80 @@ import {
 import { useState, useEffect } from 'react'
 import { signOut } from '@/lib/actions/auth'
 import { createClient } from '@/lib/supabase/client'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 const NAV = [
   {
     href: '/havn-hq-control/overview',
     icon: LayoutDashboard,
-    label: 'Genel Durum',
-    sub: 'Sistem ve sunucu anlık yükü',
+    labelKey: 'hq.overview' as const,
+    subKey: 'hq.overview.desc' as const,
   },
   {
     href: '/havn-hq-control/announcements',
     icon: Megaphone,
-    label: 'Resmi Duyurular',
-    sub: 'Resmi Havn duyuruları oluştur',
+    labelKey: 'hq.announcements' as const,
+    subKey: 'hq.announcements.desc' as const,
   },
   {
     href: '/havn-hq-control/analytics',
     icon: BarChart3,
-    label: 'Gelişmiş Analitik',
-    sub: 'Haftalık üye & post artış grafikleri',
+    labelKey: 'hq.analytics' as const,
+    subKey: 'hq.analytics.desc' as const,
   },
   {
     href: '/havn-hq-control/moderation',
     icon: Shield,
-    label: 'Moderasyon',
-    sub: 'Kullanıcı raporları kuyruğu',
+    labelKey: 'hq.moderation' as const,
+    subKey: 'hq.moderation.desc' as const,
   },
   {
     href: '/havn-hq-control/team-chat',
     icon: MessageSquare,
-    label: 'Ekip Sohbet Odası',
-    sub: '#ekip-koordinasyon @AI kanal',
+    labelKey: 'hq.team_chat' as const,
+    subKey: 'hq.team_chat.desc' as const,
   },
   {
     href: '/havn-hq-control/team',
     icon: UserCheck,
-    label: 'Ekip Yönetimi',
-    sub: 'Yetkili ekibi ve işlem sayıları',
+    labelKey: 'hq.team' as const,
+    subKey: 'hq.team.desc' as const,
   },
   {
     href: '/havn-hq-control/users',
     icon: Users,
-    label: 'Kullanıcılar',
-    sub: 'Kullanıcı listesi ve yönetimi',
+    labelKey: 'hq.users' as const,
+    subKey: 'hq.users.desc' as const,
   },
   {
     href: '/havn-hq-control/communities-approval',
     icon: Shield,
-    label: 'Topluluk Onayları',
-    sub: 'Bekleyen topluluk talepleri',
+    labelKey: 'hq.communities_approval' as const,
+    subKey: 'hq.communities_approval.desc' as const,
   },
   {
     href: '/havn-hq-control/communities',
     icon: Activity,
-    label: 'Topluluk Yönetimi',
-    sub: 'Duyurular, kurallar ve tema',
+    labelKey: 'hq.communities' as const,
+    subKey: 'hq.communities.desc' as const,
   },
   {
     href: '/havn-hq-control/map',
     icon: MapPin,
-    label: 'Katılım Haritası',
-    sub: 'Bölgesel üye yoğunluğu',
+    labelKey: 'hq.map' as const,
+    subKey: 'hq.map.desc' as const,
   },
   {
     href: '/havn-hq-control/content-filter',
     icon: ShieldAlert,
-    label: 'İçerik Filtresi',
-    sub: 'Yasaklı kelimeler listesi',
+    labelKey: 'hq.content_filter' as const,
+    subKey: 'hq.content_filter.desc' as const,
   },
   {
     href: '/havn-hq-control/settings',
     icon: Settings,
-    label: 'Sunucu Ayarları',
-    sub: 'Sistem ve güvenlik politikaları',
+    labelKey: 'hq.settings' as const,
+    subKey: 'hq.settings.desc' as const,
   },
 ]
 
@@ -111,6 +112,7 @@ interface HQSidebarProps {
 }
 
 export function HQSidebar({ currentUser }: HQSidebarProps) {
+  const { t } = useLocale()
   const pathname = usePathname()
   const collapsed = false
   const [pendingCount, setPendingCount] = useState(0)
@@ -161,7 +163,7 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
           loadPendingCount()
           if (payload.eventType === 'INSERT') {
             const newComm = payload.new as any
-            addToast('Yeni Topluluk Talebi', `"${newComm.name}" topluluk onay talebi alındı.`, 'info')
+            addToast(t('hq.toast.new_community_title'), t('hq.toast.new_community_desc', { name: newComm.name }), 'info')
           }
         }
       )
@@ -172,7 +174,7 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
           loadPendingCount()
           if (payload.eventType === 'INSERT') {
             const newTicket = payload.new as any
-            addToast('Destek & Şikayet', `Yeni bir destek/şikayet talebi açıldı: "${newTicket.subject}"`, 'warning')
+            addToast(t('hq.toast.support_title'), t('hq.toast.support_desc', { subject: newTicket.subject }), 'warning')
           }
         }
       )
@@ -188,7 +190,7 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
     .join('')
     .toUpperCase() || currentUser.username.slice(0, 2).toUpperCase()
 
-  const roleLabel = currentUser.role === 'founder' ? 'Kurucu' : currentUser.role === 'admin' ? 'Yönetici' : 'Ekip'
+  const roleLabel = currentUser.role === 'founder' ? t('hq.role.founder') : currentUser.role === 'admin' ? t('hq.role.admin') : t('hq.role.staff')
 
   const handleSignOut = async () => {
     await signOut()
@@ -232,7 +234,7 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
               >
                 <p className="text-white font-black text-sm tracking-wider">HAVN HQ</p>
                 <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: '#7c3aed' }}>
-                  FOUNDER PANEL
+                  {t('hq.panel.founder')}
                 </p>
               </motion.div>
             )}
@@ -241,7 +243,7 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
 
         {/* Nav */}
         <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
-          {NAV.map(({ href, icon: Icon, label, sub }) => {
+          {NAV.map(({ href, icon: Icon, labelKey, subKey }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
             return (
               <Link key={href} href={href}>
@@ -258,10 +260,10 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
                       className="flex-shrink-0 transition-colors duration-150"
                       style={{ color: active ? '#a78bfa' : 'rgba(255,255,255,0.4)' }}
                     />
-                    {label === 'Topluluk Onayları' && pendingCount > 0 && (
+                    {labelKey === 'hq.communities_approval' && pendingCount > 0 && (
                       <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 border border-[#0d0d1a] animate-pulse" />
                     )}
-                    {label === 'Moderasyon' && openTicketsCount > 0 && (
+                    {labelKey === 'hq.moderation' && openTicketsCount > 0 && (
                       <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 border border-[#0d0d1a] animate-pulse" />
                     )}
                   </div>
@@ -278,18 +280,18 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
                             className="text-xs font-bold truncate"
                             style={{ color: active ? '#e2e8f0' : 'rgba(255,255,255,0.7)' }}
                           >
-                            {label}
+                            {t(labelKey)}
                           </p>
                           <p className="text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                            {sub}
+                            {t(subKey)}
                           </p>
                         </div>
-                        {label === 'Topluluk Onayları' && pendingCount > 0 && (
+                        {labelKey === 'hq.communities_approval' && pendingCount > 0 && (
                           <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
                             {pendingCount}
                           </span>
                         )}
-                        {label === 'Moderasyon' && openTicketsCount > 0 && (
+                        {labelKey === 'hq.moderation' && openTicketsCount > 0 && (
                           <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white animate-pulse">
                             {openTicketsCount}
                           </span>
@@ -359,14 +361,14 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
           <div className="flex gap-2 mt-1 select-none">
             {collapsed ? (
               <div className="flex flex-col gap-1.5 items-center w-full">
-                <Link href="/feed" title="Ana Sayfaya Dön" className="w-full flex justify-center">
+                <Link href="/feed" title={t('hq.back_to_feed')} className="w-full flex justify-center">
                   <div className="p-2 rounded-lg border border-white/10 hover:bg-white/5 text-slate-300 cursor-pointer transition-all">
                     <ArrowLeft size={12} />
                   </div>
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  title="Oturumu Kapat"
+                  title={t('hq.logout')}
                   className="p-2 rounded-lg border border-rose-500/20 hover:bg-rose-500/10 text-rose-400 cursor-pointer transition-all"
                 >
                   <LogOut size={12} />
@@ -377,7 +379,7 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
                 <Link href="/feed" className="flex-1">
                   <div className="w-full py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-[9px] font-black uppercase text-slate-300 flex items-center justify-center gap-1 cursor-pointer transition-all">
                     <ArrowLeft size={10} />
-                    <span>Geri Dön</span>
+                    <span>{t('hq.back_to_feed')}</span>
                   </div>
                 </Link>
                 <button
@@ -385,7 +387,7 @@ export function HQSidebar({ currentUser }: HQSidebarProps) {
                   className="flex-1 py-1.5 rounded-lg border border-rose-500/20 hover:bg-rose-500/10 text-[9px] font-black uppercase text-rose-400 flex items-center justify-center gap-1 cursor-pointer transition-all"
                 >
                   <LogOut size={10} />
-                  <span>Çıkış Yap</span>
+                  <span>{t('hq.logout')}</span>
                 </button>
               </>
             )}

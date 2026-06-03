@@ -53,8 +53,12 @@ export function LocaleProvider({ children, initialLocale }: LocaleProviderProps)
     setLocaleState(l)
     localStorage.setItem('havn_locale', l)
     document.documentElement.setAttribute('lang', l)
-    // Persist to DB (fire-and-forget — don't await)
-    saveLanguagePreference(l).catch(() => {})
+    try {
+      await saveLanguagePreference(l)
+    } catch (e) {
+      console.error(e)
+    }
+    window.location.reload()
   }, [])
 
   const translate = useCallback(

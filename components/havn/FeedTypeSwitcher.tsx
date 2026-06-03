@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { startTransition } from 'react'
 import { updateDefaultFeedType } from '@/lib/actions/profile'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 interface FeedTypeSwitcherProps {
   activeFeedType: 'for_you' | 'following'
@@ -10,6 +11,7 @@ interface FeedTypeSwitcherProps {
 }
 
 export function FeedTypeSwitcher({ activeFeedType, activeSort }: FeedTypeSwitcherProps) {
+  const { t } = useLocale()
   const handleSwitch = (type: 'for_you' | 'following') => {
     startTransition(async () => {
       await updateDefaultFeedType(type)
@@ -28,7 +30,7 @@ export function FeedTypeSwitcher({ activeFeedType, activeSort }: FeedTypeSwitche
         }`}
         style={activeFeedType === 'for_you' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
       >
-        Sizin İçin
+        {t('feed.for_you')}
       </Link>
       <Link
         href={`/feed?feedType=following&sortBy=${activeSort}`}
@@ -40,7 +42,7 @@ export function FeedTypeSwitcher({ activeFeedType, activeSort }: FeedTypeSwitche
         }`}
         style={activeFeedType === 'following' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
       >
-        Takip Edilenler
+        {t('feed.following')}
       </Link>
     </div>
   )

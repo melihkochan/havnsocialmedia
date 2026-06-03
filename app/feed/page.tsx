@@ -16,10 +16,15 @@ import { getCommunities } from '@/lib/actions/communities'
 import { FeedOnboarding } from '@/components/havn/FeedOnboarding'
 
 import { getRankInfo } from '@/lib/gamification'
+import { t } from '@/lib/i18n'
+import { getServerLocale } from '@/lib/i18n/server'
 
-export const metadata = {
-  title: 'Anasayfa — HAVN',
-  description: 'Topluluklarından gelen son gönderiler.',
+export async function generateMetadata() {
+  const locale = await getServerLocale()
+  return {
+    title: `${t('feed.title', locale)} — HAVN`,
+    description: t('feed.subtitle.user', locale),
+  }
 }
 
 export const dynamic = 'force-dynamic'
@@ -29,6 +34,7 @@ interface PageProps {
 }
 
 export default async function FeedPage({ searchParams }: PageProps) {
+  const locale = await getServerLocale()
   const { sortBy = 'new', communityId, feedType, tag } = await searchParams
   const activeSort = sortBy === 'popular' ? 'popular' : 'new'
 
@@ -115,21 +121,21 @@ export default async function FeedPage({ searchParams }: PageProps) {
             </div>
             <div className="flex flex-col min-w-0">
               <h1 className="text-lg font-black text-foreground truncate">
-                {tag ? `#${tag}` : 'Anasayfa'}
+                {tag ? `#${tag}` : t('feed.title', locale)}
               </h1>
               <p className="text-xs text-muted-foreground truncate sm:whitespace-normal flex items-center gap-2">
                 {tag ? (
                   <>
-                    <span>Etiketine sahip gönderiler listeleniyor</span>
+                    <span>{t('feed.tag_filter', locale)}</span>
                     <Link 
                       href="/feed" 
                       className="text-[10px] bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 px-2 py-0.5 rounded-full font-black uppercase transition-all select-none cursor-pointer"
                     >
-                      Temizle
+                      {t('feed.clear', locale)}
                     </Link>
                   </>
                 ) : (
-                  user ? 'Topluluklarından ve arkadaşlarından gelen son gönderiler' : 'Herkese açık gönderiler'
+                  user ? t('feed.subtitle.user', locale) : t('feed.subtitle.public', locale)
                 )}
               </p>
             </div>
@@ -154,7 +160,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
                 }`}
                 style={activeSort === 'new' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
               >
-                Yeni
+                {t('feed.sort.new', locale)}
               </Link>
               <Link
                 href={communityId 
@@ -167,7 +173,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
                 }`}
                 style={activeSort === 'popular' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
               >
-                Popüler
+                {t('feed.sort.popular', locale)}
               </Link>
             </div>
           </div>
@@ -186,7 +192,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
               }`}
               style={!communityId ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
             >
-              <span>🏠</span> Ana Akış
+              <span>🏠</span> {t('feed.main_stream', locale)}
             </Link>
 
             {/* Joined Communities Tabs */}
@@ -229,8 +235,8 @@ export default async function FeedPage({ searchParams }: PageProps) {
                     #
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] font-black text-primary/70 uppercase tracking-widest">Aktif Etiket Filtresi</p>
-                    <h2 className="text-sm font-black text-foreground truncate mt-0.5">#{tag} etiketine sahip paylaşımlar listeleniyor</h2>
+                    <p className="text-[10px] font-black text-primary/70 uppercase tracking-widest">{t('feed.tag_filter_title', locale)}</p>
+                    <h2 className="text-sm font-black text-foreground truncate mt-0.5">{t('feed.tag_filter', locale, { tag })}</h2>
                   </div>
                 </div>
 
@@ -238,7 +244,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
                   href="/feed"
                   className="relative z-10 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-md flex-shrink-0 cursor-pointer"
                 >
-                  Filtreyi Temizle ❌
+                  {t('feed.clear_filter', locale)} ❌
                 </Link>
               </div>
             )}
@@ -256,7 +262,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
             <div className="flex items-center gap-3 mt-1">
               <div className="flex-1 border-t border-border" />
               <span className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">
-                {activeSort === 'popular' ? 'Popüler Gönderiler' : 'Son Gönderiler'}
+                {activeSort === 'popular' ? t('feed.posts.popular', locale) : t('feed.posts.recent', locale)}
               </span>
               <div className="flex-1 border-t border-border" />
             </div>
@@ -298,9 +304,9 @@ export default async function FeedPage({ searchParams }: PageProps) {
                     </div>
                     
                     <div className="space-y-2 max-w-md relative z-10 text-center">
-                      <h2 className="text-lg font-black text-white tracking-tight">Akışınız Boş Görünüyor</h2>
+                      <h2 className="text-lg font-black text-white tracking-tight">{t('feed.empty_feed.title', locale)}</h2>
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        Kişisel akışınızda gönderi görebilmek için yeni insanları takip etmeye başlayın! Topluluğumuzda aktif olan bazı profilleri aşağıda bulabilirsiniz.
+                        {t('feed.empty_feed.desc', locale)}
                       </p>
                     </div>
 
@@ -336,7 +342,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
                                 {shouldShowXp(sUser) && (
                                   <span 
                                     className="absolute -bottom-1.5 -right-1.5 px-1.5 py-0.5 rounded border border-white/5 bg-slate-900 text-[8px] font-mono font-bold text-slate-400"
-                                    title={`Seviye ${lvl}`}
+                                    title={locale === 'tr' ? `Seviye ${lvl}` : `Level ${lvl}`}
                                   >
                                     Lv.{lvl}
                                   </span>
@@ -350,10 +356,10 @@ export default async function FeedPage({ searchParams }: PageProps) {
                                     {sUser.first_name ? `${sUser.first_name} ${sUser.last_name || ''}` : sUser.username}
                                   </span>
                                   {sUser.is_verified && (
-                                    <span className="text-blue-400 text-[10px] flex-shrink-0" title="Doğrulanmış Hesap">✓</span>
+                                    <span className="text-blue-400 text-[10px] flex-shrink-0" title={t('feed.verified_account', locale)}>✓</span>
                                   )}
                                   {sUser.is_gold && (
-                                    <span className="text-amber-400 text-[10px] flex-shrink-0" title="İş Ortağı Hesap">★</span>
+                                    <span className="text-amber-400 text-[10px] flex-shrink-0" title={t('feed.partner_account', locale)}>★</span>
                                   )}
                                 </div>
 
@@ -362,7 +368,7 @@ export default async function FeedPage({ searchParams }: PageProps) {
                                 {followsYou && (
                                   <div className="pt-0.5">
                                     <span className="inline-block px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/25 text-[8px] font-black uppercase tracking-wider select-none">
-                                      Sizi Takip Ediyor
+                                      {t('feed.follows_you', locale)}
                                     </span>
                                   </div>
                                 )}
@@ -395,9 +401,9 @@ export default async function FeedPage({ searchParams }: PageProps) {
                   <div className="bg-card/40 border border-border/60 rounded-3xl p-8 flex flex-col items-center text-center gap-3.5 shadow-sm backdrop-blur-md">
                     <Users size={32} className="text-muted-foreground/60" />
                     <div className="space-y-1">
-                      <h2 className="text-sm font-bold text-foreground">Henüz Gönderi Yok</h2>
+                      <h2 className="text-sm font-bold text-foreground">{t('feed.empty_community.title', locale)}</h2>
                       <p className="text-xs text-muted-foreground max-w-xs">
-                        Bu toplulukta henüz paylaşım yapılmamış. İlk paylaşımı yukarıdaki panelden yapabilirsiniz!
+                        {t('feed.empty_community.desc', locale)}
                       </p>
                     </div>
                   </div>

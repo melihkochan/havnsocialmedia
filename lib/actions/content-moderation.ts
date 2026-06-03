@@ -7,29 +7,26 @@
  */
 
 import { containsNsfw } from '@/lib/nsfw-filter'
-import { moderateContent } from './openai-moderation'
 import type { Locale } from '@/lib/i18n'
 
 export interface ContentCheckResult {
   blocked: boolean
-  reason?: 'keyword' | 'ai_moderation'
+  reason?: 'keyword'
   message: string
 }
 
-const BLOCKED_MESSAGES: Record<Locale, Record<'keyword' | 'ai_moderation', string>> = {
+const BLOCKED_MESSAGES: Record<Locale, Record<'keyword', string>> = {
   tr: {
     keyword: 'İçerik topluluk kurallarını ihlal ediyor.',
-    ai_moderation: 'İçerik yapay zeka moderasyonundan geçemedi.',
   },
   en: {
     keyword: 'Content violates community guidelines.',
-    ai_moderation: 'Content was flagged by AI moderation.',
   },
 }
 
 /**
- * Check content against both moderation layers.
- * Returns a result indicating whether content should be blocked and why.
+ * Check content against the local keyword cache moderation layer.
+ * Returns a result indicating whether content should be blocked.
  */
 export async function checkContent(
   text: string,
@@ -46,16 +43,6 @@ export async function checkContent(
       blocked: true,
       reason: 'keyword',
       message: BLOCKED_MESSAGES[locale].keyword,
-    }
-  }
-
-  // ── Layer 2: OpenAI Moderation (graceful — passes through on any error) ──
-  const aiResult = await moderateContent(text)
-  if (aiResult.flagged) {
-    return {
-      blocked: true,
-      reason: 'ai_moderation',
-      message: BLOCKED_MESSAGES[locale].ai_moderation,
     }
   }
 
