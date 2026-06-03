@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -11,6 +11,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { getDisplayName } from '@/lib/profile-display'
 import { cn } from '@/lib/utils'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 interface CommandPaletteProps {
   isOpen: boolean
@@ -21,6 +22,7 @@ interface CommandPaletteProps {
 export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteProps) {
   const router = useRouter()
   const { setTheme } = useTheme()
+  const { t } = useLocale()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [users, setUsers] = useState<any[]>([])
@@ -104,14 +106,14 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
 
   // Static actions
   const staticActions = [
-    { id: 'feed', label: 'Anasayfa\'ya Git', desc: 'Ana akışa dön', icon: Globe, perform: () => router.push('/feed') },
-    { id: 'profile', label: 'Profilime Git', desc: 'Kişisel profil sayfanı aç', icon: User, perform: () => currentUser?.username ? router.push(`/profile/${currentUser.username}`) : router.push('/login') },
-    { id: 'messages', label: 'Mesajlar\'a Git', desc: 'Direkt mesajlarını görüntüle', icon: MessageSquare, perform: () => router.push('/messages') },
-    { id: 'settings', label: 'Ayarlar\'a Git', desc: 'Profil ve hesap ayarlarını düzenle', icon: Settings, perform: () => router.push('/settings') },
-    { id: 'support', label: 'Destek & Biletler', desc: 'Destek talebi oluştur veya biletleri gör', icon: HelpCircle, perform: () => router.push('/support') },
-    { id: 'dark-theme', label: 'Koyu Tema Yap', desc: 'Platform temasını karanlık mod yapar', icon: Moon, perform: () => setTheme('dark') },
-    { id: 'light-theme', label: 'Açık Tema Yap', desc: 'Platform temasını aydınlık mod yapar', icon: Sun, perform: () => setTheme('light') },
-    { id: 'system-theme', label: 'Sistem Temasını Kullan', desc: 'Varsayılan sistem ayarını kullanır', icon: Laptop, perform: () => setTheme('system') },
+    { id: 'feed', label: t('cmd.action.feed.label'), desc: t('cmd.action.feed.desc'), icon: Globe, perform: () => router.push('/feed') },
+    { id: 'profile', label: t('cmd.action.profile.label'), desc: t('cmd.action.profile.desc'), icon: User, perform: () => currentUser?.username ? router.push(`/profile/${currentUser.username}`) : router.push('/login') },
+    { id: 'messages', label: t('cmd.action.messages.label'), desc: t('cmd.action.messages.desc'), icon: MessageSquare, perform: () => router.push('/messages') },
+    { id: 'settings', label: t('cmd.action.settings.label'), desc: t('cmd.action.settings.desc'), icon: Settings, perform: () => router.push('/settings') },
+    { id: 'support', label: t('cmd.action.support.label'), desc: t('cmd.action.support.desc'), icon: HelpCircle, perform: () => router.push('/support') },
+    { id: 'dark-theme', label: t('cmd.action.dark.label'), desc: t('cmd.action.dark.desc'), icon: Moon, perform: () => setTheme('dark') },
+    { id: 'light-theme', label: t('cmd.action.light.label'), desc: t('cmd.action.light.desc'), icon: Sun, perform: () => setTheme('light') },
+    { id: 'system-theme', label: t('cmd.action.system.label'), desc: t('cmd.action.system.desc'), icon: Laptop, perform: () => setTheme('system') },
   ]
 
   // Add HQ Admin action if applicable
@@ -119,8 +121,8 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
   if (isAdmin) {
     staticActions.push({
       id: 'hq',
-      label: 'Havn HQ Kontrol Paneli',
-      desc: 'Yönetici ve kurucu konsolu',
+      label: t('cmd.action.hq.label'),
+      desc: t('cmd.action.hq.desc'),
       icon: Shield,
       perform: () => router.push('/havn-hq-control/overview')
     })
@@ -161,48 +163,48 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
       desc: act.desc,
       icon: act.icon,
       perform: act.perform,
-      category: 'Aksiyonlar',
+      category: t('cmd.categories.actions'),
       avatar_url: undefined
     })),
     ...filteredCommunities.map(c => ({
       id: `comm-${c.id}`,
       type: 'community',
       label: c.name,
-      desc: `@${c.slug} • ${c.type === 'private' ? 'Özel' : 'Açık'} Topluluk`,
+      desc: `@${c.slug} • ${c.type === 'private' ? t('cmd.meta.private') : t('cmd.meta.public')} ${t('cmd.meta.community_suffix')}`,
       icon: Hash,
       perform: () => router.push(`/feed?communityId=${c.id}`),
-      category: 'Topluluklar',
+      category: t('cmd.categories.communities'),
       avatar_url: undefined
     })),
     ...semanticCommunities.map(c => ({
       id: `sem-comm-${c.id}`,
       type: 'community',
       label: c.name,
-      desc: `@${c.slug} • Yapay Zeka Eşleşmesi (%${Math.round(c.similarity * 100)})`,
+      desc: `@${c.slug} • ${t('cmd.meta.similarity', { similarity: Math.round(c.similarity * 100) })}`,
       icon: Sparkles,
       perform: () => router.push(`/feed?communityId=${c.id}`),
-      category: 'Yapay Zeka Sonuçları',
+      category: t('cmd.categories.ai'),
       avatar_url: undefined
     })),
     ...semanticPosts.map(p => ({
       id: `sem-post-${p.id}`,
       type: 'post',
       label: p.content ? p.content.replace(/<[^>]*>/g, ' ').slice(0, 45) + (p.content.replace(/<[^>]*>/g, ' ').length > 45 ? '...' : '') : 'Gönderi',
-      desc: `@${p.profiles?.username} • Yapay Zeka Eşleşmesi (%${Math.round(p.similarity * 100)})`,
+      desc: `@${p.profiles?.username} • ${t('cmd.meta.similarity', { similarity: Math.round(p.similarity * 100) })}`,
       avatar_url: p.profiles?.avatar_url,
       icon: Sparkles,
       perform: () => router.push(`/post/${p.id}`),
-      category: 'Yapay Zeka Sonuçları'
+      category: t('cmd.categories.ai')
     })),
     ...users.map(u => ({
       id: `user-${u.id}`,
       type: 'user',
       label: getDisplayName(u),
-      desc: `@${u.username} • Seviye ${Math.floor(Math.sqrt((u.xp ?? 0) / 100)) + 1}`,
+      desc: `@${u.username} • ${t('cmd.meta.level', { level: Math.floor(Math.sqrt((u.xp ?? 0) / 100)) + 1 })}`,
       avatar_url: u.avatar_url,
       icon: User,
       perform: () => router.push(`/profile/${u.username}`),
-      category: 'Kullanıcılar'
+      category: t('cmd.categories.users')
     }))
   ]
 
@@ -277,7 +279,7 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Topluluk, arkadaş veya komut arayın... (Örn: /koyu)"
+                placeholder={t('cmd.placeholder')}
                 className="w-full bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none border-none ring-0 focus:ring-0 p-0"
               />
               {loading ? (
@@ -352,7 +354,7 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
                       {/* Navigation tip */}
                       {isSelected && (
                         <div className="text-[9px] font-bold text-slate-600 bg-white/[0.02] px-1.5 py-0.5 rounded border border-white/[0.04] uppercase flex items-center gap-1 select-none animate-pulse">
-                          <span>Seç</span> ↵
+                          <span>{t('cmd.tip.select')}</span> ↵
                         </div>
                       )}
                     </div>
@@ -363,8 +365,8 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
               {listItems.length === 0 && (
                 <div className="text-center py-10 text-slate-500 space-y-1 bg-white/[0.01] border border-dashed border-white/[0.03] rounded-xl m-2 select-none">
                   <Terminal size={18} className="mx-auto mb-1.5 text-slate-600" />
-                  <p className="text-xs font-bold">Sonuç bulunamadı</p>
-                  <p className="text-[10px]">Aramanızla eşleşen komut, kullanıcı veya topluluk yok.</p>
+                  <p className="text-xs font-bold">{t('cmd.no_results.title')}</p>
+                  <p className="text-[10px]">{t('cmd.no_results.desc')}</p>
                 </div>
               )}
             </div>
@@ -372,8 +374,8 @@ export function CommandPalette({ isOpen, onClose, currentUser }: CommandPaletteP
             {/* Bottom Help bar */}
             <div className="px-4 py-2 bg-white/[0.01] border-t border-white/[0.04] flex items-center justify-between text-[9px] text-slate-500 font-medium select-none">
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-0.5"><span className="bg-white/5 border border-white/10 px-1 py-0.2 rounded font-black text-[8px]">↑↓</span> Yön Tuşları</span>
-                <span className="flex items-center gap-0.5"><span className="bg-white/5 border border-white/10 px-1 py-0.2 rounded font-black text-[8px]">ENTER</span> Git</span>
+                <span className="flex items-center gap-0.5"><span className="bg-white/5 border border-white/10 px-1 py-0.2 rounded font-black text-[8px]">↑↓</span> {t('cmd.help.arrows')}</span>
+                <span className="flex items-center gap-0.5"><span className="bg-white/5 border border-white/10 px-1 py-0.2 rounded font-black text-[8px]">ENTER</span> {t('cmd.help.enter')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Sparkles size={10} className="text-primary animate-pulse" />

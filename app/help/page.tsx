@@ -2,9 +2,15 @@ import { createClient } from '@/lib/supabase/server'
 import { MainLayout } from '@/components/layout/MainLayout'
 import HelpClient from './HelpClient'
 
-export const metadata = {
-  title: 'Havn Yardım Merkezi — Sıkça Sorulan Sorular ve Rehber',
-  description: 'Havn platformunun özellikleri, seviye/XP sistemi, kısayollar ve kullanım rehberi.',
+import { t } from '@/lib/i18n'
+import { getServerLocale } from '@/lib/i18n/server'
+
+export async function generateMetadata() {
+  const locale = await getServerLocale()
+  return {
+    title: t('help.meta.title', locale),
+    description: t('help.meta.desc', locale),
+  }
 }
 
 export const dynamic = 'force-dynamic'
