@@ -1,8 +1,8 @@
-﻿'use server'
+'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { isFounder } from '@/lib/founder'
+import { isFounder, isAdmin as checkIsAdmin } from '@/lib/founder'
 
 export async function createSuggestion(
   title: string,
@@ -40,7 +40,7 @@ export async function createSuggestion(
     const { data: admins } = await supabase
       .from('profiles')
       .select('id')
-      .or('username.eq.melih,is_gold.eq.true')
+      .in('role', ['founder', 'admin'])
 
     if (admins && admins.length > 0) {
       const { createNotification } = await import('@/lib/actions/notifications')
@@ -133,7 +133,7 @@ export async function getSuggestions(statusFilter?: string, sortBy: 'votes' | 'n
       .select('*')
       .eq('id', currentUserId)
       .single()
-    isCurrentUserAdmin = currentProfile?.is_gold || isFounder(currentProfile)
+    isCurrentUserAdmin = checkIsAdmin(currentProfile)
   }
 
   // Fetch comment counts
@@ -282,7 +282,7 @@ export async function updateSuggestionStatus(suggestionId: string, status: strin
     .eq('id', user.id)
     .single()
 
-  const isAdmin = profile?.is_gold || isFounder(profile)
+  const isAdmin = checkIsAdmin(profile)
   if (!isAdmin) {
     return { error: 'Bu işlem için yetkiniz bulunmamaktadır.' }
   }
@@ -399,7 +399,7 @@ export async function deleteSuggestion(suggestionId: string) {
     .eq('id', user.id)
     .single()
 
-  const isAdmin = profile?.is_gold || isFounder(profile)
+  const isAdmin = checkIsAdmin(profile)
   const isOwner = suggestion.user_id === user.id
 
   if (!isAdmin && !isOwner) {

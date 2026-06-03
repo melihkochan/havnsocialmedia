@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -113,12 +113,12 @@ export async function deleteComment(commentId: string, postId: string) {
   // Check global admin/founder status
   const { data: currentUserProfile } = await supabase
     .from('profiles')
-    .select('id, username, is_gold')
+    .select('id, username, role')
     .eq('id', user.id)
     .single()
 
-  const { isFounder: checkIsFounder } = await import('@/lib/founder')
-  const isGlobalAdmin = currentUserProfile && (currentUserProfile.is_gold || checkIsFounder(currentUserProfile))
+  const { isAdmin } = await import('@/lib/founder')
+  const isGlobalAdmin = currentUserProfile && isAdmin(currentUserProfile)
 
   if (isGlobalAdmin) {
     const { createServiceClient } = await import('@/lib/supabase/server')

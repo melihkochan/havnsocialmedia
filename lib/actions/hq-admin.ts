@@ -1,12 +1,30 @@
-﻿'use server'
+'use server'
 
 import { createServiceClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { logHQModAction } from '@/lib/actions/hq-chat'
+import { isStaff } from '@/lib/founder'
+
+async function ensureHQAccess() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Yetkisiz erişim.')
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || !isStaff(profile)) {
+    throw new Error('Bu işlem için yetkiniz yok.')
+  }
+}
 
 // ── Genel İstatistikler ──────────────────────────────────────────────────────
 
 export async function getHQOverviewStats() {
+  await ensureHQAccess()
   const startTime = Date.now()
   const supabase = await createServiceClient()
 
@@ -145,6 +163,7 @@ export async function getHQOverviewStats() {
 // ── Analitik: Aylık Üye Artışı ───────────────────────────────────────────────
 
 export async function getMonthlyUserGrowth() {
+  await ensureHQAccess()
   const supabase = await createServiceClient()
   const { data, error } = await supabase
     .from('profiles')
@@ -180,6 +199,7 @@ export async function getMonthlyUserGrowth() {
 // ── Analitik: Saatlik Etkileşim ──────────────────────────────────────────────
 
 export async function getHourlyActivity() {
+  await ensureHQAccess()
   const supabase = await createServiceClient()
   const { data, error } = await supabase
     .from('posts')
@@ -216,6 +236,7 @@ export async function getHQUsers({
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
 }) {
+  await ensureHQAccess()
   const supabase = await createServiceClient()
   let query = supabase
     .from('profiles')
@@ -299,6 +320,7 @@ export async function updateUserRole(targetUserId: string, newRole: string) {
 // ── Sistem Ayarları ──────────────────────────────────────────────────────────
 
 export async function getSystemSettings(): Promise<Record<string, boolean>> {
+  await ensureHQAccess()
   const supabase = await createServiceClient()
   const { data, error } = await supabase.from('system_settings').select('key, value')
   if (error || !data) return {}
@@ -328,6 +350,7 @@ export async function updateSystemSetting(key: string, value: boolean) {
 // ── Coğrafi Dağılım ─────────────────────────────────────────────────────────
 
 export async function getCountryDistribution() {
+  await ensureHQAccess()
   const supabase = await createServiceClient()
   const { data, error } = await supabase
     .from('profiles')
@@ -675,6 +698,7 @@ export async function getAllCommunitiesForAdmin() {
 }
 
 export async function getHQOverviewStatsForRange(range: '24s' | '7g' | '30g' | 'ozel') {
+  await ensureHQAccess()
   const startTime = Date.now()
   const supabase = await createServiceClient()
 
