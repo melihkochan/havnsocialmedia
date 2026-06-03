@@ -595,5 +595,11 @@ export const en: Record<TranslationKey, string> = {
   'games.reflex.click': 'CLICK NOW!',
   'games.reflex.too_early': 'Clicked too early! Do not click before the green screen.',
   'games.reflex.success': 'Great! Your reaction time: {time}ms',
+  'games.reflex.success_desc': 'Great reaction time!',
   'games.reflex.xp_reward_hint': 'You must react in under 350ms to earn XP.',
+  'games.reflex.pb': 'Personal Best (PB)',
+  'games.reflex.avg': 'Average (Session)',
+  'games.guest_warning': 'You must be logged in to save scores, enter the leaderboard, and claim daily XP rewards.',
+  'games.score_saved': 'Score saved!',
+  'games.leaderboard.loading': 'Loading scores...',
 }

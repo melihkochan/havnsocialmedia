@@ -98,7 +98,7 @@ export function PlayClient({ currentUser }: PlayClientProps) {
       if (res.xpEarned && res.xpEarned > 0) {
         showToast(t('games.xp_reward', { xp: res.xpEarned }), 'success')
       } else {
-        showToast(res.message || (locale === 'tr' ? 'Skorunuz kaydedildi!' : 'Score saved!'), 'success')
+        showToast(res.message || t('games.score_saved'), 'success')
       }
       // Refresh leaderboard list automatically
       fetchLeaderboard()
@@ -154,9 +154,7 @@ export function PlayClient({ currentUser }: PlayClientProps) {
         <div className="flex items-center gap-3 p-4 border border-dashed border-amber-500/20 bg-amber-500/5 rounded-2xl">
           <Lock className="text-amber-500 flex-shrink-0" size={18} />
           <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-            {locale === 'tr' 
-              ? 'Skorlarınızı kaydetmek, liderlik tablosuna girmek ve günlük XP ödüllerini kazanmak için giriş yapmış olmalısınız.' 
-              : 'You must be logged in to save scores, enter the leaderboard, and claim daily XP rewards.'}
+            {t('games.guest_warning')}
           </span>
         </div>
       )}
@@ -216,7 +214,7 @@ export function PlayClient({ currentUser }: PlayClientProps) {
                     <span className="text-xl font-black">{t('games.reflex.success', { time: rResult })}</span>
                     <span className="text-[10px] text-muted-foreground leading-normal max-w-xs mt-1">
                       {rResult < 350 
-                        ? (locale === 'tr' ? 'Harika reaksiyon süresi!' : 'Great reaction time!') 
+                        ? t('games.reflex.success_desc') 
                         : t('games.reflex.xp_reward_hint')}
                     </span>
                   </div>
@@ -241,7 +239,7 @@ export function PlayClient({ currentUser }: PlayClientProps) {
         <div className="lg:col-span-3 flex flex-col gap-4">
           <div className="flex-1 bg-card border border-border rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-sm">
             <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
-              {locale === 'tr' ? 'Kişisel En İyi (PB)' : 'Personal Best (PB)'}
+              {t('games.reflex.pb')}
             </span>
             <span className="text-xl font-black text-foreground mt-2 block">
               {personalBest !== null ? `${personalBest}ms` : '—'}
@@ -249,7 +247,7 @@ export function PlayClient({ currentUser }: PlayClientProps) {
           </div>
           <div className="flex-1 bg-card border border-border rounded-2xl p-5 flex flex-col items-center justify-center text-center shadow-sm">
             <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
-              {locale === 'tr' ? 'Ortalama (Oturum)' : 'Average (Session)'}
+              {t('games.reflex.avg')}
             </span>
             <span className="text-xl font-black text-foreground mt-2 block">
               {attempts > 0 ? `${Math.round(totalMs / attempts)}ms` : '—'}
@@ -291,7 +289,7 @@ export function PlayClient({ currentUser }: PlayClientProps) {
           <div className="flex items-center justify-center py-10 text-muted-foreground gap-2">
             <Loader2 className="animate-spin text-primary" size={16} />
             <span className="text-[10px] font-semibold">
-              {locale === 'tr' ? 'Skorlar yükleniyor...' : 'Loading scores...'}
+              {t('games.leaderboard.loading')}
             </span>
           </div>
         ) : leaderboardData.length === 0 ? (

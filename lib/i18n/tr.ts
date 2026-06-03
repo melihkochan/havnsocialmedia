@@ -593,7 +593,13 @@ export const tr = {
   'games.reflex.click': 'ŞİMDİ TIKLA!',
   'games.reflex.too_early': 'Çok erken tıkladın! Ekran yeşile dönmeden tıklama.',
   'games.reflex.success': 'Harika! Tepki süren: {time}ms',
+  'games.reflex.success_desc': 'Harika reaksiyon süresi!',
   'games.reflex.xp_reward_hint': 'XP kazanmak için reaksiyon süren 350ms\'nin altında olmalıdır.',
+  'games.reflex.pb': 'Kişisel En İyi (PB)',
+  'games.reflex.avg': 'Ortalama (Oturum)',
+  'games.guest_warning': 'Skorlarınızı kaydetmek, liderlik tablosuna girmek ve günlük XP ödüllerini kazanmak için giriş yapmış olmalısınız.',
+  'games.score_saved': 'Skorunuz kaydedildi!',
+  'games.leaderboard.loading': 'Skorlar yükleniyor...',
 } as const
 
 export type TranslationKey = keyof typeof tr
