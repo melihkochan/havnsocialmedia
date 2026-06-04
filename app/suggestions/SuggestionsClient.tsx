@@ -227,7 +227,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
     setAddError(null)
 
     if (!addTitle.trim() || !addDescription.trim()) {
-      setAddError('Lütfen tüm alanları doldurun.')
+      setAddError(t('suggestions.modal.add.error_fill', locale))
       return
     }
 

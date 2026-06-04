@@ -284,7 +284,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
     const message = fd.get('message') as string
 
     if (!targetUserId) {
-      setAdminCreateResult({ error: 'Lütfen mesaj göndermek için bir kullanıcı seçin.' })
+      setAdminCreateResult({ error: t('support.form.error_user', locale) })
       return
     }
 

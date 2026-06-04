@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import nodeFetch from 'node-fetch'
 import http from 'node:http'
 import https from 'node:https'
 import dns from 'node:dns'
@@ -109,11 +108,12 @@ if (isLocalWindows) {
       try {
         const agent = globalAgents.__supabaseHttpsAgent
         if (agent) {
+          const { default: nf } = await import('node-fetch')
           // Sequential warmup — each request establishes a TLS connection
-          await nodeFetch(`${SUPABASE_URL}/rest/v1/`, { agent, headers: { apikey: SUPABASE_KEY } })
-          await nodeFetch(`${SUPABASE_URL}/auth/v1/settings`, { agent, headers: { apikey: SUPABASE_KEY } })
+          await nf(`${SUPABASE_URL}/rest/v1/`, { agent, headers: { apikey: SUPABASE_KEY } })
+          await nf(`${SUPABASE_URL}/auth/v1/settings`, { agent, headers: { apikey: SUPABASE_KEY } })
           // Third request to ensure pool is warm
-          await nodeFetch(`${SUPABASE_URL}/rest/v1/`, { agent, headers: { apikey: SUPABASE_KEY } })
+          await nf(`${SUPABASE_URL}/rest/v1/`, { agent, headers: { apikey: SUPABASE_KEY } })
         }
       } catch {
         // Ignore warmup errors
@@ -123,13 +123,22 @@ if (isLocalWindows) {
   }
 }
 
-// Custom fetch with persistent keep-alive agent
-const persistentFetch = ((url: any, opts: any = {}) => {
-  const urlStr = typeof url === 'string' ? url : (url.href || '');
-  const isHttps = urlStr.startsWith('https://');
-  const agent = isHttps ? globalAgents.__supabaseHttpsAgent : globalAgents.__supabaseHttpAgent;
-  return nodeFetch(url, { ...opts, agent })
-}) as unknown as typeof globalThis.fetch
+// Custom fetch with persistent keep-alive agent (loaded dynamically only on Windows)
+let persistentFetch: typeof globalThis.fetch | undefined = undefined
+
+if (isLocalWindows) {
+  let lazyNodeFetch: any = null
+  persistentFetch = (async (url: any, opts: any = {}) => {
+    if (!lazyNodeFetch) {
+      const { default: nf } = await import('node-fetch')
+      lazyNodeFetch = nf
+    }
+    const urlStr = typeof url === 'string' ? url : (url.href || '')
+    const isHttps = urlStr.startsWith('https://')
+    const agent = isHttps ? globalAgents.__supabaseHttpsAgent : globalAgents.__supabaseHttpAgent
+    return lazyNodeFetch(url, { ...opts, agent })
+  }) as unknown as typeof globalThis.fetch
+}
 
 export async function createClient() {
   const cookieStore = await cookies()
