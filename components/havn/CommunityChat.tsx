@@ -9,6 +9,7 @@ import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
 import { getCommunityMessages, sendCommunityMessage, editCommunityMessage, deleteCommunityMessage } from '@/lib/actions/community-messages'
 import { cn } from '@/lib/utils'
 import { useLocale } from '@/lib/i18n/LocaleContext'
+import { FormattedMessage } from '@/components/havn/FormattedMessage'
 
 interface Profile {
   id: string
@@ -56,6 +57,11 @@ export function CommunityChat({
 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editInputText, setEditInputText] = useState('')
+
+  const [typingUsers, setTypingUsers] = useState<Record<string, number>>({})
+  const typingChannelRef = useRef<any>(null)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isCurrentlyTypingRef = useRef(false)
 
   async function handleSaveEdit(msgId: string) {
     if (!editInputText.trim()) return
@@ -181,12 +187,112 @@ export function CommunityChat({
     }
   }, [communityId, type])
 
+  // Subscribe to typing indicators in CommunityChat
+  useEffect(() => {
+    if (!communityId) return
+
+    const channelName = `typing_community_${communityId}_${type}`
+    const typingChannel = supabase.channel(channelName)
+    typingChannelRef.current = typingChannel
+
+    typingChannel
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const data = payload.payload
+        if (data && data.username && data.username !== currentUser.username) {
+          setTypingUsers(prev => {
+            const next = { ...prev }
+            if (data.isTyping) {
+              next[data.username] = Date.now()
+            } else {
+              delete next[data.username]
+            }
+            return next
+          })
+        }
+      })
+      .subscribe()
+
+    // Interval to prune stale typing indicators (older than 3 seconds)
+    const pruneInterval = setInterval(() => {
+      setTypingUsers(prev => {
+        const now = Date.now()
+        let hasChanges = false
+        const next = { ...prev }
+        for (const [uname, ts] of Object.entries(next)) {
+          if (now - ts > 3000) {
+            delete next[uname]
+            hasChanges = true
+          }
+        }
+        return hasChanges ? next : prev
+      })
+    }, 1000)
+
+    return () => {
+      supabase.removeChannel(typingChannel)
+      typingChannelRef.current = null
+      clearInterval(pruneInterval)
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    }
+  }, [communityId, type, currentUser.username])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setInputText(val)
+
+    if (!currentUser || !typingChannelRef.current) return
+
+    if (val.trim().length === 0 && isCurrentlyTypingRef.current) {
+      isCurrentlyTypingRef.current = false
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      typingChannelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { username: currentUser.username, isTyping: false },
+      })
+      return
+    }
+
+    if (!isCurrentlyTypingRef.current && val.trim().length > 0) {
+      isCurrentlyTypingRef.current = true
+      typingChannelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { username: currentUser.username, isTyping: true },
+      })
+    }
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+
+    typingTimeoutRef.current = setTimeout(() => {
+      isCurrentlyTypingRef.current = false
+      if (typingChannelRef.current) {
+        typingChannelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { username: currentUser.username, isTyping: false },
+        })
+      }
+    }, 3000)
+  }
+
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
     if (!inputText.trim() || sendPending) return
 
     const content = inputText.trim()
     setInputText('')
+
+    // Immediately stop typing indicator for current user
+    isCurrentlyTypingRef.current = false
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    if (typingChannelRef.current) {
+      typingChannelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { username: currentUser.username, isTyping: false },
+      })
+    }
 
     startSendTransition(async () => {
       const res = await sendCommunityMessage(communityId, content, type)
@@ -318,7 +424,7 @@ export function CommunityChat({
                           )}
                           style={isOwn ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
                         >
-                          {msg.content}
+                          <FormattedMessage text={msg.content} />
                         </div>
 
                         {/* Edit/Delete controls */}
@@ -356,6 +462,37 @@ export function CommunityChat({
         )}
       </div>
 
+      {/* Typing Indicators */}
+      <AnimatePresence>
+        {Object.keys(typingUsers).length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="px-5 py-1.5 flex items-center gap-2 text-[10px] text-muted-foreground select-none"
+          >
+            {/* Bouncy dots animation */}
+            <div className="flex gap-1 items-center bg-muted/30 px-2 py-1 rounded-full border border-border/40 backdrop-blur-md">
+              <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span className="font-medium">
+              {(() => {
+                const names = Object.keys(typingUsers)
+                if (names.length === 1) {
+                  return `@${names[0]} ${locale === 'tr' ? 'yazıyor...' : 'is typing...'}`
+                }
+                if (names.length === 2) {
+                  return `@${names[0]} ${locale === 'tr' ? 've' : 'and'} @${names[1]} ${locale === 'tr' ? 'yazıyor...' : 'are typing...'}`
+                }
+                return `${names.length} ${locale === 'tr' ? 'kişi yazıyor...' : 'people are typing...'}`
+              })()}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input Area */}
       <div className="p-4 border-t border-border/80 bg-background/20 backdrop-blur-sm">
         {isWriteAllowed ? (
@@ -368,7 +505,7 @@ export function CommunityChat({
             <input
               type="text"
               value={inputText}
-              onChange={e => setInputText(e.target.value)}
+              onChange={handleInputChange}
               placeholder={type === 'announcement' ? (locale === 'tr' ? "Duyuru yayınlayın..." : "Post an announcement...") : (locale === 'tr' ? "Sohbete yazın..." : "Type in chat...")}
               className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
             />

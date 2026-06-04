@@ -262,6 +262,164 @@ function HavnPostEmbed({ postId, url }: { postId: string; url: string }) {
   )
 }
 
+const YT_URL_REGEX = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
+const TWITTER_TWEET_REGEX = /(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/status\/(\d+)/i
+const TWITTER_PROFILE_REGEX = /(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)(?:\/)?$/i
+const HAVN_POST_REGEX = /\/post\/([a-zA-Z0-9-]+)/i
+
+function extractAllUrls(text: string): string[] {
+  const urlRegex = /(https?:\/\/[^\s<>]+)/gi
+  const matches = text.match(urlRegex) || []
+  return Array.from(new Set(matches.map(url => {
+    let clean = url
+    if (clean.endsWith('...')) clean = clean.slice(0, -3)
+    clean = clean.replace(/[.,;:!?)]+$/, '')
+    return clean
+  })))
+}
+
+function extractExternalUrls(text: string): string[] {
+  const urlRegex = /(https?:\/\/[^\s<>]+)/gi
+  const matches = text.match(urlRegex) || []
+  const unique = Array.from(new Set(matches.map(url => {
+    let clean = url
+    if (clean.endsWith('...')) clean = clean.slice(0, -3)
+    clean = clean.replace(/[.,;:!?)]+$/, '')
+    return clean
+  })))
+
+  const ytRegex = /(?:youtube\.com|youtu\.be)/i
+  const twitterRegex = /(?:twitter\.com|x\.com)/i
+  const havnPostRegex = /\/post\/[a-fA-F0-9-]+/i
+
+  return unique.filter(url => {
+    return !ytRegex.test(url) && !twitterRegex.test(url) && !havnPostRegex.test(url)
+  })
+}
+
+interface LinkPreviewData {
+  title: string
+  description: string
+  image: string | null
+  siteName: string
+}
+
+function GenericLinkPreview({ url }: { url: string }) {
+  const [data, setData] = useState<LinkPreviewData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+
+    const cacheKey = `havn_link_preview_${url}`
+    const cached = sessionStorage.getItem(cacheKey)
+    if (cached) {
+      try {
+        setData(JSON.parse(cached))
+        setLoading(false)
+        return
+      } catch {
+        // ignore
+      }
+    }
+
+    async function fetchPreview() {
+      try {
+        const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
+        if (response.ok) {
+          const json = await response.json()
+          if (active && json && !json.error) {
+            setData(json)
+            sessionStorage.setItem(cacheKey, JSON.stringify(json))
+          }
+        }
+      } catch {
+        // silent
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    fetchPreview()
+    return () => {
+      active = false
+    }
+  }, [url])
+
+  if (loading) {
+    return (
+      <div className="w-full my-3.5 p-3.5 bg-card/60 border border-border/80 rounded-2xl animate-pulse flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-muted" />
+          <div className="h-3 bg-muted rounded w-24" />
+        </div>
+        <div className="h-4 bg-muted rounded w-3/4 mt-1" />
+        <div className="h-3 bg-muted rounded w-full" />
+      </div>
+    )
+  }
+
+  if (!data) {
+    let displayLabel = url
+    try {
+      const urlObj = new URL(url)
+      displayLabel = urlObj.hostname.replace('www.', '')
+    } catch {
+      // ignore
+    }
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/15 hover:border-violet-500/30 transition-all font-bold align-baseline mx-0.5"
+      >
+        <Globe size={10} className="opacity-75" />
+        <span className="truncate max-w-[200px]">{displayLabel}</span>
+        <ExternalLink size={8} className="opacity-50" />
+      </a>
+    )
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="block w-full my-3.5 bg-card/50 hover:bg-card/75 border border-border/60 hover:border-primary/25 rounded-2xl overflow-hidden shadow-sm hover:shadow transition-all duration-300 text-left group"
+    >
+      <div className="flex flex-col sm:flex-row min-w-0">
+        {data.image && (
+          <div className="sm:w-36 md:w-44 w-full h-32 sm:h-auto relative flex-shrink-0 bg-muted border-b sm:border-b-0 sm:border-r border-border/60">
+            <img
+              src={data.image}
+              alt=""
+              className="w-full h-full object-cover group-hover:scale-[1.015] transition-transform duration-300"
+              loading="lazy"
+            />
+          </div>
+        )}
+        <div className="p-3.5 flex-1 min-w-0 flex flex-col justify-center gap-1">
+          <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+            <Globe size={10} className="text-muted-foreground" />
+            <span>{data.siteName}</span>
+          </div>
+          <h4 className="text-xs font-black text-foreground group-hover:text-primary transition-colors line-clamp-1">
+            {data.title}
+          </h4>
+          {data.description && (
+            <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed font-medium">
+              {data.description}
+            </p>
+          )}
+        </div>
+      </div>
+    </a>
+  )
+}
+
 // Parsers for simple markdown: bold (**...**), italic (*...*), bold-italic (***...***)
 function parseMarkdown(text: string, disableLinks = false): React.ReactNode[] {
   let keyCounter = 0
@@ -537,153 +695,202 @@ export function FormattedMessage({ text, className, disableLinks = false }: Form
 
   // Detect HTML
   const isHtml = text.trim().startsWith('<') && text.trim().endsWith('>')
+  const externalUrls = (mounted && !disableLinks) ? extractExternalUrls(text) : []
+
+  let content: React.ReactNode
 
   if (!mounted) {
     // SSR / First-load plain text fallback
     const stripped = text.replace(/<[^>]*>/g, '')
-    if (isHtml) {
-      return <div className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(stripped, disableLinks)}</div>
-    }
-    return <span className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(stripped, disableLinks)}</span>
-  }
-
-  if (!isHtml) {
-    return <span className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(text, disableLinks)}</span>
-  }
-
-  // Parse HTML client-side
-  try {
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(text, 'text/html')
-    
-    // Recursive converter from DOM nodes to React nodes
-    const convertNode = (node: Node, index: number): React.ReactNode => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        return <React.Fragment key={index}>{renderTextWithFlagsAndLinks(node.nodeValue || '', disableLinks)}</React.Fragment>
-      }
-
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const element = node as HTMLElement
-        const tagName = element.tagName.toLowerCase()
-        const children = Array.from(element.childNodes).map((child, i) => convertNode(child, i))
-
-        switch (tagName) {
-          case 'p':
-            return <div key={index} className="mb-2.5 last:mb-0 leading-relaxed break-words">{children}</div>
-          case 'a': {
-            const href = element.getAttribute('href') || ''
-            if (disableLinks) {
-              return <span key={index} className="underline decoration-dotted text-slate-300 font-medium">{children}</span>
-            }
-            
-            // Check YouTube link
-            const ytUrlRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i
-            const ytMatch = href.match(ytUrlRegex)
-            if (ytMatch && ytMatch[1]) {
-              return <YouTubeEmbed key={index} videoId={ytMatch[1]} />
-            }
-
-            // Check Twitter/X tweet link
-            const twitterRegex = /(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/status\/(\d+)/i
-            const twMatch = href.match(twitterRegex)
-            if (twMatch && twMatch[1] && twMatch[2]) {
-              return <TwitterEmbed key={index} username={twMatch[1]} tweetId={twMatch[2]} url={href} />
-            }
-
-            // Check Twitter/X profile link
-            const twitterProfileRegex = /(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)(?:\/)?$/i
-            const twProfileMatch = href.match(twitterProfileRegex)
-            if (twProfileMatch && twProfileMatch[1]) {
-              const username = twProfileMatch[1]
-              const excluded = ['home', 'explore', 'messages', 'notifications', 'settings', 'search', 'i', 'hashtag', 'privacy', 'tos', 'about', 'login', 'signup']
-              if (!excluded.includes(username.toLowerCase())) {
-                return <TwitterProfileEmbed key={index} username={username} url={href} />
-              }
-            }
-
-            // Check Havn internal post link
-            const havnPostRegex = /\/post\/([a-zA-Z0-9-]+)/i
-            const havnPostMatch = href.match(havnPostRegex)
-            if (havnPostMatch && havnPostMatch[1]) {
-              return <HavnPostEmbed key={index} postId={havnPostMatch[1]} url={href} />
-            }
-
-            const nodeText = element.textContent || ''
-            const isTextUrl = nodeText.startsWith('http://') || nodeText.startsWith('https://') || nodeText.includes('.')
-            const displayLabel = isTextUrl ? (() => {
-              try {
-                const urlObj = new URL(href.startsWith('http') ? href : `https://${href}`)
-                return urlObj.hostname.replace('www.', '')
-              } catch {
-                return nodeText
-              }
-            })() : nodeText
-
-            return (
-              <a
-                key={index}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/15 hover:border-violet-500/30 transition-all font-bold align-baseline mx-0.5"
-              >
-                <Globe size={10} className="opacity-75" />
-                <span className="truncate max-w-[200px]">{displayLabel}</span>
-                <ExternalLink size={8} className="opacity-50" />
-              </a>
-            )
-          }
-          case 'h1':
-            return <h1 key={index} className="text-xl sm:text-2xl font-black text-foreground mt-4 mb-2 leading-snug">{children}</h1>
-          case 'h2':
-            return <h2 key={index} className="text-lg sm:text-xl font-bold text-foreground mt-3 mb-1.5 leading-snug">{children}</h2>
-          case 'blockquote':
-            return (
-              <blockquote key={index} className="border-l-4 border-primary bg-primary/5 pl-4 pr-3 py-2 rounded-r-xl italic my-3 text-muted-foreground leading-relaxed break-words">
-                {children}
-              </blockquote>
-            )
-          case 'pre':
-            return (
-              <pre key={index} className="bg-zinc-950 dark:bg-zinc-900 border border-border/80 rounded-xl p-3.5 my-3 overflow-x-auto text-xs font-mono text-zinc-100 shadow-inner">
-                {children}
-              </pre>
-            )
-          case 'code':
-            // Inline code or code inside pre block
-            const isInsidePre = element.parentElement?.tagName.toLowerCase() === 'pre'
-            if (isInsidePre) {
-              return <code key={index} className="block select-all whitespace-pre leading-normal">{children}</code>
-            }
-            return (
-              <code key={index} className="bg-accent px-1.5 py-0.5 rounded-md text-xs font-mono text-primary font-bold border border-border/20">
-                {children}
-              </code>
-            )
-          case 'span':
-            if (element.getAttribute('data-spoiler') === 'true') {
-              return <Spoiler key={index}>{children}</Spoiler>
-            }
-            return <span key={index}>{children}</span>
-          case 'strong':
-          case 'b':
-            return <strong key={index} className="font-black text-foreground">{children}</strong>
-          case 'em':
-          case 'i':
-            return <em key={index} className="italic text-foreground/90" style={{ fontStyle: 'italic' }}>{children}</em>
-          default:
-            return <span key={index}>{children}</span>
+    content = (
+      <span className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>
+        {renderTextWithFlagsAndLinks(stripped, disableLinks)}
+      </span>
+    )
+  } else if (!isHtml) {
+    content = (
+      <span className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>
+        {renderTextWithFlagsAndLinks(text, disableLinks)}
+      </span>
+    )
+  } else {
+    // Parse HTML client-side
+    try {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(text, 'text/html')
+      
+      // Recursive converter from DOM nodes to React nodes
+      const convertNode = (node: Node, index: number): React.ReactNode => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          return <React.Fragment key={index}>{renderTextWithFlagsAndLinks(node.nodeValue || '', disableLinks)}</React.Fragment>
         }
+
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const element = node as HTMLElement
+          const tagName = element.tagName.toLowerCase()
+          const children = Array.from(element.childNodes).map((child, i) => convertNode(child, i))
+
+          switch (tagName) {
+            case 'p':
+              return <div key={index} className="mb-2.5 last:mb-0 leading-relaxed break-words">{children}</div>
+            case 'a': {
+              const href = element.getAttribute('href') || ''
+              if (disableLinks) {
+                return <span key={index} className="underline decoration-dotted text-slate-300 font-medium">{children}</span>
+              }
+              
+              // Check YouTube link
+              const ytMatch = href.match(YT_URL_REGEX)
+              if (ytMatch && ytMatch[1]) {
+                return <YouTubeEmbed key={index} videoId={ytMatch[1]} />
+              }
+
+              // Check Twitter/X tweet link
+              const twMatch = href.match(TWITTER_TWEET_REGEX)
+              if (twMatch && twMatch[1] && twMatch[2]) {
+                return <TwitterEmbed key={index} username={twMatch[1]} tweetId={twMatch[2]} url={href} />
+              }
+
+              // Check Twitter/X profile link
+              const twProfileMatch = href.match(TWITTER_PROFILE_REGEX)
+              if (twProfileMatch && twProfileMatch[1]) {
+                const username = twProfileMatch[1]
+                const excluded = ['home', 'explore', 'messages', 'notifications', 'settings', 'search', 'i', 'hashtag', 'privacy', 'tos', 'about', 'login', 'signup']
+                if (!excluded.includes(username.toLowerCase())) {
+                  return <TwitterProfileEmbed key={index} username={username} url={href} />
+                }
+              }
+
+              // Check Havn internal post link
+              const havnPostMatch = href.match(HAVN_POST_REGEX)
+              if (havnPostMatch && havnPostMatch[1]) {
+                return <HavnPostEmbed key={index} postId={havnPostMatch[1]} url={href} />
+              }
+
+              const nodeText = element.textContent || ''
+              const isTextUrl = nodeText.startsWith('http://') || nodeText.startsWith('https://') || nodeText.includes('.')
+              const displayLabel = isTextUrl ? (() => {
+                try {
+                  const urlObj = new URL(href.startsWith('http') ? href : `https://${href}`)
+                  return urlObj.hostname.replace('www.', '')
+                } catch {
+                  return nodeText
+                }
+              })() : nodeText
+
+              return (
+                <a
+                  key={index}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/15 hover:border-violet-500/30 transition-all font-bold align-baseline mx-0.5"
+                >
+                  <Globe size={10} className="opacity-75" />
+                  <span className="truncate max-w-[200px]">{displayLabel}</span>
+                  <ExternalLink size={8} className="opacity-50" />
+                </a>
+              )
+            }
+            case 'h1':
+              return <h1 key={index} className="text-xl sm:text-2xl font-black text-foreground mt-4 mb-2 leading-snug">{children}</h1>
+            case 'h2':
+              return <h2 key={index} className="text-lg sm:text-xl font-bold text-foreground mt-3 mb-1.5 leading-snug">{children}</h2>
+            case 'blockquote':
+              return (
+                <blockquote key={index} className="border-l-4 border-primary bg-primary/5 pl-4 pr-3 py-2 rounded-r-xl italic my-3 text-muted-foreground leading-relaxed break-words">
+                  {children}
+                </blockquote>
+              )
+            case 'pre':
+              return (
+                <pre key={index} className="bg-zinc-950 dark:bg-zinc-900 border border-border/80 rounded-xl p-3.5 my-3 overflow-x-auto text-xs font-mono text-zinc-100 shadow-inner">
+                  {children}
+                </pre>
+              )
+            case 'code':
+              // Inline code or code inside pre block
+              const isInsidePre = element.parentElement?.tagName.toLowerCase() === 'pre'
+              if (isInsidePre) {
+                return <code key={index} className="block select-all whitespace-pre leading-normal">{children}</code>
+              }
+              return (
+                <code key={index} className="bg-accent px-1.5 py-0.5 rounded-md text-xs font-mono text-primary font-bold border border-border/20">
+                  {children}
+                </code>
+              )
+            case 'span':
+              if (element.getAttribute('data-spoiler') === 'true') {
+                return <Spoiler key={index}>{children}</Spoiler>
+              }
+              return <span key={index}>{children}</span>
+            case 'strong':
+            case 'b':
+              return <strong key={index} className="font-black text-foreground">{children}</strong>
+            case 'em':
+            case 'i':
+              return <em key={index} className="italic text-foreground/90" style={{ fontStyle: 'italic' }}>{children}</em>
+            default:
+              return <span key={index}>{children}</span>
+          }
+        }
+
+        return null
       }
 
-      return null
+      const reactElements = Array.from(doc.body.childNodes).map((node, i) => convertNode(node, i))
+      content = <div className={className} suppressHydrationWarning>{reactElements}</div>
+    } catch (err) {
+      // fallback
+      content = (
+        <span className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>
+          {renderTextWithFlagsAndLinks(text, disableLinks)}
+        </span>
+      )
     }
-
-    const reactElements = Array.from(doc.body.childNodes).map((node, i) => convertNode(node, i))
-    return <div className={className} suppressHydrationWarning>{reactElements}</div>
-  } catch (err) {
-    // fallback
-    return <span className={cn('whitespace-pre-wrap break-words', className)} suppressHydrationWarning>{renderTextWithFlagsAndLinks(text, disableLinks)}</span>
   }
+
+  return (
+    <div className="flex flex-col gap-1 w-full min-w-0">
+      {content}
+      {mounted && !disableLinks && (
+        <div className="flex flex-col gap-2 mt-1 select-none w-full min-w-0">
+          {isHtml ? (
+            externalUrls.map(url => (
+              <GenericLinkPreview key={url} url={url} />
+            ))
+          ) : (
+            extractAllUrls(text).map((url, idx) => {
+              const ytMatch = url.match(YT_URL_REGEX)
+              if (ytMatch && ytMatch[1]) {
+                return <YouTubeEmbed key={idx} videoId={ytMatch[1]} />
+              }
+
+              const twMatch = url.match(TWITTER_TWEET_REGEX)
+              if (twMatch && twMatch[1] && twMatch[2]) {
+                return <TwitterEmbed key={idx} username={twMatch[1]} tweetId={twMatch[2]} url={url} />
+              }
+
+              const twProfileMatch = url.match(TWITTER_PROFILE_REGEX)
+              if (twProfileMatch && twProfileMatch[1]) {
+                const username = twProfileMatch[1]
+                const excluded = ['home', 'explore', 'messages', 'notifications', 'settings', 'search', 'i', 'hashtag', 'privacy', 'tos', 'about', 'login', 'signup']
+                if (!excluded.includes(username.toLowerCase())) {
+                  return <TwitterProfileEmbed key={idx} username={username} url={url} />
+                }
+              }
+
+              const havnPostMatch = url.match(HAVN_POST_REGEX)
+              if (havnPostMatch && havnPostMatch[1]) {
+                return <HavnPostEmbed key={idx} postId={havnPostMatch[1]} url={url} />
+              }
+
+              return <GenericLinkPreview key={url} url={url} />
+            })
+          )}
+        </div>
+      )}
+    </div>
+  )
 }

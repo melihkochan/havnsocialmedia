@@ -15,6 +15,7 @@ import { ConfirmationModal } from '@/components/havn/ConfirmationModal'
 import { enrichProfile } from '@/lib/profile-enrich'
 
 import { PostPreviewBubble } from '@/components/havn/PostPreviewBubble'
+import { FormattedMessage } from '@/components/havn/FormattedMessage'
 
 interface Profile {
   id: string
@@ -70,24 +71,7 @@ function dTimeOnly(dateStr: string) {
   return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function renderMessageContent(content: string, isOwn: boolean) {
-  const postUrlRegex = /(https?:\/\/[^\s]+)\/post\/([a-fA-F0-9-]{36})/i
-  const match = content.match(postUrlRegex)
-  
-  if (match) {
-    const fullUrl = match[1] + '/post/' + match[2]
-    const textWithoutUrl = content.replace(fullUrl, '').trim()
-    
-    return (
-      <div className="space-y-1.5">
-        {textWithoutUrl && <p>{textWithoutUrl}</p>}
-        <PostPreviewBubble postId={match[2]} isOwn={isOwn} />
-      </div>
-    )
-  }
-
-  return <p>{content}</p>
-}
+// FormattedMessage is used for message content rendering
 
 interface QuickChatProps {
   currentUser: Profile | null
@@ -964,7 +948,7 @@ export function QuickChat({ currentUser }: QuickChatProps) {
                                       {isDeleted ? (
                                         <p>{displayContent}</p>
                                       ) : (
-                                        renderMessageContent(displayContent, isOwn)
+                                        <FormattedMessage text={displayContent} />
                                       )}
                                     </div>
                                   )}
