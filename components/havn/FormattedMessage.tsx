@@ -638,8 +638,9 @@ function renderTextWithFlagsAndLinks(text: string, disableLinks = false): React.
     return <>{renderTextWithFlags(text, disableLinks)}</>
   }
   // Regex to match URLs (including truncated ones ending in ...)
-  const urlRegex = /(https?:\/\/[^\s]+)/gi
+  const urlRegex = /(https?:\/\/[^\s<>]+)/i
   const parts = text.split(urlRegex)
+  console.log("charCodes:", [...text].map(c => c.charCodeAt(0)));
   console.log("parts:", parts);
 
   if (parts.length === 1) {
