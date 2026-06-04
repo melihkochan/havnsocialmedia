@@ -181,7 +181,7 @@ export async function getRightBarData() {
 
     if (memberCountErr) throw memberCountErr
 
-    return {
+    return JSON.parse(JSON.stringify({
       team: teamList,
       leaderboard: leaderboardList,
       trendingTags,
@@ -189,7 +189,7 @@ export async function getRightBarData() {
       totalCommunities,
       totalMembers: totalMembersCount ?? 0,
       popularCommunities
-    }
+    }))
   } catch (error: any) {
     console.error("getRightBarData error caught on server:", error)
     return {
