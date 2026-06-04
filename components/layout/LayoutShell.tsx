@@ -25,8 +25,10 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -226,7 +228,7 @@ export function LayoutShell({ children, sidebar, rightBar, username, currentUser
       </AnimatePresence>
 
       {/* Floating Quick Chat Widget */}
-      {currentUser && pathname !== "/messages" && <QuickChat currentUser={currentUser} />}
+      {mounted && currentUser && pathname !== "/messages" && <QuickChat currentUser={currentUser} />}
 
       {/* Global Command Palette */}
       <CommandPalette 
