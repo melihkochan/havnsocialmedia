@@ -89,6 +89,7 @@ export function MessagesClient({
 }: MessagesClientProps) {
   const { locale, t } = useLocale()
   const supabase = createClient()
+  const [mounted, setMounted] = useState(false)
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations)
   const [activeChatUser, setActiveChatUser] = useState<Profile | null>(initialActiveChatUser)
   const [messages, setMessages] = useState<Message[]>(initialMessages)
@@ -96,6 +97,10 @@ export function MessagesClient({
   const [mobileTab, setMobileTab] = useState<'list' | 'chat'>(initialActiveChatUser ? 'chat' : 'list')
   const [inboxFilter, setInboxFilter] = useState<'all' | 'unread'>('all')
   const filteredConversations = conversations.filter(c => inboxFilter === 'all' || c.unreadCount > 0)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const [isPartnerTyping, setIsPartnerTyping] = useState(false)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -782,6 +787,20 @@ export function MessagesClient({
       return d.toLocaleTimeString(locale === 'tr' ? 'tr-TR' : 'en-US', { hour: '2-digit', minute: '2-digit' })
     }
     return d.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { day: 'numeric', month: 'short' })
+  }
+
+  if (!mounted) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-background/5 gap-3">
+        <div className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 border border-primary/25 overflow-hidden shadow-sm">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <div className="absolute inset-0 bg-primary/5 animate-pulse" />
+        </div>
+        <span className="text-[10px] font-black tracking-widest text-muted-foreground uppercase animate-pulse">
+          {locale === 'tr' ? 'Yükleniyor...' : 'Loading...'}
+        </span>
+      </div>
+    )
   }
 
   return (
