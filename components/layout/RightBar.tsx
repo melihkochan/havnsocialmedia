@@ -126,8 +126,12 @@ function GlobalRightBar() {
     async function load() {
       try {
         const res = await getRightBarData()
+        if (res && 'error' in res && res.error) {
+          console.error("getRightBarData returned server error:", res.error)
+        }
         setData(res)
       } catch (err) {
+        console.error("RightBar load error on client:", err)
       } finally {
         setLoading(false)
       }

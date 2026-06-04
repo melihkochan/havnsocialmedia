@@ -5,11 +5,15 @@ import http from 'node:http'
 import https from 'node:https'
 import dns from 'node:dns'
 
+const isLocalWindows = process.platform === 'win32' && !process.env.VERCEL
+
 // Force Google DNS and IPv4 preference to prevent Windows DNS resolution issues/timeouts
-try {
-  dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"])
-  dns.setDefaultResultOrder("ipv4first")
-} catch (e) {
+if (isLocalWindows) {
+  try {
+    dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"])
+    dns.setDefaultResultOrder("ipv4first")
+  } catch (e) {
+  }
 }
 
 // DNS cache to speed up lookups and bypass Windows getaddrinfo DNS timeouts
