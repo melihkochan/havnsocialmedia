@@ -166,6 +166,28 @@ export async function createClient() {
   )
 }
 
+export async function createSimpleClient() {
+  const clientOptions: any = {
+    cookies: {
+      getAll() { return [] },
+      setAll() {}
+    },
+  }
+
+  if (isLocalWindows) {
+    clientOptions.global = {
+      fetch: persistentFetch,
+    }
+  }
+
+  return createServerClient(
+    SUPABASE_URL,
+    SUPABASE_KEY,
+    clientOptions
+  )
+}
+
+
 export async function createServiceClient() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceKey) {

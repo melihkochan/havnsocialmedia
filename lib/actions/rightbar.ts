@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createSimpleClient } from '@/lib/supabase/server'
 import { enrichProfile, EnrichedProfile } from '@/lib/profile-enrich'
 
 interface PopularCommunity {
@@ -55,7 +55,7 @@ interface AnnouncementData {
 
 export async function getRightBarData() {
   try {
-    const supabase = await createClient()
+    const supabase = await createSimpleClient()
 
     // 1. Fetch team members (melih, havn)
     const teamPromise = supabase
