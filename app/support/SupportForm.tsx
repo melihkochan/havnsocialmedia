@@ -9,6 +9,9 @@ import { isFounder as checkIsFounder } from '@/lib/founder'
 import { useSearchParams } from 'next/navigation'
 import { ConfirmDialog } from '@/components/havn/ConfirmDialog'
 import Link from 'next/link'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t, type Locale } from '@/lib/i18n'
+
 
 interface Ticket {
   id: string
@@ -43,9 +46,9 @@ interface SupportFormProps {
   focusedTicketId?: string
 }
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string, locale: string) {
   try {
-    return new Date(dateStr).toLocaleString('tr-TR', {
+    return new Date(dateStr).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
@@ -58,34 +61,35 @@ function formatDate(dateStr: string) {
 }
 
 function StatusBadge({ status, isInitiatedByAdmin, isFounder }: { status: Ticket['status']; isInitiatedByAdmin?: boolean; isFounder?: boolean }) {
+  const { locale } = useLocale()
   if (isInitiatedByAdmin) {
     if (status === 'closed') {
       return (
         <span className="px-2 py-0.5 text-[10px] font-bold rounded-full border bg-zinc-500/10 border-zinc-500/20 text-muted-foreground">
-          Kapatıldı
+          {t('support.badge.closed', locale)}
         </span>
       )
     }
     if (status === 'replied') {
       return (
         <span className="px-2 py-0.5 text-[10px] font-bold rounded-full border bg-violet-500/10 border-violet-500/20 text-violet-500">
-          {isFounder ? 'Gönderildi' : 'Yönetici Mesajı'}
+          {isFounder ? t('support.badge.sent', locale) : t('support.badge.admin_msg', locale)}
         </span>
       )
     }
     if (status === 'open') {
       return (
         <span className="px-2 py-0.5 text-[10px] font-bold rounded-full border bg-blue-500/10 border-blue-500/20 text-blue-500 animate-pulse">
-          {isFounder ? 'Kullanıcı Yanıtladı' : 'Açık'}
+          {isFounder ? t('support.badge.user_replied', locale) : t('support.badge.open', locale)}
         </span>
       )
     }
   }
 
   const configs = {
-    open: { label: 'Açık', bg: 'bg-blue-500/10 border-blue-500/20 text-blue-500' },
-    replied: { label: 'Yanıtlandı', bg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' },
-    closed: { label: 'Kapatıldı', bg: 'bg-zinc-500/10 border-zinc-500/20 text-muted-foreground' },
+    open: { label: t('support.badge.open', locale), bg: 'bg-blue-500/10 border-blue-500/20 text-blue-500' },
+    replied: { label: t('support.badge.replied', locale), bg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' },
+    closed: { label: t('support.badge.closed', locale), bg: 'bg-zinc-500/10 border-zinc-500/20 text-muted-foreground' },
   }
 
   const current = configs[status] || configs.open
@@ -105,7 +109,7 @@ interface ConversationMessage {
   replier?: any;
 }
 
-function parseConversation(messageText: string, initialTimestamp?: string): ConversationMessage[] {
+function parseConversation(messageText: string, initialTimestamp?: string, locale: Locale = 'tr'): ConversationMessage[] {
   const regex = /\[([^\]]+) - (Yanıt|Takip Mesajı)(?:\s*\|\s*([^\]]+))?\]:?/g;
   const matches = [];
   let match;
@@ -122,19 +126,19 @@ function parseConversation(messageText: string, initialTimestamp?: string): Conv
   const messages: ConversationMessage[] = [];
   if (matches.length === 0) {
     messages.push({
-      sender: 'Kullanıcı',
+      sender: t('support.detail.author', locale),
       content: messageText.trim(),
       isAgent: false,
-      timestamp: initialTimestamp ? formatDate(initialTimestamp) : null
+      timestamp: initialTimestamp ? formatDate(initialTimestamp, locale) : null
     });
   } else {
     const firstContent = messageText.substring(0, matches[0].index).trim();
     if (firstContent) {
       messages.push({
-        sender: 'Kullanıcı',
+        sender: t('support.detail.author', locale),
         content: firstContent,
         isAgent: false,
-        timestamp: initialTimestamp ? formatDate(initialTimestamp) : null
+        timestamp: initialTimestamp ? formatDate(initialTimestamp, locale) : null
       });
     }
 
@@ -156,6 +160,7 @@ function parseConversation(messageText: string, initialTimestamp?: string): Conv
 }
 
 export function SupportForm({ profile, isFounder, initialTickets, userProfiles = [], focusedTicketId }: SupportFormProps) {
+  const { locale } = useLocale()
   const searchParams = useSearchParams()
   const ticketIdParam = searchParams.get('ticketId')
   const targetTicketId = focusedTicketId || ticketIdParam || null
@@ -420,9 +425,9 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
           <HelpCircle size={20} />
         </div>
         <div>
-          <h1 className="text-lg font-black text-foreground">Destek Portalı</h1>
+          <h1 className="text-lg font-black text-foreground">{t('support.title', locale)}</h1>
           <p className="text-xs text-muted-foreground">
-            {isFounder ? 'Kullanıcılardan gelen destek taleplerini yönet' : 'Bizimle iletişime geçin ve taleplerinizi takip edin'}
+            {isFounder ? t('support.subtitle.admin', locale) : t('support.subtitle.user', locale)}
           </p>
         </div>
       </div>
@@ -438,7 +443,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <span>Gelen Talepler</span>
+            <span>{t('support.tab.incoming', locale)}</span>
             {(() => {
               const count = tickets.filter(t => {
                 const isInitiatedByAdmin = t.message?.trim().startsWith('[Kurucu - Yanıt') || t.message?.trim().startsWith('[Yönetici - Yanıt')
@@ -460,7 +465,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <span>Kullanıcıya Yaz</span>
+            <span>{t('support.tab.write_to_user', locale)}</span>
             {(() => {
               const count = tickets.filter(t => {
                 const isInitiatedByAdmin = t.message?.trim().startsWith('[Kurucu - Yanıt') || t.message?.trim().startsWith('[Yönetici - Yanıt')
@@ -490,7 +495,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                 >
                   <Plus size={14} className="stroke-[3]" />
                 </div>
-                <span>Kullanıcıya Destek Mesajı Gönder</span>
+                <span>{t('support.btn.send_message_to_user', locale)}</span>
               </div>
               <div className="text-primary/70">
                 {showAdminForm ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -509,14 +514,14 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                   <div className="p-6">
                     <form onSubmit={handleAdminCreateSubmit} className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="targetUserId">Kullanıcı Seçin</label>
+                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="targetUserId">{t('support.form.label_user', locale)}</label>
                         <select
                           id="targetUserId"
                           name="targetUserId"
                           required
                           className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                         >
-                          <option value="">-- Bir Kullanıcı Seçin --</option>
+                          <option value="">{t('support.form.select_user_placeholder', locale)}</option>
                           {userProfiles.map((u: any) => (
                             <option key={u.id} value={u.id}>
                               {u.first_name || u.last_name
@@ -529,25 +534,25 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="subject">Konu</label>
+                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="subject">{t('support.form.label_subject', locale)}</label>
                         <input
                           id="subject"
                           name="subject"
                           type="text"
                           required
-                          placeholder="Destek konusu başlığı..."
+                          placeholder={t('support.form.placeholder_subject', locale)}
                           className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="message">Mesajınız</label>
+                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="message">{t('support.form.label_message', locale)}</label>
                         <textarea
                           id="message"
                           name="message"
                           required
                           rows={6}
-                          placeholder="Kullanıcıya iletmek istediğiniz başlangıç mesajını yazın..."
+                          placeholder={t('support.form.placeholder_message', locale)}
                           className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                         />
                       </div>
@@ -562,7 +567,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                           )}
                         >
                           {adminCreateResult.error ? <AlertCircle size={16} /> : <Check size={16} />}
-                          <span>{adminCreateResult.error ?? 'Destek talebi başarıyla başlatıldı! Gelen kutusuna yönlendiriliyorsunuz...'}</span>
+                          <span>{adminCreateResult.error ? adminCreateResult.error : t('support.form.success_start', locale)}</span>
                         </div>
                       )}
 
@@ -577,7 +582,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                         }}
                       >
                         {adminCreatePending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                        Destek Başlat
+                        {t('support.form.btn_start', locale)}
                       </motion.button>
                     </form>
                   </div>
@@ -600,7 +605,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                 >
                   <Plus size={14} className="stroke-[3]" />
                 </div>
-                <span>Yeni Destek Talebi Oluştur</span>
+                <span>{t('support.btn.new_ticket', locale)}</span>
               </div>
               <div className="text-primary/70">
                 {showUserForm ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -619,25 +624,25 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                   <div className="p-6">
                     <form onSubmit={handleCreateSubmit} className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="subject">Konu</label>
+                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="subject">{t('support.form.label_subject', locale)}</label>
                         <input
                           id="subject"
                           name="subject"
                           type="text"
                           required
-                          placeholder="Örn: Profil resmi yüklerken hata alıyorum"
+                          placeholder={t('support.form.placeholder_subject_user', locale)}
                           className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="message">Detaylı Açıklama</label>
+                        <label className="text-xs font-semibold text-muted-foreground" htmlFor="message">{t('support.form.label_message_user', locale)}</label>
                         <textarea
                           id="message"
                           name="message"
                           required
                           rows={5}
-                          placeholder="Yaşadığınız sorunu veya önerinizi buraya yazın..."
+                          placeholder={t('support.form.placeholder_message_user', locale)}
                           className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                         />
                       </div>
@@ -652,7 +657,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                           )}
                         >
                           {createResult.error ? <AlertCircle size={16} /> : <Check size={16} />}
-                          <span>{createResult.error ?? 'Talebiniz başarıyla alındı! En kısa sürede yanıtlanacaktır.'}</span>
+                          <span>{createResult.error ? createResult.error : t('support.form.success_user', locale)}</span>
                         </div>
                       )}
 
@@ -667,7 +672,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                         }}
                       >
                         {createPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                        Talebi Gönder
+                        {t('support.form.btn_submit_user', locale)}
                       </motion.button>
                     </form>
                   </div>
@@ -684,10 +689,10 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
             {isFounder && activeTab === 'admin-create' && (
               <div className="mt-8 pt-8 border-t border-border/60">
                 <h3 className="text-sm font-bold text-foreground mb-1 select-none">
-                  Kullanıcılara Gönderilen Mesajlar
+                  {t('support.list.outgoing_title', locale)}
                 </h3>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Sizin tarafınızdan başlatılan destek talepleri ve yazışmalar
+                  {t('support.list.outgoing_desc', locale)}
                 </p>
               </div>
             )}
@@ -708,14 +713,14 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                   )}
                 >
                   {f === 'all' 
-                    ? 'Tümü' 
+                    ? t('support.filter.all', locale)
                     : f === 'open' 
-                      ? 'Açık' 
+                      ? t('support.filter.open', locale)
                       : f === 'replied' 
-                        ? 'Yanıtlandı' 
+                        ? t('support.filter.replied', locale)
                         : f === 'admin' 
-                          ? 'Yöneticiden' 
-                          : 'Kapatıldı'}
+                          ? t('support.filter.admin', locale)
+                          : t('support.filter.closed', locale)}
                 </button>
               ))}
             </div>
@@ -724,7 +729,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
             <div className="space-y-3">
               {filteredTickets.length === 0 ? (
                 <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground text-sm">
-                  Kayıtlı destek talebi bulunmamaktadır.
+                  {t('support.list.empty', locale)}
                 </div>
               ) : (
                 filteredTickets.map(ticket => {
@@ -746,7 +751,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                       {isFocusedTicket && (
                         <div className="flex items-center gap-2 px-5 py-2.5 border-b border-primary/20 bg-primary/5 select-none">
                           <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                          <span className="text-[10px] font-black text-primary tracking-wider uppercase">Odaklanılan Talep</span>
+                          <span className="text-[10px] font-black text-primary tracking-wider uppercase">{t('support.list.focused', locale)}</span>
                         </div>
                       )}
                       {/* Ticket Header (Clickable) */}
@@ -770,7 +775,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                           
                           <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-1">
                             <Clock size={10} />
-                            <span>{formatDate(ticket.created_at)}</span>
+                            <span>{formatDate(ticket.created_at, locale)}</span>
                             {isFounder && ticket.profiles && (
                               <>
                                 <span>•</span>
@@ -784,7 +789,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
 
                         {isFounder ? (
                           <div className="px-3 py-1.5 rounded-lg border border-border text-[11px] font-bold hover:bg-muted text-foreground transition-all">
-                            Yönet
+                            {t('support.list.btn_manage', locale)}
                           </div>
                         ) : (
                           <div className="text-muted-foreground">
@@ -798,25 +803,26 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                         <motion.div
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
                           className="px-5 pb-5 border-t border-border/40 pt-4 bg-muted/20"
                         >
                           <div className="space-y-4">
                             {/* Conversations Timeline */}
                             <div className="space-y-3">
                               <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase select-none">
-                                Konuşma Geçmişi
+                                {t('support.detail.conversation_history', locale)}
                               </span>
                               <div className="space-y-4">
                                 {(() => {
-                                  const conversation = parseConversation(ticket.message, ticket.created_at);
+                                  const conversation = parseConversation(ticket.message, ticket.created_at, locale);
                                   if (ticket.admin_reply) {
-                                    const replierLabel = ticket.replied_by === 'ea58c495-0c6c-49a7-bfc6-30ae3ed253a9' ? 'Kurucu' : 'Yönetici';
+                                    const replierLabel = ticket.replied_by === 'ea58c495-0c6c-49a7-bfc6-30ae3ed253a9' ? t('support.detail.role_founder', locale) : t('support.detail.role_admin', locale);
                                     conversation.push({
                                       sender: replierLabel,
                                       content: ticket.admin_reply,
                                       isAgent: true,
                                       replier: ticket.replier,
-                                      timestamp: ticket.updated_at ? formatDate(ticket.updated_at) : null
+                                      timestamp: ticket.updated_at ? formatDate(ticket.updated_at, locale) : null
                                     });
                                   }
 
@@ -842,7 +848,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                                                 <div className="flex items-center gap-1.5">
                                                   <User size={11} className="text-muted-foreground" />
                                                   <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
-                                                    Talep Sahibi
+                                                    {t('support.detail.author', locale)}
                                                   </span>
                                                 </div>
                                               )
@@ -867,11 +873,11 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                                                   </span>
                                                   <span className={cn(
                                                     "px-1.5 py-0.5 text-[8px] font-black tracking-wider uppercase rounded-sm scale-95",
-                                                    checkIsFounder(msgReplier) || msg.sender === 'Kurucu'
+                                                    checkIsFounder(msgReplier) || msg.sender === 'Kurucu' || msg.sender === 'Founder'
                                                       ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
                                                       : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
                                                   )}>
-                                                    {checkIsFounder(msgReplier) || msg.sender === 'Kurucu' ? 'Kurucu' : 'Yönetici'}
+                                                    {checkIsFounder(msgReplier) || msg.sender === 'Kurucu' || msg.sender === 'Founder' ? t('support.detail.role_founder', locale) : t('support.detail.role_admin', locale)}
                                                   </span>
                                                 </Link>
                                               ) : (
@@ -880,15 +886,15 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                                                     <User size={8} className="text-amber-500" />
                                                   </div>
                                                   <span className="text-[10px] font-bold text-amber-500 tracking-wider uppercase">
-                                                    {msg.sender}
+                                                    {msg.sender === 'Kurucu' || msg.sender === 'Founder' ? t('support.detail.role_founder', locale) : (msg.sender === 'Yönetici' || msg.sender === 'Admin' ? t('support.detail.role_admin', locale) : msg.sender)}
                                                   </span>
                                                   <span className={cn(
                                                     "px-1.5 py-0.5 text-[8px] font-black tracking-wider uppercase rounded-sm scale-95",
-                                                    msg.sender === 'Kurucu'
+                                                    msg.sender === 'Kurucu' || msg.sender === 'Founder'
                                                       ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
                                                       : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
                                                   )}>
-                                                    {msg.sender === 'Kurucu' ? 'Kurucu' : 'Yönetici'}
+                                                    {msg.sender === 'Kurucu' || msg.sender === 'Founder' ? t('support.detail.role_founder', locale) : t('support.detail.role_admin', locale)}
                                                   </span>
                                                 </div>
                                               )
@@ -921,25 +927,25 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                             {!ticket.admin_reply && ticket.status !== 'closed' && (
                               <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground select-none">
                                 <Clock size={11} className="animate-spin text-blue-400" />
-                                Yanıt bekleniyor...
+                                {t('support.detail.waiting_reply', locale)}
                               </div>
                             )}
 
                             {ticket.status === 'closed' && (
                               <div className="pt-2 text-[10px] text-muted-foreground flex items-center gap-1.5 justify-end font-medium select-none">
                                 <CheckCircle size={11} className="text-emerald-500" />
-                                Bu talep {ticket.updated_at ? `${formatDate(ticket.updated_at)} tarihinde ` : ''}kapatıldı.
+                                {t('support.detail.closed_at', locale, { date: ticket.updated_at ? `${formatDate(ticket.updated_at, locale)} ` : '' })}
                               </div>
                             )}
 
                             {ticket.status !== 'closed' && (
                               <div className="pt-4 border-t border-border/40 space-y-3">
                                 <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
-                                  Yeni Mesaj Yazın
+                                  {t('support.detail.label_new_message', locale)}
                                 </span>
                                 <div className="flex flex-col gap-2">
                                   <textarea
-                                    placeholder="Yetkiliye cevap yazın veya sorunu detaylandırın..."
+                                    placeholder={t('support.detail.placeholder_new_message', locale)}
                                     rows={3}
                                     id={`user-reply-${ticket.id}`}
                                     className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary transition-all resize-none"
@@ -979,7 +985,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                                       style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                                     >
                                       <Send size={11} />
-                                      Cevap Gönder
+                                      {t('support.detail.btn_send', locale)}
                                     </button>
                                     {!(ticket.message.trim().startsWith('[Kurucu - Yanıt') || ticket.message.trim().startsWith('[Yönetici - Yanıt')) && (
                                       <button
@@ -987,7 +993,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                                         className="px-4 py-2 rounded-xl text-xs font-bold border border-border text-foreground hover:bg-accent active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                                       >
                                         <CheckCircle size={11} />
-                                        Talebi Çözüldü Olarak Kapat
+                                        {t('support.detail.btn_close', locale)}
                                       </button>
                                     )}
                                   </div>
@@ -1020,17 +1026,19 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
               <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                 <div className="flex flex-col">
                   <h3 className="font-bold text-sm text-foreground truncate max-w-[280px]">
-                    Destek Talebi Detayı
+                    {t('support.modal.detail_title', locale)}
                   </h3>
                   <span className="text-[10px] text-muted-foreground">
-                    Gönderen: @{selectedTicket.profiles?.username} • {formatDate(selectedTicket.created_at)}
+                    {t('support.modal.detail_subtitle', locale)
+                      .replace('{username}', selectedTicket.profiles?.username || '')
+                      .replace('{date}', formatDate(selectedTicket.created_at, locale))}
                   </span>
                 </div>
                 <button
                   onClick={() => setSelectedTicket(null)}
                   className="px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground rounded-lg border border-border/80 transition-colors"
                 >
-                  Kapat
+                  {t('ui.close', locale)}
                 </button>
               </div>
 
@@ -1039,19 +1047,19 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                 {/* Conversations Timeline */}
                 <div className="space-y-3">
                   <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase select-none">
-                    Konuşma Geçmişi
+                    {t('support.detail.conversation_history', locale)}
                   </span>
                   <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-1">
                     {(() => {
-                      const conversation = parseConversation(selectedTicket.message, selectedTicket.created_at);
+                      const conversation = parseConversation(selectedTicket.message, selectedTicket.created_at, locale);
                       if (selectedTicket.admin_reply) {
-                        const replierLabel = selectedTicket.replied_by === 'ea58c495-0c6c-49a7-bfc6-30ae3ed253a9' ? 'Kurucu' : 'Yönetici';
+                        const replierLabel = selectedTicket.replied_by === 'ea58c495-0c6c-49a7-bfc6-30ae3ed253a9' ? t('support.detail.role_founder', locale) : t('support.detail.role_admin', locale);
                         conversation.push({
                           sender: replierLabel,
                           content: selectedTicket.admin_reply,
                           isAgent: true,
                           replier: selectedTicket.replier,
-                          timestamp: selectedTicket.updated_at ? formatDate(selectedTicket.updated_at) : null
+                          timestamp: selectedTicket.updated_at ? formatDate(selectedTicket.updated_at, locale) : null
                         });
                       }
 
@@ -1077,7 +1085,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                                     <div className="flex items-center gap-1.5">
                                       <User size={11} className="text-muted-foreground" />
                                       <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
-                                        Kullanıcı
+                                        {t('support.detail.author', locale)}
                                       </span>
                                     </div>
                                   )
@@ -1102,11 +1110,11 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                                       </span>
                                       <span className={cn(
                                         "px-1.5 py-0.5 text-[8px] font-black tracking-wider uppercase rounded-sm scale-95",
-                                        checkIsFounder(msgReplier) || msg.sender === 'Kurucu'
+                                        checkIsFounder(msgReplier) || msg.sender === 'Kurucu' || msg.sender === 'Founder'
                                           ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
                                           : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
                                       )}>
-                                        {checkIsFounder(msgReplier) || msg.sender === 'Kurucu' ? 'Kurucu' : 'Yönetici'}
+                                        {checkIsFounder(msgReplier) || msg.sender === 'Kurucu' || msg.sender === 'Founder' ? t('support.detail.role_founder', locale) : t('support.detail.role_admin', locale)}
                                       </span>
                                     </Link>
                                   ) : (
@@ -1115,15 +1123,15 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                                         <User size={8} className="text-amber-500" />
                                       </div>
                                       <span className="text-[10px] font-bold text-amber-500 tracking-wider uppercase">
-                                        {msg.sender}
+                                        {msg.sender === 'Kurucu' || msg.sender === 'Founder' ? t('support.detail.role_founder', locale) : (msg.sender === 'Yönetici' || msg.sender === 'Admin' ? t('support.detail.role_admin', locale) : msg.sender)}
                                       </span>
                                       <span className={cn(
                                         "px-1.5 py-0.5 text-[8px] font-black tracking-wider uppercase rounded-sm scale-95",
-                                        msg.sender === 'Kurucu'
+                                        msg.sender === 'Kurucu' || msg.sender === 'Founder'
                                           ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
                                           : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
                                       )}>
-                                        {msg.sender === 'Kurucu' ? 'Kurucu' : 'Yönetici'}
+                                        {msg.sender === 'Kurucu' || msg.sender === 'Founder' ? t('support.detail.role_founder', locale) : t('support.detail.role_admin', locale)}
                                       </span>
                                     </div>
                                   )
@@ -1146,7 +1154,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                             )}>
                               {idx === 0 && (
                                 <div className="font-bold mb-1 text-foreground/80">
-                                  Konu: {selectedTicket.subject}
+                                  {t('support.form.label_subject', locale)}: {selectedTicket.subject}
                                 </div>
                               )}
                               {msg.content}
@@ -1162,7 +1170,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                 {selectedTicket.status === 'closed' ? (
                   <div className="p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1.5 select-none">
                     <CheckCircle size={14} className="text-emerald-500" />
-                    Bu talep {selectedTicket.updated_at ? `${formatDate(selectedTicket.updated_at)} tarihinde ` : ''}kapatılmıştır.
+                    {t('support.modal.closed_at', locale, { date: selectedTicket.updated_at ? `${formatDate(selectedTicket.updated_at, locale)} ` : '' })}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1170,18 +1178,17 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
                           <MessageSquare size={12} className="text-amber-500" />
-                          Yanıtınız
+                          {t('support.modal.label_reply', locale)}
                         </label>
                         {selectedTicket.admin_reply && (
                           <span className="text-[10px] text-muted-foreground">
-                            Son yanıtlayan: <span className="font-bold text-foreground">
-                              {selectedTicket.replier
+                            {t('support.modal.last_replied', locale, {
+                              name: selectedTicket.replier
                                 ? (selectedTicket.replier.first_name || selectedTicket.replier.last_name
                                   ? `${selectedTicket.replier.first_name || ''} ${selectedTicket.replier.last_name || ''}`.trim()
                                   : `@${selectedTicket.replier.username}`)
-                                : 'Destek Ekibi'
-                              }
-                            </span>
+                                : (locale === 'tr' ? 'Destek Ekibi' : 'Support Team')
+                            })}
                           </span>
                         )}
                       </div>
@@ -1190,7 +1197,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                         onChange={e => setReplyText(e.target.value)}
                         rows={5}
                         required
-                        placeholder="Kullanıcıya iletilecek çözüm veya bilgilendirme yazın..."
+                        placeholder={t('support.modal.placeholder_reply', locale)}
                         className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                       />
                     </div>
@@ -1205,7 +1212,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                         )}
                       >
                         {replyResult.error ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
-                        <span>{replyResult.error ?? 'Yanıt kaydedildi ve kullanıcıya e-posta gönderildi!'}</span>
+                        <span>{replyResult.error ?? t('support.modal.success_reply', locale)}</span>
                       </div>
                     )}
 
@@ -1217,7 +1224,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                         className="px-4 py-2.5 rounded-xl text-xs font-bold border border-destructive/60 text-destructive hover:bg-destructive/5 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         {replyPending ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-                        Direkt Kapat
+                        {t('support.modal.btn_close_direct', locale)}
                       </button>
                       <button
                         onClick={() => handleReplySubmit('replied')}
@@ -1225,7 +1232,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                         className="px-4 py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         {replyPending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-                        Yanıtla
+                        {t('support.modal.btn_reply', locale)}
                       </button>
                       <button
                         onClick={() => handleReplySubmit('closed')}
@@ -1233,7 +1240,7 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
                         className="px-4 py-2.5 rounded-xl text-xs font-bold border border-border text-foreground hover:bg-accent active:scale-95 disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         {replyPending ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-                        Yanıtla ve Talebi Kapat
+                        {t('support.modal.btn_reply_and_close', locale)}
                       </button>
                     </div>
                   </div>
@@ -1262,10 +1269,10 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
             alert(res.error)
           }
         }}
-        title="Talebi Kapat"
-        description="Talebinizi çözüldü olarak kapatmak istediğinize emin misiniz? Bu işlem geri alınamaz."
-        confirmLabel="Talebi Kapat"
-        cancelLabel="Vazgeç"
+        title={t('support.dialog.close.title', locale)}
+        description={t('support.dialog.close.desc', locale)}
+        confirmLabel={t('support.dialog.close.confirm', locale)}
+        cancelLabel={t('support.dialog.close.cancel', locale)}
       />
 
       <ConfirmDialog
@@ -1294,10 +1301,10 @@ export function SupportForm({ profile, isFounder, initialTickets, userProfiles =
             }
           })
         }}
-        title="Talebi Yanıtsız Kapat"
-        description="Bu destek talebini herhangi bir yanıt yazmadan kapatmak istediğinize emin misiniz?"
-        confirmLabel="Talebi Kapat"
-        cancelLabel="Vazgeç"
+        title={t('support.dialog.admin_close.title', locale)}
+        description={t('support.dialog.admin_close.desc', locale)}
+        confirmLabel={t('support.dialog.admin_close.confirm', locale)}
+        cancelLabel={t('support.dialog.admin_close.cancel', locale)}
         variant="destructive"
       />
     </div>

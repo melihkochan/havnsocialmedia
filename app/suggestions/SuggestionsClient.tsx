@@ -11,6 +11,9 @@ import { getRankInfo } from '@/lib/gamification'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { t } from '@/lib/i18n'
+
 
 interface Suggestion {
   id: string
@@ -63,9 +66,9 @@ interface SuggestionsClientProps {
   focusedSuggestionId?: string
 }
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string, locale: string) {
   try {
-    return new Date(dateStr).toLocaleString('tr-TR', {
+    return new Date(dateStr).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
@@ -78,6 +81,7 @@ function formatDate(dateStr: string) {
 }
 
 export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focusedSuggestionId }: SuggestionsClientProps) {
+  const { locale } = useLocale()
   const router = useRouter()
   const [items, setItems] = useState<Suggestion[]>(initialSuggestions)
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'completed' | 'closed'>('all')
@@ -325,27 +329,27 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
     switch (status) {
       case 'open':
         return {
-          label: 'Açık',
+          label: t('suggestions.status.open', locale),
           classes: 'bg-sky-500/10 border-sky-500/20 text-sky-600 dark:text-sky-400'
         }
       case 'in_progress':
         return {
-          label: 'Yapılıyor',
+          label: t('suggestions.status.in_progress', locale),
           classes: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
         }
       case 'completed':
         return {
-          label: 'Tamamlandı',
+          label: t('suggestions.status.completed', locale),
           classes: 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400'
         }
       case 'closed':
         return {
-          label: 'Kapatıldı',
+          label: t('suggestions.status.closed', locale),
           classes: 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'
         }
       default:
         return {
-          label: 'Bilinmiyor',
+          label: t('suggestions.status.unknown', locale),
           classes: 'bg-zinc-500/10 border-zinc-500/20 text-muted-foreground'
         }
     }
@@ -366,9 +370,9 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
             <Lightbulb size={20} />
           </div>
           <div>
-            <h1 className="text-lg font-black text-foreground">Öneri ve Geri Bildirim Forumu</h1>
+            <h1 className="text-lg font-black text-foreground">{t('suggestions.title', locale)}</h1>
             <p className="text-xs text-muted-foreground">
-              Havn'ı birlikte geliştirelim. Yeni fikirlerinizi paylaşın veya paylaşılan fikirleri oylayın.
+              {t('suggestions.subtitle', locale)}
             </p>
           </div>
         </div>
@@ -383,7 +387,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
           }}
         >
           <Plus size={15} />
-          <span>Yeni Öneri Gönder</span>
+          <span>{t('suggestions.new_btn', locale)}</span>
         </motion.button>
       </div>
 
@@ -404,7 +408,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                     : "text-muted-foreground hover:text-foreground border border-transparent"
                 )}
               >
-                {tab === 'all' ? 'Hepsi' : config.label}
+                {tab === 'all' ? t('suggestions.filter.all', locale) : config.label}
               </button>
             )
           })}
@@ -421,7 +425,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                 : "bg-background/50 border-border/40 text-muted-foreground hover:text-foreground"
             )}
           >
-            Önerilerim
+            {t('suggestions.my_suggestions', locale)}
           </button>
 
           <div className="flex items-center gap-1 p-0.5 bg-background/50 rounded-xl w-fit border border-border/40">
@@ -434,7 +438,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              Popüler
+              {t('suggestions.sort.popular', locale)}
             </button>
             <button
               onClick={() => setSortBy('new')}
@@ -445,7 +449,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              Yeni
+              {t('suggestions.sort.new', locale)}
             </button>
           </div>
         </div>
@@ -456,7 +460,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
         {filteredAndSortedItems.length === 0 ? (
           <div className="bg-card/40 border border-border rounded-2xl p-12 text-center text-muted-foreground text-sm flex flex-col items-center justify-center gap-2 select-none">
             <Lightbulb size={24} className="text-muted-foreground/50 animate-pulse" />
-            <span>Seçilen filtrelere uygun öneri bulunamadı. Havn'ı geliştirmek için ilk adımı sen at!</span>
+            <span>{t('suggestions.empty', locale)}</span>
           </div>
         ) : (
           filteredAndSortedItems.map(item => {
@@ -484,7 +488,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                 {isFocused && (
                   <div className="flex items-center gap-2 px-5 py-2.5 border-b border-primary/20 bg-primary/5 select-none">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                    <span className="text-[10px] font-black text-primary tracking-wider uppercase">Odaklanılan Öneri</span>
+                    <span className="text-[10px] font-black text-primary tracking-wider uppercase">{t('suggestions.focused', locale)}</span>
                   </div>
                 )}
                 <div className={cn("flex gap-4", isFocused ? "p-5" : "p-5")}>
@@ -523,12 +527,12 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                         </span>
                         {item.is_private && (
                           <span className="px-2 py-0.5 text-[9px] font-black rounded-full border bg-amber-500/10 border-amber-500/20 text-amber-500 flex items-center gap-1 select-none">
-                            🔒 Özel
+                            {t('suggestions.badge.private', locale)}
                           </span>
                         )}
                         {item.is_anonymous && isAdmin && (
                           <span className="px-2 py-0.5 text-[9px] font-black rounded-full border bg-zinc-500/10 border-zinc-500/20 text-muted-foreground select-none">
-                            👤 Anonim
+                            {t('suggestions.badge.anonymous', locale)}
                           </span>
                         )}
                       </div>
@@ -543,7 +547,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                           onClick={() => setConfirmDeleteId(item.id)}
                           className="px-2.5 py-1.5 rounded-lg border border-rose-500/35 hover:bg-rose-500/10 text-[10px] font-bold text-rose-500 transition-all cursor-pointer flex-shrink-0"
                         >
-                          Sil
+                          {t('suggestions.btn.delete', locale)}
                         </button>
                         {isAdmin && (
                           <button
@@ -555,7 +559,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                             }}
                             className="px-2.5 py-1.5 rounded-lg border border-border hover:bg-accent text-[10px] font-bold text-foreground transition-all cursor-pointer flex-shrink-0"
                           >
-                            Yönet
+                            {t('suggestions.btn.manage', locale)}
                           </button>
                         )}
                       </div>
@@ -594,7 +598,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                                     showHandle={false}
                                     nameClassName="text-[11px] font-bold text-foreground"
                                   />
-                                  <span className="text-[10px] text-muted-foreground ml-1">yanıtladı:</span>
+                                  <span className="text-[10px] text-muted-foreground ml-1">{t('suggestions.replied', locale)}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 text-[9px] text-muted-foreground ml-auto select-none">
@@ -604,7 +608,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                                 )}>
                                   {getStatusConfig(note.status).label}
                                 </span>
-                                <span>{formatDate(note.created_at)}</span>
+                                <span>{formatDate(note.created_at, locale)}</span>
                               </div>
                             </div>
                             <p className="text-muted-foreground whitespace-pre-wrap break-words pl-8 leading-relaxed">{note.note}</p>
@@ -634,7 +638,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                                 showHandle={false}
                                 nameClassName="text-[11px] font-bold text-foreground"
                               />
-                              <span className="text-[10px] text-muted-foreground ml-1">yanıtladı:</span>
+                              <span className="text-[10px] text-muted-foreground ml-1">{t('suggestions.replied', locale)}</span>
                             </div>
                           </div>
                           <p className="text-muted-foreground whitespace-pre-wrap break-words pl-8">{item.admin_note}</p>
@@ -670,7 +674,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                           )}
                         </div>
                         <div className="flex items-center gap-1 min-w-0">
-                          <span className="text-[10px] text-muted-foreground flex-shrink-0 group-hover:text-foreground transition-colors">başlatan:</span>
+                          <span className="text-[10px] text-muted-foreground flex-shrink-0 group-hover:text-foreground transition-colors">{t('suggestions.started_by', locale)}</span>
                           <ProfileName 
                             profile={item.profiles} 
                             layout="inline" 
@@ -694,15 +698,15 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                           </div>
                         </div>
                         <div className="flex items-center gap-1 min-w-0">
-                          <span className="text-[10px] text-muted-foreground flex-shrink-0">başlatan:</span>
-                          <span className="text-xs font-semibold text-foreground">Gizli Kullanıcı</span>
+                          <span className="text-[10px] text-muted-foreground flex-shrink-0">{t('suggestions.started_by', locale)}</span>
+                          <span className="text-xs font-semibold text-foreground">{t('suggestions.anonymous_user', locale)}</span>
                         </div>
                       </div>
                     )}
 
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Clock size={11} />
-                      <span>{formatDate(item.created_at)}</span>
+                      <span>{formatDate(item.created_at, locale)}</span>
                     </div>
                   </div>
                 </div>
@@ -736,7 +740,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                   <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                     <Lightbulb size={16} />
                   </div>
-                  <span className="font-black text-sm text-foreground">Yeni Öneri Gönder</span>
+                  <span className="font-black text-sm text-foreground">{t('suggestions.modal.add.title', locale)}</span>
                 </div>
                 <button
                   onClick={() => setShowAddModal(false)}
@@ -749,14 +753,14 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
 
               <form onSubmit={handleAddSubmit} className="p-5 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground" htmlFor="addTitle">Öneri Başlığı</label>
+                  <label className="text-xs font-semibold text-muted-foreground" htmlFor="addTitle">{t('suggestions.modal.add.label_title', locale)}</label>
                   <input
                     id="addTitle"
                     type="text"
                     required
                     value={addTitle}
                     onChange={e => setAddTitle(e.target.value)}
-                    placeholder="Kısaca ne öneriyorsunuz? Örn: Karanlık mod iyileştirmesi"
+                    placeholder={t('suggestions.modal.add.placeholder_title', locale)}
                     disabled={addPending}
                     maxLength={100}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-60"
@@ -764,14 +768,14 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground" htmlFor="addDesc">Öneri Açıklaması</label>
+                  <label className="text-xs font-semibold text-muted-foreground" htmlFor="addDesc">{t('suggestions.modal.add.label_desc', locale)}</label>
                   <textarea
                     id="addDesc"
                     required
                     rows={5}
                     value={addDescription}
                     onChange={e => setAddDescription(e.target.value)}
-                    placeholder="Önerinizi detaylandırın. Hangi sorunu çözüyor? Havn'a ne katacak?"
+                    placeholder={t('suggestions.modal.add.placeholder_desc', locale)}
                     disabled={addPending}
                     maxLength={2000}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none disabled:opacity-60"
@@ -788,7 +792,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                       disabled={addPending}
                       className="w-4.5 h-4.5 rounded border-border text-primary focus:ring-primary/20 accent-primary bg-background cursor-pointer"
                     />
-                    <span className="text-xs font-semibold text-foreground">İsmimi Gizli Tut (Anonim Öneri Gönder)</span>
+                    <span className="text-xs font-semibold text-foreground">{t('suggestions.modal.add.anonymous', locale)}</span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -799,7 +803,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                       disabled={addPending}
                       className="w-4.5 h-4.5 rounded border-border text-primary focus:ring-primary/20 accent-primary bg-background cursor-pointer"
                     />
-                    <span className="text-xs font-semibold text-foreground">Öneriyi Gizli Tut (Sadece Yöneticiler Görsün)</span>
+                    <span className="text-xs font-semibold text-foreground">{t('suggestions.modal.add.private', locale)}</span>
                   </label>
                 </div>
 
@@ -817,7 +821,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                     disabled={addPending}
                     className="flex-1 py-2.5 rounded-xl text-xs font-bold border border-border text-foreground hover:bg-accent transition-all cursor-pointer disabled:opacity-50"
                   >
-                    Vazgeç
+                    {t('suggestions.modal.btn.cancel', locale)}
                   </button>
                   <button
                     type="submit"
@@ -828,7 +832,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                     }}
                   >
                     {addPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    <span>Gönder</span>
+                    <span>{t('suggestions.modal.btn.submit', locale)}</span>
                   </button>
                 </div>
               </form>
@@ -860,7 +864,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                   <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                     <ShieldAlert size={16} />
                   </div>
-                  <span className="font-black text-sm text-foreground">Öneri Durumunu Yönet</span>
+                  <span className="font-black text-sm text-foreground">{t('suggestions.modal.mod.title', locale)}</span>
                 </div>
                 <button
                   onClick={() => setModeratingItem(null)}
@@ -873,7 +877,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
 
               <form onSubmit={handleModerationSubmit} className="p-5 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Durum Seçin</label>
+                  <label className="text-xs font-semibold text-muted-foreground">{t('suggestions.modal.mod.label_status', locale)}</label>
                   <div className="grid grid-cols-2 gap-2">
                     {(['open', 'in_progress', 'completed', 'closed'] as const).map(status => {
                       const cfg = getStatusConfig(status)
@@ -901,7 +905,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                 {/* Previous replies history in modal */}
                 {((moderatingItem.admin_notes && moderatingItem.admin_notes.length > 0) || moderatingItem.admin_note) && (
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1 bg-accent/10 border border-border/40 p-3 rounded-xl">
-                    <label className="text-xs font-bold text-muted-foreground block mb-1.5 select-none">Önceki Yanıtlar</label>
+                    <label className="text-xs font-bold text-muted-foreground block mb-1.5 select-none">{t('suggestions.modal.mod.previous_replies', locale)}</label>
                     <div className="space-y-2">
                       {moderatingItem.admin_notes && moderatingItem.admin_notes.length > 0 ? (
                         moderatingItem.admin_notes.map((note, index) => (
@@ -917,7 +921,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                                 )}>
                                   {getStatusConfig(note.status).label}
                                 </span>
-                                <span>{formatDate(note.created_at)}</span>
+                                <span>{formatDate(note.created_at, locale)}</span>
                               </div>
                             </div>
                             <p className="text-muted-foreground text-[11px] whitespace-pre-wrap break-words leading-relaxed">{note.note}</p>
@@ -937,7 +941,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                               )}>
                                 {getStatusConfig(moderatingItem.status).label}
                               </span>
-                              <span>{formatDate(moderatingItem.updated_at || moderatingItem.created_at)}</span>
+                              <span>{formatDate(moderatingItem.updated_at || moderatingItem.created_at, locale)}</span>
                             </div>
                           </div>
                           <p className="text-muted-foreground text-[11px] whitespace-pre-wrap break-words leading-relaxed">{moderatingItem.admin_note}</p>
@@ -948,13 +952,13 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                 )}
  
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground" htmlFor="adminNote">Yeni Yanıt (Açıklama)</label>
+                  <label className="text-xs font-semibold text-muted-foreground" htmlFor="adminNote">{t('suggestions.modal.mod.label_note', locale)}</label>
                   <textarea
                     id="adminNote"
                     rows={3}
                     value={modAdminNote}
                     onChange={e => setModAdminNote(e.target.value)}
-                    placeholder="Bu durum değişikliği hakkında kısa bir açıklama yazın..."
+                    placeholder={t('suggestions.modal.mod.placeholder_note', locale)}
                     disabled={modPending}
                     maxLength={500}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none disabled:opacity-60"
@@ -975,7 +979,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                     disabled={modPending}
                     className="flex-1 py-2.5 rounded-xl text-xs font-bold border border-border text-foreground hover:bg-accent transition-all cursor-pointer disabled:opacity-50"
                   >
-                    Vazgeç
+                    {t('suggestions.modal.btn.cancel', locale)}
                   </button>
                   <button
                     type="submit"
@@ -986,7 +990,7 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
                     }}
                   >
                     {modPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    <span>Güncelle</span>
+                    <span>{t('suggestions.modal.btn.update', locale)}</span>
                   </button>
                 </div>
               </form>
@@ -1005,10 +1009,10 @@ export function SuggestionsClient({ profile, isAdmin, initialSuggestions, focuse
           }
         }}
         onConfirm={handleDeleteConfirm}
-        title="Öneriyi Sil"
-        description="Bu öneriyi kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
-        confirmLabel="Kalıcı Olarak Sil"
-        cancelLabel="Vazgeç"
+        title={t('suggestions.modal.delete.title', locale)}
+        description={t('suggestions.modal.delete.desc', locale)}
+        confirmLabel={t('suggestions.modal.delete.confirm', locale)}
+        cancelLabel={t('suggestions.modal.btn.cancel', locale)}
         pending={deletePending}
         error={deleteError}
         variant="destructive"

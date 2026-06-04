@@ -1,4 +1,4 @@
-﻿import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import nodeFetch from 'node-fetch'
 import http from 'node:http'
@@ -128,28 +128,35 @@ const persistentFetch = ((url: any, opts: any = {}) => {
 export async function createClient() {
   const cookieStore = await cookies()
 
+  const clientOptions: any = {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        } catch {
+          // Server component — ignore cookie set errors
+        }
+      },
+    },
+  }
+
+  // Only use custom lookup/persistentFetch on Windows (local dev) to bypass DNS resolution bugs
+  const isLocalWindows = process.platform === 'win32' && !process.env.VERCEL
+  if (isLocalWindows) {
+    clientOptions.global = {
+      fetch: persistentFetch,
+    }
+  }
+
   return createServerClient(
     SUPABASE_URL,
     SUPABASE_KEY,
-    {
-      global: {
-        fetch: persistentFetch,
-      },
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // Server component — ignore cookie set errors
-          }
-        },
-      },
-    }
+    clientOptions
   )
 }
 
@@ -158,17 +165,24 @@ export async function createServiceClient() {
   if (!serviceKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not defined')
   }
+
+  const clientOptions: any = {
+    cookies: {
+      getAll() { return [] },
+      setAll() {}
+    },
+  }
+
+  const isLocalWindows = process.platform === 'win32' && !process.env.VERCEL
+  if (isLocalWindows) {
+    clientOptions.global = {
+      fetch: persistentFetch,
+    }
+  }
+
   return createServerClient(
     SUPABASE_URL,
     serviceKey,
-    {
-      global: {
-        fetch: persistentFetch,
-      },
-      cookies: {
-        getAll() { return [] },
-        setAll() {}
-      },
-    }
+    clientOptions
   )
 }
