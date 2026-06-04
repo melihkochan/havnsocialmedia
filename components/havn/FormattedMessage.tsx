@@ -633,12 +633,14 @@ function renderTextWithFlags(text: string, disableLinks = false): React.ReactNod
 
 // Parse text for plain text URLs and flags
 function renderTextWithFlagsAndLinks(text: string, disableLinks = false): React.ReactNode {
+  console.log("renderTextWithFlagsAndLinks Debug:", { text, disableLinks });
   if (disableLinks) {
     return <>{renderTextWithFlags(text, disableLinks)}</>
   }
   // Regex to match URLs (including truncated ones ending in ...)
   const urlRegex = /(https?:\/\/[^\s]+)/gi
   const parts = text.split(urlRegex)
+  console.log("parts:", parts);
 
   if (parts.length === 1) {
     return <>{renderTextWithFlags(text, disableLinks)}</>
@@ -696,6 +698,14 @@ export function FormattedMessage({ text, className, disableLinks = false }: Form
   // Detect HTML
   const isHtml = text.trim().startsWith('<') && text.trim().endsWith('>')
   const externalUrls = (mounted && !disableLinks) ? extractExternalUrls(text) : []
+
+  console.log("FormattedMessage Debug:", {
+    text,
+    isHtml,
+    mounted,
+    disableLinks,
+    externalUrls
+  });
 
   let content: React.ReactNode
 
