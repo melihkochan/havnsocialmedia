@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { parseCommunityDescription } from '@/lib/community-rules'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 type Community = {
   id: string; name: string; slug: string; description: string | null
@@ -57,6 +58,7 @@ interface CommunitiesClientProps {
 }
 
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { t } = useLocale()
   const [type, setType] = useState<'public' | 'request_to_join'>('public')
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
@@ -90,15 +92,15 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
             <Check size={20} />
           </div>
-          <h2 className="text-base font-black text-foreground">Talep Alındı</h2>
+          <h2 className="text-base font-black text-foreground">{t('communities.modal.success.title')}</h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Topluluk oluşturma talebiniz başarıyla kurucu onay kuyruğuna iletilmiştir. Onaylandıktan sonra topluluğunuz aktif hale gelecektir.
+            {t('communities.modal.success.desc')}
           </p>
           <button
             onClick={onClose}
             className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
           >
-            Tamam
+            {t('communities.modal.success.ok')}
           </button>
         </motion.div>
       </div>
@@ -114,39 +116,39 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         className="relative z-10 bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl"
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-black text-foreground">Topluluk Oluştur</h2>
+          <h2 className="text-lg font-black text-foreground">{t('communities.modal.title')}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Topluluk Adı</label>
+            <label className="text-sm font-medium text-foreground">{t('communities.modal.name')}</label>
             <input
               name="name" required minLength={3} maxLength={50}
-              placeholder="Topluluğunun adı"
+              placeholder={t('communities.modal.name_placeholder')}
               className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Açıklama</label>
+            <label className="text-sm font-medium text-foreground">{t('communities.modal.description')}</label>
             <textarea
               name="description" rows={3} maxLength={300}
-              placeholder="Bu topluluk ne hakkında?"
+              placeholder={t('communities.modal.description_placeholder')}
               className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none placeholder:text-muted-foreground"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Tür</label>
+            <label className="text-sm font-medium text-foreground">{t('communities.modal.type')}</label>
             <div className="grid grid-cols-2 gap-2">
-              {(['public', 'request_to_join'] as const).map(t => (
+              {(['public', 'request_to_join'] as const).map(tVal => (
                 <button
-                  key={t} type="button" onClick={() => setType(t)}
+                  key={tVal} type="button" onClick={() => setType(tVal)}
                   className={cn(
                     'flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all',
-                    type === t ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+                    type === tVal ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
                   )}
                 >
-                  {t === 'public' ? <Globe size={14} /> : <Lock size={14} />}
-                  {t === 'public' ? 'Herkese Açık' : 'Başvurulu'}
+                  {tVal === 'public' ? <Globe size={14} /> : <Lock size={14} />}
+                  {tVal === 'public' ? t('communities.modal.type.public') : t('communities.modal.type.private')}
                 </button>
               ))}
             </div>
@@ -158,7 +160,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))', color: 'var(--primary-foreground)' }}
           >
             {isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-            Oluştur
+            {t('communities.create_button')}
           </motion.button>
         </form>
       </motion.div>
@@ -167,6 +169,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 }
 
 export function CommunitiesClient({ communities, memberships, currentUserId }: CommunitiesClientProps) {
+  const { locale, t } = useLocale()
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [localMemberships, setLocalMemberships] = useState(memberships)
@@ -229,7 +232,7 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Topluluk ara..."
+            placeholder={t('communities.search')}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
           />
         </div>
@@ -240,7 +243,7 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold flex-shrink-0"
             style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))', color: 'var(--primary-foreground)' }}
           >
-            <Plus size={15} /> Oluştur
+            <Plus size={15} /> {t('communities.create_button')}
           </motion.button>
         )}
       </div>
@@ -280,7 +283,7 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                           }}
                         >
                           {community.type === 'public' ? <Globe size={8} /> : <Lock size={8} />}
-                          {community.type === 'public' ? 'Açık' : 'Özel'}
+                          {community.type === 'public' ? t('communities.status.public') : t('communities.status.private')}
                         </span>
                       </div>
                       
@@ -288,7 +291,7 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                       <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground mt-1">
                         <span className="flex items-center gap-1">
                           <Users size={10} />
-                          <span>{memberCount.toLocaleString('tr-TR')} üye</span>
+                          <span>{memberCount.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')} {t('communities.members')}</span>
                         </span>
                         
                         {community.creator && (
@@ -305,7 +308,7 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                       </div>
                     </div>
                   </div>
-
+ 
                   {/* Description */}
                   {(() => {
                     const parsed = parseCommunityDescription(community.description)
@@ -314,18 +317,18 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                         {parsed.description}
                       </p>
                     ) : (
-                      <p className="text-xs text-muted-foreground/45 italic min-h-[2rem]">Açıklama girilmemiş.</p>
+                      <p className="text-xs text-muted-foreground/45 italic min-h-[2rem]">{t('communities.no_description')}</p>
                     )
                   })()}
                 </a>
-
+ 
                 {/* Join button — outside clickable area */}
                 {currentUserId && (
                   <div className="pt-3 border-t border-border/40 mt-auto flex items-center justify-end">
                     {isMember ? (
                       isPending_ ? (
                         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground bg-muted select-none">
-                          <Clock size={13} /> Onay Bekleniyor
+                          <Clock size={13} /> {t('communities.pending')}
                         </div>
                       ) : (
                         <button
@@ -333,7 +336,7 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                           disabled={isPending}
                           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-all cursor-pointer"
                         >
-                          <Check size={13} /> Ayrıl
+                          <Check size={13} /> {t('communities.leave')}
                         </button>
                       )
                     ) : (
@@ -348,7 +351,7 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
                         }}
                       >
                         <Plus size={13} />
-                        {community.type === 'public' ? 'Katıl' : 'Başvur'}
+                        {community.type === 'public' ? t('communities.join') : t('communities.apply')}
                       </motion.button>
                     )}
                   </div>
@@ -358,10 +361,10 @@ export function CommunitiesClient({ communities, memberships, currentUserId }: C
           })}
         </AnimatePresence>
       </div>
-
+ 
       {filtered.length === 0 && (
         <div className="text-center py-16 text-muted-foreground text-sm">
-          "{search}" için sonuç bulunamadı.
+          {t('communities.no_results', { search })}
         </div>
       )}
 

@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { getOnlineStatus } from '@/lib/profile-display'
 import { ConfirmationModal } from '@/components/havn/ConfirmationModal'
 import { enrichProfile } from '@/lib/profile-enrich'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 
 import { PostPreviewBubble } from '@/components/havn/PostPreviewBubble'
@@ -48,24 +49,24 @@ interface Conversation {
   streak?: number
 }
 
-function formatDividerDate(dateStr: string) {
+function formatDividerDate(dateStr: string, locale: string) {
   const d = new Date(dateStr)
   const now = new Date()
   const yesterday = new Date()
   yesterday.setDate(now.getDate() - 1)
   
   if (d.toDateString() === now.toDateString()) {
-    return 'Bugün'
+    return locale === 'tr' ? 'Bugün' : 'Today'
   }
   if (d.toDateString() === yesterday.toDateString()) {
-    return 'Dün'
+    return locale === 'tr' ? 'Dün' : 'Yesterday'
   }
-  return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+  return d.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function dTimeOnly(dateStr: string) {
+function dTimeOnly(dateStr: string, locale: string) {
   const d = new Date(dateStr)
-  return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString(locale === 'tr' ? 'tr-TR' : 'en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
 function renderMessageContent(content: string, isOwn: boolean) {
@@ -102,6 +103,7 @@ export function MessagesClient({
   activeChatUser: initialActiveChatUser,
   initialMessages
 }: MessagesClientProps) {
+  const { locale, t } = useLocale()
   const supabase = createClient()
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations)
   const [activeChatUser, setActiveChatUser] = useState<Profile | null>(initialActiveChatUser)
@@ -582,10 +584,10 @@ export function MessagesClient({
   async function handleDeleteMessage(msgId: string) {
     setModalConfig({
       isOpen: true,
-      title: 'Mesajı Sil',
-      message: 'Bu mesajı silmek istediğinizden emin misiniz? (Mesaj içeriği "Bu mesaj silindi" olarak güncellenecektir)',
-      confirmText: 'Sil',
-      cancelText: 'İptal',
+      title: t('messages.delete_message_confirm_title'),
+      message: t('messages.delete_message_confirm_desc'),
+      confirmText: t('ui.delete'),
+      cancelText: t('ui.cancel'),
       isDanger: true,
       onConfirm: async () => {
         const res = await deleteDirectMessage(msgId)
@@ -624,10 +626,10 @@ export function MessagesClient({
     if (!activeChatUser) return
     setModalConfig({
       isOpen: true,
-      title: 'Sohbeti Kapat',
-      message: 'Bu sohbeti kapatmak istediğinizden emin misiniz? (Yeni mesaj geldiğinde sohbet geçmişinizle birlikte tekrar açılacaktır)',
-      confirmText: 'Kapat',
-      cancelText: 'İptal',
+      title: t('messages.close_chat_confirm_title'),
+      message: t('messages.close_chat_confirm_desc'),
+      confirmText: t('messages.close_chat'),
+      cancelText: t('ui.cancel'),
       isDanger: false,
       onConfirm: async () => {
         const res = await closeConversation(activeChatUser.id)
@@ -679,7 +681,7 @@ export function MessagesClient({
         )
       }
     } catch (err: any) {
-      showErrorAlert(err.message || 'Bir hata oluştu.')
+      showErrorAlert(err.message || t('ui.error'))
     } finally {
       setRestorePending(false)
     }
@@ -793,9 +795,9 @@ export function MessagesClient({
     const now = new Date()
     
     if (d.toDateString() === now.toDateString()) {
-      return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+      return d.toLocaleTimeString(locale === 'tr' ? 'tr-TR' : 'en-US', { hour: '2-digit', minute: '2-digit' })
     }
-    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
+    return d.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { day: 'numeric', month: 'short' })
   }
 
   return (
@@ -816,7 +818,7 @@ export function MessagesClient({
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Kişi ara..."
+              placeholder={t('messages.search_placeholder')}
               className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
             />
           </div>
@@ -832,11 +834,11 @@ export function MessagesClient({
               >
                 {searchLoading ? (
                   <div className="p-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 size={12} className="animate-spin" /> Yükleniyor...
+                    <Loader2 size={12} className="animate-spin" /> {t('ui.loading')}
                   </div>
                 ) : searchResults.length === 0 ? (
                   <div className="p-4 text-center text-xs text-muted-foreground">
-                    Kullanıcı bulunamadı.
+                    {t('messages.no_users')}
                   </div>
                 ) : (
                   searchResults.map(user => (
@@ -873,7 +875,7 @@ export function MessagesClient({
             )}
             style={inboxFilter === 'all' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
           >
-            Tümü
+            {t('messages.tab.all')}
           </button>
           <button
             onClick={() => setInboxFilter('unread')}
@@ -885,7 +887,7 @@ export function MessagesClient({
             )}
             style={inboxFilter === 'unread' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
           >
-            Okunmamış
+            {t('messages.tab.unread')}
             {conversations.some(c => c.unreadCount > 0) && (
               <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
             )}
@@ -897,8 +899,8 @@ export function MessagesClient({
           {filteredConversations.length === 0 ? (
             <div className="p-8 text-center text-xs text-muted-foreground">
               {inboxFilter === 'unread'
-                ? "Okunmamış mesajınız bulunmuyor."
-                : "Henüz sohbetiniz yok. Yukarıdan bir kişi aratarak mesaj atmaya başlayabilirsiniz."}
+                ? t('messages.unread_empty')
+                : t('messages.inbox_empty')}
             </div>
           ) : (
             filteredConversations.map(conv => {
@@ -959,7 +961,7 @@ export function MessagesClient({
                       </span>
                     </div>
                     <p className={cn("text-[11px] truncate leading-tight", isSelected ? "text-white/90" : "text-muted-foreground")}>
-                      {conv.lastMessage.sender_id === currentUser.id ? 'Siz: ' : ''}{conv.lastMessage.content}
+                      {conv.lastMessage.sender_id === currentUser.id ? t('messages.you_prefix') : ''}{conv.lastMessage.content}
                     </p>
                   </div>
                 </button>
@@ -1010,14 +1012,14 @@ export function MessagesClient({
                     {/* Status Subtext */}
                     {isPartnerTyping ? (
                       <p className="text-[10px] text-emerald-500 font-bold animate-pulse mt-0.5">
-                        ✍️ Yazıyor...
+                        {t('messages.typing_indicator')}
                       </p>
                     ) : (() => {
                       const statusObj = getOnlineStatus(activeChatUser)
                       return (
                         <p className="text-[10px] text-muted-foreground mt-0.5">
                           {statusObj.status === 'online' ? (
-                            <span className="text-emerald-500 font-bold">● Çevrimiçi</span>
+                            <span className="text-emerald-500 font-bold">{t('messages.online_indicator')}</span>
                           ) : (
                             statusObj.text
                           )}
@@ -1027,20 +1029,20 @@ export function MessagesClient({
                   </div>
                 </Link>
               </div>
-
+ 
               {/* Close Convo Button */}
               {activeChatUser && (
                 <button
                   onClick={handleCloseConversation}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-border/85 text-muted-foreground hover:text-foreground hover:bg-accent/60 rounded-xl transition-all cursor-pointer select-none active:scale-95"
-                  title="Sohbeti Kapat"
+                  title={t('messages.close_chat')}
                 >
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                     <line x1="9" y1="9" x2="15" y2="15"/>
                     <line x1="15" y1="9" x2="9" y2="15"/>
                   </svg>
-                  Sohbeti Kapat
+                  {t('messages.close_chat')}
                 </button>
               )}
             </div>
@@ -1076,14 +1078,14 @@ export function MessagesClient({
                     </div>
                     <div className="flex flex-col min-w-0">
                       <p className="text-[11px] font-black text-foreground leading-tight tracking-wide uppercase bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
-                        Alev Seriniz Sönmüş!
+                        {t('messages.streak.title')}
                       </p>
                       <p className="text-[10px] text-muted-foreground truncate leading-normal mt-0.5">
-                        {historicalStreak} günlük serinizi kurtarmak ister misiniz?
+                        {t('messages.streak.desc', { count: String(historicalStreak) })}
                       </p>
                       {/* Heart Lives Indicator */}
                       <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="text-[8px] text-muted-foreground uppercase font-black tracking-wider select-none mr-0.5">Kalan Can:</span>
+                        <span className="text-[8px] text-muted-foreground uppercase font-black tracking-wider select-none mr-0.5">{t('messages.streak.lives')}</span>
                         <div className="flex items-center gap-1">
                           {[1, 2, 3, 4, 5].map((i) => (
                             <Heart
@@ -1111,7 +1113,7 @@ export function MessagesClient({
                       {restorePending ? (
                         <Loader2 size={10} className="animate-spin" />
                       ) : (
-                        'Kurtar'
+                        t('messages.streak.restore_btn')
                       )}
                     </button>
                     <button
@@ -1131,7 +1133,7 @@ export function MessagesClient({
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
                   <MessageSquare size={36} className="opacity-40" />
-                  <span className="text-xs">Sohbeti başlatın... Bir selam verin!</span>
+                  <span className="text-xs">{t('messages.empty_chat')}</span>
                 </div>
               ) : (
                 <div className="flex flex-col justify-end min-h-full space-y-4">
@@ -1143,15 +1145,14 @@ export function MessagesClient({
                   let displayContent = msg.content
                   let isEdited = false
                   let isDeleted = false
-
                   if (displayContent === '\u200B[silindi]') {
                     isDeleted = true
-                    displayContent = 'Bu mesaj silindi'
+                    displayContent = t('messages.delete_message_deleted')
                   } else if (displayContent.includes('\u200B[guncellendi]')) {
                     isEdited = true
                     displayContent = displayContent.replace(/\u200B\[guncellendi\]/g, '')
                   }
-
+ 
                   const messageDate = new Date(msg.created_at);
                   const prevMsg = index > 0 ? messages[index - 1] : null;
                   const showDateSeparator = !prevMsg || 
@@ -1162,7 +1163,7 @@ export function MessagesClient({
                       {showDateSeparator && (
                         <div className="w-full flex justify-center my-4">
                           <span className="px-3.5 py-1.5 rounded-full text-[9px] font-black bg-card/85 backdrop-blur-md text-muted-foreground border border-border shadow-sm uppercase tracking-wider select-none">
-                            {formatDividerDate(msg.created_at)}
+                            {formatDividerDate(msg.created_at, locale)}
                           </span>
                         </div>
                       )}
@@ -1217,7 +1218,7 @@ export function MessagesClient({
                                   onClick={() => setEditingMessageId(null)}
                                   className="px-2 py-1 rounded hover:bg-muted text-muted-foreground transition-all cursor-pointer"
                                 >
-                                  İptal
+                                  {t('ui.cancel')}
                                 </button>
                                 <button
                                   type="button"
@@ -1225,7 +1226,7 @@ export function MessagesClient({
                                   className="px-2 py-1 rounded bg-primary text-primary-foreground font-bold hover:opacity-90 transition-all cursor-pointer"
                                   style={{ background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' }}
                                 >
-                                  Kaydet
+                                  {t('ui.save')}
                                 </button>
                               </div>
                             </div>
@@ -1256,19 +1257,19 @@ export function MessagesClient({
                         
                         <div className="flex items-center gap-1.5 px-1">
                           <span className="text-[9px] text-muted-foreground select-none">
-                            {dTimeOnly(msg.created_at)}
+                            {dTimeOnly(msg.created_at, locale)}
                             {isEdited && !isDeleted && (
-                              <span className="text-muted-foreground/50 italic ml-1 select-none">(düzenlendi)</span>
+                              <span className="text-muted-foreground/50 italic ml-1 select-none">{t('messages.edited_label')}</span>
                             )}
                           </span>
                           {isOwn && (
                             <span className="flex items-center gap-1">
                               {isRead ? (
-                                <span className="cursor-help text-emerald-500 flex items-center" title="Okundu">
+                                <span className="cursor-help text-emerald-500 flex items-center" title={t('messages.read_status')}>
                                   <CheckCircle size={10} className="fill-emerald-500/10" />
                                 </span>
                               ) : (
-                                <span className="cursor-help text-muted-foreground/60 flex items-center" title="İletildi (Okunmadı)">
+                                <span className="cursor-help text-muted-foreground/60 flex items-center" title={t('messages.sent_status')}>
                                   <Clock size={10} />
                                 </span>
                               )}
@@ -1292,7 +1293,7 @@ export function MessagesClient({
                   >
                     <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-background border border-border rounded-tl-none shadow-sm select-none">
                       <span className="text-[11px] text-muted-foreground mr-1 font-medium">
-                        @{activeChatUser.username} yazıyor
+                        @{activeChatUser.username} {t('messages.typing_text')}
                       </span>
                       <div className="flex gap-1 items-center">
                         {[0, 1, 2].map((i) => (
@@ -1332,7 +1333,7 @@ export function MessagesClient({
                 type="text"
                 value={inputText}
                 onChange={handleInputChange}
-                placeholder="Bir mesaj yazın..."
+                placeholder={t('messages.input_placeholder')}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
               />
 
@@ -1352,9 +1353,9 @@ export function MessagesClient({
               <MessageSquare size={32} className="opacity-40" />
             </div>
             <div className="text-center">
-              <h3 className="font-bold text-sm text-foreground">Mesajlaşma Paneli</h3>
+              <h3 className="font-bold text-sm text-foreground">{t('messages.panel.title')}</h3>
               <p className="text-[11px] text-muted-foreground mt-1 max-w-[280px] px-4">
-                Soldaki sohbet listesinden birini seçin veya yeni bir sohbet başlatmak için arama yapın.
+                {t('messages.panel.subtitle')}
               </p>
             </div>
           </div>
@@ -1431,15 +1432,15 @@ export function MessagesClient({
               
               <div className="space-y-1 z-10">
                 <h3 className="text-lg font-black text-foreground uppercase tracking-wider bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent filter drop-shadow-[0_2px_4px_rgba(249,115,22,0.15)]">
-                  {animateStreakNum === 1 ? 'Seri Başladı!' : 'Seri Büyüyor!'}
+                  {animateStreakNum === 1 ? t('messages.streak.celebration.title_start') : t('messages.streak.celebration.title_grow')}
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  @{activeChatUser?.username} ile sohbet seriniz büyüyor!
+                  {t('messages.streak.celebration.desc', { username: activeChatUser?.username ?? '' })}
                 </p>
               </div>
               
               <div className="flex items-baseline gap-2 z-10 mt-2">
-                <span className="text-muted-foreground text-[10px] font-black tracking-widest uppercase">GÜN</span>
+                <span className="text-muted-foreground text-[10px] font-black tracking-widest uppercase">{t('messages.streak.celebration.day')}</span>
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={displayNum}
