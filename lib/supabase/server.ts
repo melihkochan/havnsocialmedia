@@ -79,46 +79,48 @@ const globalAgents = globalThis as typeof globalThis & {
   __supabaseWarmedUp?: boolean
 }
 
-if (!globalAgents.__supabaseHttpsAgent) {
-  globalAgents.__supabaseHttpsAgent = new https.Agent({
-    keepAlive: true,
-    keepAliveMsecs: 60000,
-    maxSockets: 50,
-    maxFreeSockets: 20,
-    timeout: 30000,
-    lookup: customLookup,
-  })
-}
-
-if (!globalAgents.__supabaseHttpAgent) {
-  globalAgents.__supabaseHttpAgent = new http.Agent({
-    keepAlive: true,
-    keepAliveMsecs: 60000,
-    maxSockets: 50,
-    maxFreeSockets: 20,
-    timeout: 30000,
-    lookup: customLookup,
-  })
-}
-
-// Warm up connections on first load — pre-establish TLS to both endpoints
-if (!globalAgents.__supabaseWarmedUp && SUPABASE_URL) {
-  globalAgents.__supabaseWarmedUp = true
-  const warmUp = async () => {
-    try {
-      const agent = globalAgents.__supabaseHttpsAgent
-      if (agent) {
-        // Sequential warmup — each request establishes a TLS connection
-        await nodeFetch(`${SUPABASE_URL}/rest/v1/`, { agent, headers: { apikey: SUPABASE_KEY } })
-        await nodeFetch(`${SUPABASE_URL}/auth/v1/settings`, { agent, headers: { apikey: SUPABASE_KEY } })
-        // Third request to ensure pool is warm
-        await nodeFetch(`${SUPABASE_URL}/rest/v1/`, { agent, headers: { apikey: SUPABASE_KEY } })
-      }
-    } catch {
-      // Ignore warmup errors
-    }
+if (isLocalWindows) {
+  if (!globalAgents.__supabaseHttpsAgent) {
+    globalAgents.__supabaseHttpsAgent = new https.Agent({
+      keepAlive: true,
+      keepAliveMsecs: 60000,
+      maxSockets: 50,
+      maxFreeSockets: 20,
+      timeout: 30000,
+      lookup: customLookup,
+    })
   }
-  warmUp()
+
+  if (!globalAgents.__supabaseHttpAgent) {
+    globalAgents.__supabaseHttpAgent = new http.Agent({
+      keepAlive: true,
+      keepAliveMsecs: 60000,
+      maxSockets: 50,
+      maxFreeSockets: 20,
+      timeout: 30000,
+      lookup: customLookup,
+    })
+  }
+
+  // Warm up connections on first load — pre-establish TLS to both endpoints
+  if (!globalAgents.__supabaseWarmedUp && SUPABASE_URL) {
+    globalAgents.__supabaseWarmedUp = true
+    const warmUp = async () => {
+      try {
+        const agent = globalAgents.__supabaseHttpsAgent
+        if (agent) {
+          // Sequential warmup — each request establishes a TLS connection
+          await nodeFetch(`${SUPABASE_URL}/rest/v1/`, { agent, headers: { apikey: SUPABASE_KEY } })
+          await nodeFetch(`${SUPABASE_URL}/auth/v1/settings`, { agent, headers: { apikey: SUPABASE_KEY } })
+          // Third request to ensure pool is warm
+          await nodeFetch(`${SUPABASE_URL}/rest/v1/`, { agent, headers: { apikey: SUPABASE_KEY } })
+        }
+      } catch {
+        // Ignore warmup errors
+      }
+    }
+    warmUp()
+  }
 }
 
 // Custom fetch with persistent keep-alive agent
