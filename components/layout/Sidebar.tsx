@@ -695,15 +695,6 @@ export function Sidebar({
       {/* Logo */}
       <div className="px-1 mb-2 flex items-center justify-between w-full">
         <HavnLogo collapsed={isCollapsed} />
-        {!isCollapsed && (
-          <Link
-            href="/help"
-            className="p-1.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 hover:border-primary/20 border border-transparent transition-all cursor-pointer shadow-sm select-none flex items-center justify-center group/info"
-            title={t("nav.help.title")}
-          >
-            <HelpCircle size={16} className="group-hover/info:rotate-12 transition-transform duration-200" />
-          </Link>
-        )}
       </div>
 
       {/* Arama Input Butonu */}
@@ -961,6 +952,16 @@ export function Sidebar({
                       {t("sidebar.profile.menu.settings")}
                     </Link>
 
+                    {/* Yardım & Rehber Link */}
+                    <Link
+                      href="/help"
+                      onClick={() => setShowAccountsMenu(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-foreground hover:bg-accent/70 transition-all text-left cursor-pointer w-full"
+                    >
+                      <HelpCircle size={14} className="text-muted-foreground" />
+                      {t("sidebar.profile.menu.help")}
+                    </Link>
+
                     {/* Tema Değiştirici (Inline Segmented) */}
                     <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-accent/40 transition-colors">
                       <span className="flex items-center gap-2.5 text-xs font-bold text-foreground select-none">
@@ -1024,34 +1025,6 @@ export function Sidebar({
                         })}
                       </div>
                     </div>
-
-                    {/* Rol Badge Row — ALTTA */}
-                    {(() => {
-                      const isUserFounder = isFounder(currentUser);
-                      const isUserGold = currentUser.is_gold;
-                      const badgeText = isUserFounder 
-                        ? t("sidebar.profile.menu.role.founder") 
-                        : isUserGold 
-                        ? t("sidebar.profile.menu.role.gold") 
-                        : t("sidebar.profile.menu.role.member");
-                      const badgeClass = isUserFounder 
-                        ? "bg-amber-500/10 text-amber-500 border-amber-500/20" 
-                        : isUserGold 
-                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                        : "bg-primary/10 text-primary border-primary/20";
-                      
-                      return (
-                        <div className="flex items-center justify-between px-2.5 py-2 rounded-xl hover:bg-accent/40 transition-colors">
-                          <span className="flex items-center gap-2.5 text-xs font-bold text-foreground select-none">
-                            <Shield size={14} className="text-muted-foreground" />
-                            {t("sidebar.profile.menu.role")}
-                          </span>
-                          <span className={cn("px-1.5 py-0.5 text-[8px] font-black rounded border tracking-wider", badgeClass)}>
-                            {badgeText}
-                          </span>
-                        </div>
-                      );
-                    })()}
                   </div>
 
                   {/* Accounts & Session Management */}

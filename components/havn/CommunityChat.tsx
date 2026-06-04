@@ -8,6 +8,7 @@ import { ProfileName } from '@/components/havn/ProfileName'
 import { EmojiPickerButton } from '@/components/havn/EmojiPickerButton'
 import { getCommunityMessages, sendCommunityMessage, editCommunityMessage, deleteCommunityMessage } from '@/lib/actions/community-messages'
 import { cn } from '@/lib/utils'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 interface Profile {
   id: string
@@ -43,6 +44,7 @@ export function CommunityChat({
   isAdmin,
   membershipRole
 }: CommunityChatProps) {
+  const { t, locale } = useLocale()
   const supabase = createClient()
   const [messages, setMessages] = useState<CommunityMessage[]>([])
   const [loading, setLoading] = useState(true)
@@ -73,7 +75,7 @@ export function CommunityChat({
   }
 
   async function handleDeleteMessage(msgId: string) {
-    if (!confirm('Bu mesajı silmek istediğinizden emin misiniz?')) return
+    if (!confirm(locale === 'tr' ? 'Bu mesajı silmek istediğinizden emin misiniz?' : 'Are you sure you want to delete this message?')) return
     const originalMessages = [...messages]
 
     setMessages(prev => prev.filter(m => m.id !== msgId))
@@ -213,7 +215,7 @@ export function CommunityChat({
       return (
         <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-[9px] font-bold text-red-500 select-none">
           <Crown size={9} className="fill-red-500/10" />
-          YÖNETİCİ
+          {locale === 'tr' ? 'YÖNETİCİ' : 'ADMIN'}
         </span>
       )
     }
@@ -236,12 +238,12 @@ export function CommunityChat({
       <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-muted/5 scrollbar-thin flex flex-col justify-end min-h-0">
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-muted-foreground gap-2">
-            <Loader2 size={16} className="animate-spin" /> Mesajlar yükleniyor...
+            <Loader2 size={16} className="animate-spin" /> {locale === 'tr' ? 'Mesajlar yükleniyor...' : 'Loading messages...'}
           </div>
         ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
             <MessageSquare size={36} className="opacity-40" />
-            <span className="text-xs">Henüz mesaj gönderilmemiş. İlk yazan siz olun!</span>
+            <span className="text-xs">{locale === 'tr' ? 'Henüz mesaj gönderilmemiş. İlk yazan siz olun!' : 'No messages sent yet. Be the first to type!'}</span>
           </div>
         ) : (
           <div className="space-y-4 overflow-y-auto pr-1">
@@ -295,13 +297,13 @@ export function CommunityChat({
                           onClick={() => handleSaveEdit(msg.id)}
                           className="p-1.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-[10px] font-bold"
                         >
-                          Kaydet
+                          {t('ui.save')}
                         </button>
                         <button
                           onClick={() => setEditingMessageId(null)}
                           className="p-1.5 rounded bg-muted hover:bg-accent text-muted-foreground text-[10px] font-bold"
                         >
-                          İptal
+                          {t('ui.cancel')}
                         </button>
                       </div>
                     ) : (
@@ -328,7 +330,7 @@ export function CommunityChat({
                                 setEditInputText(msg.content)
                               }}
                               className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                              title="Mesajı Düzenle"
+                              title={locale === 'tr' ? 'Mesajı Düzenle' : 'Edit Message'}
                             >
                               <Pencil size={11} />
                             </button>
@@ -337,7 +339,7 @@ export function CommunityChat({
                             <button
                               onClick={() => handleDeleteMessage(msg.id)}
                               className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-destructive cursor-pointer transition-colors"
-                              title="Mesajı Sil"
+                              title={locale === 'tr' ? 'Mesajı Sil' : 'Delete Message'}
                             >
                               <Trash2 size={11} />
                             </button>
@@ -367,7 +369,7 @@ export function CommunityChat({
               type="text"
               value={inputText}
               onChange={e => setInputText(e.target.value)}
-              placeholder={type === 'announcement' ? "Duyuru yayınlayın..." : "Sohbete yazın..."}
+              placeholder={type === 'announcement' ? (locale === 'tr' ? "Duyuru yayınlayın..." : "Post an announcement...") : (locale === 'tr' ? "Sohbete yazın..." : "Type in chat...")}
               className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
             />
 
@@ -383,7 +385,7 @@ export function CommunityChat({
         ) : (
           <div className="text-center py-2 text-xs font-bold text-muted-foreground flex items-center justify-center gap-1.5 bg-muted/40 rounded-xl border border-border/60">
             <Clock size={12} />
-            Sadece topluluk yöneticileri duyuru paylaşabilir.
+            {locale === 'tr' ? 'Sadece topluluk yöneticileri duyuru paylaşabilir.' : 'Only community administrators can post announcements.'}
           </div>
         )}
       </div>

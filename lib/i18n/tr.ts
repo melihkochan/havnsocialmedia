@@ -508,6 +508,7 @@ export const tr = {
   'sidebar.profile.menu.hq_title': 'HQ Kontrol Odası',
   'sidebar.profile.menu.login': 'Giriş Yap',
   'sidebar.profile.menu.register': 'Kayıt Ol',
+  'sidebar.profile.menu.help': 'Yardım & Rehber',
   'sidebar.profile.menu.search_placeholder': 'Kullanıcı veya topluluk ara...',
   'sidebar.profile.menu.search_empty_hint': 'Arama yapmak için en az 2 karakter yazın.',
   'sidebar.profile.menu.search_no_results': 'Eşleşen sonuç bulunamadı.',
@@ -766,6 +767,16 @@ export const tr = {
   'messages.cancel': 'İptal',
   'messages.save': 'Kaydet',
   'messages.you_prefix': 'Siz: ',
+  'community.post_placeholder': 'Topluluğunla bir şeyler paylaş... (Komutlar için / yazın...)',
+  'communities.list_back': 'Topluluklar Listesi',
+  'communities.not_member_notice': 'Bu topluluğa üye değilsin. Gönderi paylaşmak için katıl.',
+  'communities.go_to_communities': 'Topluluklara Git',
+  'communities.pending_requests.none': 'Bekleyen üyelik başvurusu bulunmuyor.',
+  'communities.pending_requests.title': 'Üyelik Başvuruları',
+  'communities.pending_requests.pending': 'Bekleyen',
+  'communities.pending_requests.anonymous': 'Anonim',
+  'communities.pending_requests.approve': 'Onayla',
+  'communities.pending_requests.reject': 'Reddet',
 } as const
 
 export type TranslationKey = keyof typeof tr

@@ -7,16 +7,19 @@ import { RightBar } from '@/components/layout/RightBar'
 import { getPosts } from '@/lib/actions/posts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { getServerLocale } from '@/lib/i18n/server'
+import { t } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const supabase = await createClient()
+  const locale = await getServerLocale()
   const { data: community } = await supabase
     .from('communities').select('name, description').eq('slug', slug).single()
   return {
-    title: community ? `${community.name} — HAVN` : 'Topluluk — HAVN',
+    title: community ? `${community.name} — HAVN` : `${t('communities.title', locale)} — HAVN`,
     description: community?.description ?? '',
   }
 }
@@ -32,6 +35,7 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
   const activeSort = sortBy === 'popular' ? 'popular' : 'new'
 
   const supabase = await createClient()
+  const locale = await getServerLocale()
 
   // Parallel: auth + community details
   const [{ data: { user } }, { data: community, error }] = await Promise.all([
@@ -89,7 +93,7 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all w-fit bg-card/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-border/80 shadow-sm"
         >
           <ArrowLeft size={12} />
-          Topluluklar Listesi
+          {t('communities.list_back', locale)}
         </Link>
 
         {/* Community Banner */}
@@ -99,7 +103,7 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
         {user && !isMember && (
           <div className="bg-card border border-border rounded-2xl p-6 text-center">
             <p className="text-sm text-muted-foreground mb-3">
-              Bu topluluğa üye değilsin. Gönderi paylaşmak için katıl.
+              {t('communities.not_member_notice', locale)}
             </p>
             <Link
               href="/communities"
@@ -109,7 +113,7 @@ export default async function CommunityDetailPage({ params, searchParams }: Page
                 color: 'var(--primary-foreground)',
               }}
             >
-              Topluluklara Git
+              {t('communities.go_to_communities', locale)}
             </Link>
           </div>
         )}

@@ -12,6 +12,7 @@ import { Megaphone, X, Lock, Clock, Loader2, Plus } from 'lucide-react'
 import { parseCommunityDescription } from '@/lib/community-rules'
 import { joinCommunity, leaveCommunity } from '@/lib/actions/communities'
 import type { FeedContext } from '@/lib/actions/posts'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 interface Profile {
   id: string
@@ -53,6 +54,7 @@ export function CommunityContentTabs({
   communityType = 'public',
   membershipStatus
 }: CommunityContentTabsProps) {
+  const { t, locale } = useLocale()
   const [activeTab, setActiveTab] = useState<'posts' | 'chat'>('posts')
   const [unreadChatCount, setUnreadChatCount] = useState(0)
   const activeTabRef = useRef(activeTab)
@@ -169,7 +171,7 @@ export function CommunityContentTabs({
           )}
           style={activeTab === 'posts' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
         >
-          Gönderiler
+          {locale === 'tr' ? 'Gönderiler' : 'Posts'}
         </button>
         {isMember && currentUser && (
           <>
@@ -181,7 +183,7 @@ export function CommunityContentTabs({
               )}
               style={activeTab === 'chat' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
             >
-              <span>Sohbet</span>
+              <span>{locale === 'tr' ? 'Sohbet' : 'Chat'}</span>
               {unreadChatCount > 0 && (
                 <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", activeTab === 'chat' ? "bg-white" : "bg-rose-500")} />
               )}
@@ -207,14 +209,14 @@ export function CommunityContentTabs({
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-bold text-foreground mb-0.5">Topluluk Duyurusu 📢</h4>
+                  <h4 className="text-xs font-bold text-foreground mb-0.5">{locale === 'tr' ? 'Topluluk Duyurusu 📢' : 'Community Announcement 📢'}</h4>
                   <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{announcement}</p>
                 </div>
 
                 <button
                   onClick={() => setShowAnnouncement(false)}
                   className="p-1 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent/50 transition-all cursor-pointer flex-shrink-0"
-                  title="Kapat"
+                  title={t('ui.close')}
                 >
                   <X size={14} />
                 </button>
@@ -240,13 +242,13 @@ export function CommunityContentTabs({
                   <Lock size={28} className="animate-pulse" />
                 </div>
                 <div className="max-w-sm space-y-1.5">
-                  <h3 className="text-sm font-bold text-foreground">Başvurulu Topluluk 🔒</h3>
+                  <h3 className="text-sm font-bold text-foreground">{locale === 'tr' ? 'Başvurulu Topluluk 🔒' : 'Private Community 🔒'}</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {!currentUser
-                      ? "Bu topluluk yalnızca onaylı üyelere özeldir. Gönderileri ve diğer içerikleri görmek için giriş yapmalısınız."
+                      ? (locale === 'tr' ? "Bu topluluk yalnızca onaylı üyelere özeldir. Gönderileri ve diğer içerikleri görmek için giriş yapmalısınız." : "This community is only for approved members. You must sign in to view posts and other contents.")
                       : localStatus === 'pending'
-                      ? "Katılma başvurunuz başarıyla alındı. Topluluk yöneticisinin onayı bekleniyor."
-                      : "Bu topluluk yalnızca onaylı üyelere özeldir. Gönderileri ve diğer içerikleri görmek için katılma başvurusu yapmalısınız."}
+                      ? (locale === 'tr' ? "Katılma başvurunuz başarıyla alındı. Topluluk yöneticisinin onayı bekleniyor." : "Your application to join has been successfully received. Pending approval from community administrators.")
+                      : (locale === 'tr' ? "Bu topluluk yalnızca onaylı üyelere özeldir. Gönderileri ve diğer içerikleri görmek için katılma başvurusu yapmalısınız." : "This community is only for approved members. You must request to join to view posts and other contents.")}
                   </p>
                 </div>
 
@@ -260,7 +262,7 @@ export function CommunityContentTabs({
                         color: 'var(--primary-foreground)',
                       }}
                     >
-                      Giriş Yap
+                      {t('auth.login.submit')}
                     </Link>
                   ) : localStatus === 'pending' ? (
                     <button
@@ -269,7 +271,7 @@ export function CommunityContentTabs({
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border border-border text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all cursor-pointer bg-muted/40"
                     >
                       {isPending ? <Loader2 size={12} className="animate-spin" /> : <Clock size={12} />}
-                      Başvuruyu Geri Çek
+                      {locale === 'tr' ? 'Başvuruyu Geri Çek' : 'Withdraw Application'}
                     </button>
                   ) : (
                     <motion.button
@@ -283,7 +285,7 @@ export function CommunityContentTabs({
                       }}
                     >
                       {isPending ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                      Katılma Başvurusu Yap
+                      {locale === 'tr' ? 'Katılma Başvurusu Yap' : 'Request to Join'}
                     </motion.button>
                   )}
                 </div>
@@ -294,7 +296,7 @@ export function CommunityContentTabs({
                 <div className="flex items-center justify-between gap-3 flex-wrap mt-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-muted-foreground tracking-wider uppercase">
-                      {activeSort === 'popular' ? 'Popüler Gönderiler' : 'Son Gönderiler'}
+                      {activeSort === 'popular' ? (locale === 'tr' ? 'Popüler Gönderiler' : 'Popular Posts') : (locale === 'tr' ? 'Son Gönderiler' : 'Recent Posts')}
                     </span>
                   </div>
 
@@ -309,7 +311,7 @@ export function CommunityContentTabs({
                       }`}
                       style={activeSort === 'new' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
                     >
-                      Yeni
+                      {locale === 'tr' ? 'Yeni' : 'New'}
                     </Link>
                     <Link
                       href={`/communities/${communitySlug}?sortBy=popular`}
@@ -320,7 +322,7 @@ export function CommunityContentTabs({
                       }`}
                       style={activeSort === 'popular' ? { background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))' } : {}}
                     >
-                      Popüler
+                      {locale === 'tr' ? 'Popüler' : 'Popular'}
                     </Link>
                   </div>
                 </div>

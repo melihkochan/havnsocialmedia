@@ -8,6 +8,7 @@ import { updateCommunitySettings } from "@/lib/actions/communities"
 import { PendingRequestsList } from "@/components/havn/PendingRequestsList"
 import { cn } from "@/lib/utils"
 import { parseCommunityDescription, serializeCommunityDescription } from "@/lib/community-rules"
+import { useLocale } from "@/lib/i18n/LocaleContext"
 
 interface CommunityBannerProps {
   community: {
@@ -25,6 +26,7 @@ interface CommunityBannerProps {
 }
 
 export function CommunityBanner({ community, isAdmin, initialPendingRequests = [] }: CommunityBannerProps) {
+  const { t, locale } = useLocale()
   const isPrivate = community.type === "request_to_join"
   const [showSettings, setShowSettings] = useState(false)
   const [version, setVersion] = useState<number | null>(null)
@@ -120,11 +122,11 @@ export function CommunityBanner({ community, isAdmin, initialPendingRequests = [
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/20 text-white backdrop-blur-sm">
                 {isPrivate ? (
                   <>
-                    <Lock size={10} /> Başvurulu
+                    <Lock size={10} /> {locale === "tr" ? "Başvurulu" : "Private"}
                   </>
                 ) : (
                   <>
-                    <Globe size={10} /> Herkese Açık
+                    <Globe size={10} /> {locale === "tr" ? "Herkese Açık" : "Public"}
                   </>
                 )}
               </span>
@@ -143,9 +145,9 @@ export function CommunityBanner({ community, isAdmin, initialPendingRequests = [
               <span className="flex items-center gap-1.5 font-semibold">
                 <Users size={13} />
                 <strong className="text-white font-black">
-                  {community.member_count.toLocaleString("tr-TR")}
+                  {community.member_count.toLocaleString(locale === "tr" ? "tr-TR" : "en-US")}
                 </strong>{" "}
-                üye
+                {locale === "tr" ? "üye" : "members"}
               </span>
             </div>
           </div>
@@ -160,7 +162,7 @@ export function CommunityBanner({ community, isAdmin, initialPendingRequests = [
             className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold border border-white/30 backdrop-blur-md transition-all duration-200 flex-shrink-0 self-start sm:self-center cursor-pointer shadow-md relative"
           >
             <Settings size={14} />
-            <span>Topluluk Ayarları</span>
+            <span>{locale === "tr" ? "Topluluk Ayarları" : "Community Settings"}</span>
             {pendingCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[9px] font-black animate-pulse border border-white/20">
                 {pendingCount}
@@ -220,6 +222,7 @@ interface EditModalProps {
 }
 
 function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, onSave, pendingRequests, setPendingRequests, initialTab = "general" }: EditModalProps) {
+  const { t, locale } = useLocale()
   const [activeTab, setActiveTab] = useState<"general" | "rules" | "requests">(initialTab)
   const [type, setType] = useState(community.type)
   const [error, setError] = useState<string | null>(null)
@@ -311,7 +314,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
         {/* Modal Header */}
         <div className="p-5 border-b border-border flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-bold text-foreground">Topluluk Ayarları</h2>
+            <h2 className="text-sm font-bold text-foreground">{locale === "tr" ? "Topluluk Ayarları" : "Community Settings"}</h2>
             <p className="text-[10px] text-muted-foreground">{community.name}</p>
           </div>
           <button
@@ -334,7 +337,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            Genel Bilgiler
+            {locale === "tr" ? "Genel Bilgiler" : "General Info"}
           </button>
           <button
             type="button"
@@ -346,7 +349,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            Kurallar & Duyuru
+            {locale === "tr" ? "Kurallar & Duyuru" : "Rules & Announcement"}
           </button>
           <button
             type="button"
@@ -358,7 +361,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            <span>Başvurular</span>
+            <span>{locale === "tr" ? "Başvurular" : "Requests"}</span>
             {pendingRequests.length > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black">
                 {pendingRequests.length}
@@ -378,14 +381,14 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                   {bannerPreview ? (
                     <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-[11px] text-muted-foreground">Kapak görseli seçilmedi</span>
+                    <span className="text-[11px] text-muted-foreground">{locale === "tr" ? "Kapak görseli seçilmedi" : "No cover image selected"}</span>
                   )}
                   <button
                     type="button"
                     onClick={() => bannerInputRef.current?.click()}
                     className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white text-[10px] font-semibold backdrop-blur-sm transition-all cursor-pointer"
                   >
-                    <ImagePlus size={11} /> Kapak Seç
+                    <ImagePlus size={11} /> {locale === "tr" ? "Kapak Seç" : "Select Cover"}
                   </button>
                 </div>
 
@@ -406,13 +409,13 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                     </button>
                   </div>
                   <div>
-                    <h3 className="text-xs font-semibold text-foreground">Topluluk Görseli</h3>
-                    <p className="text-[10px] text-muted-foreground">Logoyu değiştirmek için üzerine tıklayın.</p>
+                    <h3 className="text-xs font-semibold text-foreground">{locale === "tr" ? "Topluluk Görseli" : "Community Image"}</h3>
+                    <p className="text-[10px] text-muted-foreground">{locale === "tr" ? "Logoyu değiştirmek için üzerine tıklayın." : "Click on it to change logo."}</p>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Topluluk Adı</label>
+                  <label className="text-xs font-semibold text-muted-foreground">{locale === "tr" ? "Topluluk Adı" : "Community Name"}</label>
                   <input
                     name="name"
                     required
@@ -422,21 +425,21 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                     className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
-
+ 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Açıklama</label>
+                  <label className="text-xs font-semibold text-muted-foreground">{locale === "tr" ? "Açıklama" : "Description"}</label>
                   <textarea
                     rows={3}
                     maxLength={300}
                     value={descText}
                     onChange={(e) => setDescText(e.target.value)}
-                    placeholder="Açıklama girin..."
+                    placeholder={locale === "tr" ? "Açıklama girin..." : "Enter description..."}
                     className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                   />
                 </div>
-
+ 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Gizlilik Türü</label>
+                  <label className="text-xs font-semibold text-muted-foreground">{locale === "tr" ? "Gizlilik Türü" : "Privacy Type"}</label>
                   <div className="grid grid-cols-2 gap-2">
                     {(["public", "request_to_join"] as const).map((t) => (
                       <button
@@ -451,24 +454,24 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                         )}
                       >
                         {t === "public" ? <Globe size={13} /> : <Lock size={13} />}
-                        {t === "public" ? "Herkese Açık" : "Başvurulu"}
+                        {t === "public" ? (locale === "tr" ? "Herkese Açık" : "Public") : (locale === "tr" ? "Başvurulu" : "Private")}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Topluluk Tema Rengi (Accent Color)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">{locale === "tr" ? "Topluluk Tema Rengi (Accent Color)" : "Community Theme Color (Accent Color)"}</label>
                   <input type="hidden" name="accent_color" value={selectedColor} />
                   <div className="flex flex-wrap gap-2.5 pt-1">
                     {[
-                      { name: 'default', color: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))', label: 'Varsayılan' },
-                      { name: '#0284c7', color: '#0284c7', label: 'Mavi' },
-                      { name: '#059669', color: '#059669', label: 'Yeşil' },
-                      { name: '#d97706', color: '#d97706', label: 'Altın' },
-                      { name: '#e11d48', color: '#e11d48', label: 'Gül' },
-                      { name: '#4f46e5', color: '#4f46e5', label: 'İndigo' },
-                      { name: '#ea580c', color: '#ea580c', label: 'Turuncu' },
+                      { name: 'default', color: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))', label: locale === 'tr' ? 'Varsayılan' : 'Default' },
+                      { name: '#0284c7', color: '#0284c7', label: locale === 'tr' ? 'Mavi' : 'Blue' },
+                      { name: '#059669', color: '#059669', label: locale === 'tr' ? 'Yeşil' : 'Green' },
+                      { name: '#d97706', color: '#d97706', label: locale === 'tr' ? 'Altın' : 'Gold' },
+                      { name: '#e11d48', color: '#e11d48', label: locale === 'tr' ? 'Gül' : 'Rose' },
+                      { name: '#4f46e5', color: '#4f46e5', label: 'Indigo' },
+                      { name: '#ea580c', color: '#ea580c', label: locale === 'tr' ? 'Turuncu' : 'Orange' },
                       { name: '#0891b2', color: '#0891b2', label: 'Cyan' },
                     ].map((c) => {
                       const isSel = selectedColor === c.name;
@@ -519,7 +522,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                     onClick={onClose}
                     className="px-4 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-accent text-foreground transition-all cursor-pointer"
                   >
-                    İptal
+                    {locale === "tr" ? "İptal" : "Cancel"}
                   </button>
                   <motion.button
                     type="submit"
@@ -532,7 +535,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                     }}
                   >
                     {isPending ? <Loader2 size={12} className="animate-spin" /> : null}
-                    Kaydet
+                    {locale === "tr" ? "Kaydet" : "Save"}
                   </motion.button>
                 </div>
               </div>
@@ -540,18 +543,17 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
 
             {activeTab === "rules" && (
               <div className="space-y-5">
-                {/* Rules List Section */}
-                <div className="space-y-3">
+                        <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-foreground">Topluluk Kuralları</h3>
+                    <h3 className="text-xs font-bold text-foreground">{locale === 'tr' ? 'Topluluk Kuralları' : 'Community Rules'}</h3>
                     <span className="text-[9px] font-bold text-muted-foreground uppercase px-2 py-0.5 rounded-md bg-muted">
-                      {rules.length} kural
+                      {rules.length} {locale === 'tr' ? 'kural' : 'rules'}
                     </span>
                   </div>
 
                   <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1">
                     {rules.length === 0 ? (
-                      <p className="text-xs text-muted-foreground/60 italic py-4 text-center">Henüz özel kural eklenmedi. Standart kurallar geçerli olacaktır.</p>
+                      <p className="text-xs text-muted-foreground/60 italic py-4 text-center">{locale === 'tr' ? 'Henüz özel kural eklenmedi. Standart kurallar geçerli olacaktır.' : 'No custom rules added yet. Default rules will apply.'}</p>
                     ) : (
                       rules.map((rule, idx) => (
                         <div key={idx} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/80 shadow-sm hover:border-primary/20 transition-all">
@@ -565,7 +567,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                             type="button"
                             onClick={() => setRules(prev => prev.filter((_, i) => i !== idx))}
                             className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
-                            title="Kuralı Sil"
+                            title={locale === 'tr' ? 'Kuralı Sil' : 'Delete Rule'}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -588,7 +590,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                           }
                         }
                       }}
-                      placeholder="Yeni kural yazın..."
+                      placeholder={locale === 'tr' ? 'Yeni kural yazın...' : 'Write a new rule...'}
                       className="flex-1 px-3.5 py-2 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/60"
                     />
                     <button
@@ -601,7 +603,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                       }}
                       className="px-3 rounded-xl bg-primary/10 hover:bg-primary/15 text-primary text-xs font-bold border border-primary/20 transition-all flex items-center gap-1 cursor-pointer"
                     >
-                      <Plus size={13} /> Ekle
+                      <Plus size={13} /> {locale === 'tr' ? 'Ekle' : 'Add'}
                     </button>
                   </div>
                 </div>
@@ -613,15 +615,15 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
                     <Megaphone size={13} className="text-primary" />
-                    <h3 className="text-xs font-bold text-foreground">Sabitlenmiş Duyuru</h3>
+                    <h3 className="text-xs font-bold text-foreground">{locale === 'tr' ? 'Sabitlenmiş Duyuru' : 'Pinned Announcement'}</h3>
                   </div>
                   <p className="text-[10px] text-muted-foreground leading-normal">
-                    Topluluğun en üstünde tüm üyelere gösterilecek bir duyuru yayınlayın. Kaldırmak için metni tamamen silin.
+                    {locale === 'tr' ? 'Topluluğun en üstünde tüm üyelere gösterilecek bir duyuru yayınlayın. Kaldırmak için metni tamamen silin.' : 'Publish an announcement to be shown at the top to all members. To remove it, delete the text completely.'}
                   </p>
                   <textarea
                     value={announcement}
                     onChange={(e) => setAnnouncement(e.target.value)}
-                    placeholder="Duyuru metni yazın (örn: Hoş geldiniz! Bu hafta sonu canlı sohbet etkinliğimiz var.)"
+                    placeholder={locale === 'tr' ? 'Duyuru metni yazın (örn: Hoş geldiniz! Bu hafta sonu canlı sohbet etkinliğimiz var.)' : 'Write announcement text (e.g. Welcome! We have a live chat event this weekend.)'}
                     rows={3}
                     maxLength={250}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none placeholder:text-muted-foreground/60 leading-relaxed"
@@ -637,7 +639,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                     onClick={onClose}
                     className="px-4 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-accent text-foreground transition-all cursor-pointer"
                   >
-                    İptal
+                    {locale === 'tr' ? 'İptal' : 'Cancel'}
                   </button>
                   <motion.button
                     type="submit"
@@ -650,7 +652,7 @@ function EditCommunityModal({ community, currentAvatar, currentBanner, onClose, 
                     }}
                   >
                     {isPending ? <Loader2 size={12} className="animate-spin" /> : null}
-                    Kaydet
+                    {locale === 'tr' ? 'Kaydet' : 'Save'}
                   </motion.button>
                 </div>
               </div>

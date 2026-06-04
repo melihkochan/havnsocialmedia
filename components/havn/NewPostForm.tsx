@@ -117,7 +117,7 @@ export function NewPostForm({ communityId, currentUser }: NewPostFormProps) {
               editorRef={editorRef}
               value={content}
               onChange={setContent}
-              placeholder="Topluluğunla bir şeyler paylaş... (Komutlar için / yazın...)"
+              placeholder={t('community.post_placeholder')}
               maxLength={500}
               showCounter={false}
             />
@@ -169,7 +169,7 @@ export function NewPostForm({ communityId, currentUser }: NewPostFormProps) {
                       )}
                     >
                       {showImageUpload ? <X size={14} /> : <ImagePlus size={14} />}
-                      <span className="hidden sm:inline">{showImageUpload ? 'Kapat' : 'Görsel'}</span>
+                      <span className="hidden sm:inline">{showImageUpload ? t('ui.close') : t('feed.image')}</span>
                     </button>
                     <EmojiPickerButton onInsert={insertEmoji} />
                   </div>
@@ -202,7 +202,7 @@ export function NewPostForm({ communityId, currentUser }: NewPostFormProps) {
                       }
                     >
                       {loading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                      Paylaş
+                      {t('feed.submit')}
                     </motion.button>
                   </div>
                 </div>

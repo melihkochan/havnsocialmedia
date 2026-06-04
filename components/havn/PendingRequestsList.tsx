@@ -7,6 +7,7 @@ import { approveMembership, rejectMembership } from '@/lib/actions/communities'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useLocale } from '@/lib/i18n/LocaleContext'
 
 type PendingRequest = {
   id: string
@@ -28,6 +29,7 @@ interface PendingRequestsListProps {
 }
 
 export function PendingRequestsList({ communityId, requests, setRequests, minimal = false }: PendingRequestsListProps) {
+  const { t, locale } = useLocale()
   const [isPending, startTransition] = useTransition()
   const [processingId, setProcessingId] = useState<string | null>(null)
   const router = useRouter()
@@ -53,7 +55,7 @@ export function PendingRequestsList({ communityId, requests, setRequests, minima
     if (minimal) {
       return (
         <div className="text-center py-8 text-xs text-muted-foreground">
-          Bekleyen üyelik başvurusu bulunmuyor.
+          {t('communities.pending_requests.none')}
         </div>
       )
     }
@@ -65,9 +67,9 @@ export function PendingRequestsList({ communityId, requests, setRequests, minima
       {!minimal && (
         <div className="flex items-center gap-2 mb-4">
           <Users size={16} style={{ color: 'var(--primary)' }} />
-          <h3 className="text-sm font-bold text-foreground">Üyelik Başvuruları</h3>
+          <h3 className="text-sm font-bold text-foreground">{t('communities.pending_requests.title')}</h3>
           <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold" style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)', color: 'var(--primary)' }}>
-            {requests.length} Bekleyen
+            {requests.length} {t('communities.pending_requests.pending')}
           </span>
         </div>
       )}
@@ -75,7 +77,7 @@ export function PendingRequestsList({ communityId, requests, setRequests, minima
       <div className="flex flex-col gap-3">
         <AnimatePresence initial={false}>
           {requests.map((req) => {
-            const username = req.profiles?.username ?? 'Anonim'
+            const username = req.profiles?.username ?? t('communities.pending_requests.anonymous')
             const avatarUrl = req.profiles?.avatar_url
             const isLoading = isPending && processingId === req.user_id
 
@@ -110,7 +112,7 @@ export function PendingRequestsList({ communityId, requests, setRequests, minima
                     </Link>
                     <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                       <Clock size={10} />
-                      {new Date(req.joined_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                      {new Date(req.joined_at).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
                 </div>
@@ -120,7 +122,7 @@ export function PendingRequestsList({ communityId, requests, setRequests, minima
                     disabled={isPending}
                     onClick={() => handleAction(req.user_id, 'approve')}
                     className="p-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 transition-all flex items-center justify-center cursor-pointer"
-                    title="Onayla"
+                    title={t('communities.pending_requests.approve')}
                   >
                     {isLoading ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                   </button>
@@ -128,7 +130,7 @@ export function PendingRequestsList({ communityId, requests, setRequests, minima
                     disabled={isPending}
                     onClick={() => handleAction(req.user_id, 'reject')}
                     className="p-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 transition-all flex items-center justify-center cursor-pointer"
-                    title="Reddet"
+                    title={t('communities.pending_requests.reject')}
                   >
                     {isLoading ? <Loader2 size={13} className="animate-spin" /> : <X size={13} />}
                   </button>

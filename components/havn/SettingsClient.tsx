@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Lock, Palette, Loader2, Check, AlertCircle, Camera, LogOut, ArrowLeft, HelpCircle, Send, Bell, Volume2, VolumeX, Undo, Sliders, Globe } from 'lucide-react'
+import { User, Lock, Palette, Loader2, Check, AlertCircle, Camera, LogOut, ArrowLeft, HelpCircle, Send, Bell, Volume2, VolumeX, Undo, Sliders, Globe, Info } from 'lucide-react'
 import { updateProfile, changePassword, updateAccentTheme, updatePreferences } from '@/lib/actions/profile'
 import { signOut } from '@/lib/actions/auth'
 import { ThemeToggle } from '@/components/havn/ThemeToggle'
@@ -108,7 +108,7 @@ function Switch({ checked, onChange, label, description }: { checked: boolean; o
 
 export function SettingsClient({ profile, email }: SettingsClientProps) {
   const { t, locale } = useLocale()
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'appearance' | 'preferences' | 'notifications' | 'support' | 'language' | 'account'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'appearance' | 'preferences' | 'notifications' | 'support' | 'language' | 'account' | 'help'>('profile')
   const [notifPrefs, setNotifPrefs] = useState({
     all: true,
     support: true,
@@ -413,6 +413,7 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
     { id: 'preferences' as const, label: t('settings.tab.preferences'), icon: Sliders },
     { id: 'notifications' as const, label: t('settings.tab.notifications'), icon: Bell },
     { id: 'support' as const, label: t('settings.tab.support'), icon: HelpCircle },
+    { id: 'help' as const, label: locale === 'tr' ? 'Yardım & Rehber' : 'Help & Guide', icon: Info },
     { id: 'language' as const, label: t('settings.tab.language'), icon: Globe },
     { id: 'account' as const, label: t('settings.tab.account'), icon: LogOut },
   ]
@@ -1181,6 +1182,35 @@ export function SettingsClient({ profile, email }: SettingsClientProps) {
               >
                 <Section title={t('settings.language.title')} icon={Globe}>
                   <LanguageSwitcher variant="settings" />
+                </Section>
+              </motion.div>
+            )}
+
+            {activeTab === 'help' && (
+              <motion.div
+                key="help"
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Section title={locale === 'tr' ? 'Yardım & Platform Rehberi' : 'Help & Platform Guide'} icon={Info}>
+                  <div className="space-y-4">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {locale === 'tr' 
+                        ? 'Platform kullanımı, seviye ve XP sistemi, rozetler ve sıkça sorulan sorular hakkında detaylı bilgi almak için rehberimizi inceleyebilirsiniz.' 
+                        : 'You can check our guide to get detailed information about platform usage, level and XP system, badges, and frequently asked questions.'}
+                    </p>
+                    <Link
+                      href="/help"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md w-fit"
+                      style={{
+                        background: 'linear-gradient(135deg, var(--havn-gradient-start), var(--havn-gradient-end))',
+                        color: 'var(--primary-foreground)',
+                      }}
+                    >
+                      <HelpCircle size={14} />
+                      {locale === 'tr' ? 'Yardım Merkezi\'ne Git' : 'Go to Help Center'}
+                    </Link>
+                  </div>
                 </Section>
               </motion.div>
             )}
